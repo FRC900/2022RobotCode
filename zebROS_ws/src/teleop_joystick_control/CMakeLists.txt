@@ -5,6 +5,7 @@ include ("../cmake_modules/CMakeOpt.cmake")
 
 find_package(catkin REQUIRED COMPONENTS
 	actionlib
+	angles
 	behavior_actions
 	cmake_modules
 	control_msgs
@@ -25,11 +26,16 @@ find_package(catkin REQUIRED COMPONENTS
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${PROJECT_SOURCE_DIR}/cmake)
 find_package(Eigen3 REQUIRED)
 
+## Generate messages in the 'msg' folder
+#add_message_files(
+#FILES
+#)
+
 # Generate services in the 'srv' folder
 add_service_files (
 	FILES
 	RobotOrient.srv
-	OrientStrafingAngle.srv
+	SnapStrafingAngle.srv
 	)
 
 generate_messages (
@@ -72,7 +78,7 @@ include_directories(
 	${Eigen3_INCLUDE_DIRS}
 	)
 
-add_executable(teleop_joystick_comp_2022 src/teleop_joystick_comp_2022.cpp)
+add_executable(teleop_joystick_comp_2022 src/teleop_joystick_comp_2022.cpp src/robot_orientation_driver.cpp)
 target_link_libraries(teleop_joystick_comp_2022
 	${catkin_LIBRARIES})
 add_dependencies(teleop_joystick_comp_2022
@@ -102,7 +108,7 @@ add_dependencies(snap_to_nearest_goal
 	)
 
 if (0) # 2020 code, left for reference if needed
-add_executable(teleop_joystick_comp_2020 src/teleop_joystick_comp_2020.cpp)
+add_executable(teleop_joystick_comp_2020 src/teleop_joystick_comp_2020.cpp src/robot_orientation_driver.cpp)
 target_link_libraries(teleop_joystick_comp_2020
 	${catkin_LIBRARIES}
 	)
@@ -117,16 +123,6 @@ add_dependencies(teleop_joystick_comp_2020
 	)
 endif()
 
-
-add_executable(orient_strafing_node src/orient_strafing.cpp)
-target_link_libraries(orient_strafing_node
-	${catkin_LIBRARIES}
-	)
-add_dependencies(orient_strafing_node
-	${${PROJECT_NAME}_EXPORTED_TARGETS}
-	${catkin_EXPORTED_TARGETS}
-	)
-
 add_executable(teleop_joints_keyboard src/teleop_joints_keyboard.cpp)
 target_link_libraries(teleop_joints_keyboard
 	${catkin_LIBRARIES}
@@ -136,7 +132,7 @@ add_dependencies(teleop_joints_keyboard
 	${catkin_EXPORTED_TARGETS}
 	)
 
-add_executable(basic_mechanism_test_node src/basic_mechanism_test.cpp)
+add_executable(basic_mechanism_test_node src/basic_mechanism_test.cpp src/robot_orientation_driver.cpp)
 target_link_libraries(basic_mechanism_test_node
 	${catkin_LIBRARIES}
 	)
@@ -168,7 +164,7 @@ add_dependencies(snap_to_cargo_node_2022
 
 # Install ------------------------------------------------------------
 # Install header files
-install(TARGETS teleop_joystick_comp_2022 teleop_joints_keyboard orient_strafing_node
+install(TARGETS teleop_joystick_comp_2022 teleop_joints_keyboard
 	ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 	LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 	RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
