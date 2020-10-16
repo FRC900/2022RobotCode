@@ -75,7 +75,8 @@
 		<rosparam file="$(find teleop_joystick_control)/config/teleop_joystick_comp.yaml" command="load"/>
 		<node name="teleop_joystick_comp_2020" pkg="teleop_joystick_control" type="teleop_joystick_comp_2020" output="screen"/>
 
-		<group ns="orient_strafing"> <!--TODO Tune these values on a full weight robot -->
+<!--
+		<group ns="orient_strafing"> TODO Tune these values on a full weight robot
 			<rosparam file="$(find teleop_joystick_control)/config/teleop_joystick_comp.yaml" command="load"/>
 			<node name="orient_strafing_pid" pkg="pid" type="controller" >
 				<param name="node_name" value="orient_strafing_pid" />
@@ -89,6 +90,7 @@
 			</node>
 			<node name="orient_strafing_node" pkg="teleop_joystick_control" type="orient_strafing_node" output="screen"/>
 		</group>
+-->
 	</group>
 
 	<node name="num_powercells_pub_node" pkg="behaviors" type="num_powercells_pub_node" output="screen" />
