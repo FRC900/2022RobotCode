@@ -114,7 +114,7 @@ int main(int argc, char **argv)
 
 	ros::ServiceServer set_cmd_vel_topics = n.advertiseService("set_cmd_vel_topics", setCmdVelTopics);
 
-	cmd_vel_pub = n.advertise<geometry_msgs::Twist>("cmd_vel", 1, true);
+	cmd_vel_pub = n.advertise<geometry_msgs::Twist>("/frcrobot_jetson/swerve_drive_controller/cmd_vel", 1, true);
 
 	//Initial values for cmd_vel
 	cmd_vel.linear.x = 0;
