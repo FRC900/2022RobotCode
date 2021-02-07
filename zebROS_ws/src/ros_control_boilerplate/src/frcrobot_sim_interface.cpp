@@ -752,6 +752,3 @@ void FRCRobotSimInterface::write(const ros::Time& time, const ros::Duration& per
 }
 
 }  // namespace
-
-
-
