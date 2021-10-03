@@ -1,3 +1,10 @@
+name: ROSBuild
+
+on:
+  push:
+    branches:
+      - gh_actions
+
 env:
   BUILD_TYPE: Release
 
