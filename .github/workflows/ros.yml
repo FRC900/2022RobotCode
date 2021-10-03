@@ -27,8 +27,9 @@ jobs:
     steps:
       
       - name: Install wstools
-        run: wstool update -t src
-        run: source ROSStandard.sh
+        run: |
+        wstool update -t src
+        source ROSStandard.sh
       
       - name: Build
         run: natbuild
