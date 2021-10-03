@@ -21,10 +21,10 @@ jobs:
           ref: "gh_actions"
           submodules: 'recursive'
       
-        - name: Install wstools
-          run: |
-            wstool update -t src
-            source ROSStandard.sh
-        
-        - name: Build
-          run: natbuild
+      - name: Install wstools
+        run: |
+          wstool update -t src
+          source ROSStandard.sh
+      
+      - name: Build
+        run: natbuild
