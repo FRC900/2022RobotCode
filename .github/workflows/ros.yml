@@ -11,25 +11,20 @@ env:
 jobs:
 
   # Check out the code. This executes directly on the VM. 
-  checkout:
+  build:
     runs-on: self-hosted
+    container: frc900/zebros-2021-dev:latest
     steps:
       - uses: actions/checkout@v2
         with:
           repository: '2020Offseason'
           ref: "gh_actions"
           submodules: 'recursive'
-
-  # Perform the build inside the container.
-  build:
-    runs-on: self-hosted
-    container: frc900/zebros-2021-dev:latest
-    steps:
       
-      - name: Install wstools
-        run: |
-          wstool update -t src
-          source ROSStandard.sh
-      
-      - name: Build
-        run: natbuild
+        - name: Install wstools
+          run: |
+            wstool update -t src
+            source ROSStandard.sh
+        
+        - name: Build
+          run: natbuild
