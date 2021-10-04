@@ -15,16 +15,23 @@ jobs:
     runs-on: [self-hosted, linux]
     container: frc900/zebros-2021-dev:latest
     steps:
+
+      - name: Update git - Update repository
+        run: sudo add-apt-repository ppa:git-core/ppa -y
+        continue-on-error: true
+
+      - name: Update git - Run apt update
+        run: sudo apt update
+        continue-on-error: true
+
+      -name: Update git - run install
+        run: sudo apt install git -y
+        continue-on-error: true
+
       - uses: actions/checkout@v2
         with:
           repository: 'frc900/2020Offseason'
           ref: "gh_actions"
-
-      - name: Update git
-        run: |
-          sudo add-apt-repository ppa:git-core/ppa
-          sudo apt update
-          sudo apt install git
 
       - name: Initialize submodules
         run: |
