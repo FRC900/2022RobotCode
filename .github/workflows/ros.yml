@@ -32,14 +32,10 @@ jobs:
         with:
           repository: 'frc900/2020Offseason'
           ref: "gh_actions"
-
-      - name: Initialize submodules
-        run: |
-          pwd
-          git submodule init
-          git submodule update
+          submodules: "recursive"
 
       - name: Install wstools
+        working-directory: ./zebROS_ws
         run: |
           wstool update -t src
           source ROSStandard.sh
