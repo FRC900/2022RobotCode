@@ -20,8 +20,15 @@ jobs:
           repository: 'frc900/2020Offseason'
           ref: "gh_actions"
 
+      - name: Update git
+        run: |
+          sudo add-apt-repository ppa:git-core/ppa
+          sudo apt update
+          sudo apt install git
+
       - name: Initialize submodules
         run: |
+          pwd
           git submodule init
           git submodule update
 
