@@ -12,7 +12,7 @@ jobs:
 
   # Check out the code. This executes directly on the VM. 
   build:
-    runs-on: self-hosted
+    runs-on: [self-hosted, linux]
     container: frc900/zebros-2021-dev:latest
     steps:
       - uses: actions/checkout@v2
