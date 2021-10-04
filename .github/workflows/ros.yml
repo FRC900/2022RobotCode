@@ -17,7 +17,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
         with:
-          repository: '2020Offseason'
+          repository: 'frc900/2020Offseason'
           ref: "gh_actions"
           submodules: 'recursive'
       
