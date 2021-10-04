@@ -1,4 +1,4 @@
-# 2020 Offseason Code [![Build Status](https://travis-ci.com/FRC900/2020Offseason.svg?token=T6hJWxFcNyyzxifXQqW5&branch=master)](https://travis-ci.com/FRC900/2020Offseason)
+# 2020 Offseason Code ![Build Status](https://github.com/frc900/2020Offseason/actions/workflows/ros.yml/badge.svg)
 
 2020 Offseason Code
 
