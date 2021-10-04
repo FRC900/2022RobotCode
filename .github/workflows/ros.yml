@@ -24,7 +24,7 @@ jobs:
         run: sudo apt update
         continue-on-error: true
 
-      -name: Update git - run install
+      - name: Update git - run install
         run: sudo apt install git -y
         continue-on-error: true
 
