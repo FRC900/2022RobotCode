@@ -38,7 +38,7 @@ jobs:
         working-directory: ./zebROS_ws
         run: |
           wstool update -t src
-          source ROSStandard.sh
+          . ROSStandard.sh
       
       - name: Build
         run: natbuild
