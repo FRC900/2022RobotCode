@@ -38,6 +38,12 @@ jobs:
           ref: "gh_actions"
           submodules: "recursive"
 
+
+      - name: Debug
+        working-directory: ./zebROS_ws
+        run: |
+          cmake --version
+      
       - name: Build
         working-directory: ./zebROS_ws
         run: |
