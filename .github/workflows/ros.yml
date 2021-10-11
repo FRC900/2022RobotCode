@@ -38,14 +38,11 @@ jobs:
           ref: "gh_actions"
           submodules: "recursive"
 
-      - name: Install wstools
+      - name: Build
         working-directory: ./zebROS_ws
         run: |
           wstool update -t src
           source ROSStandard.sh
           source command_aliases.sh
-      
-      - name: Build
-        working-directory: ./zebROS_ws
-        run: |
           ./native_build.sh
+      
