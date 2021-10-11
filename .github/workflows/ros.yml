@@ -46,6 +46,7 @@ jobs:
           source command_aliases.sh
       
       - name: Build
+        working-directory: ./zebROS_ws
         run: |
           source command_aliases.sh
           natbuild
