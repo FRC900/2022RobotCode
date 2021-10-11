@@ -43,6 +43,7 @@ jobs:
         run: |
           wstool update -t src
           source ROSStandard.sh
+          source command_aliases.sh
       
       - name: Build
         run: natbuild
