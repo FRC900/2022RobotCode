@@ -47,11 +47,17 @@ jobs:
         run: |
           cmake --version
           ls -a ~
-          cd ~
           echo "Working directory:"
+          pwd
+          cd ~
+          echo "Home directory:"
           pwd
           echo "Who am I? What am I?"
           whoami
+          echo "Anything at /home?"
+          ls /home
+          echo "Anything at /home/ubuntu?"
+          ls /home/ubuntu
       
       - name: Build
         working-directory: ./zebROS_ws
