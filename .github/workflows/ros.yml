@@ -41,9 +41,11 @@ jobs:
 
       - name: Debug
         working-directory: ./zebROS_ws
-        run: |
-          cmake --version
-          ls -a ~
+        - run: cmake --version
+        - run: ls -a ~
+        - run: cd ~
+        - run: pwd
+        - run: whoami
       
       - name: Build
         working-directory: ./zebROS_ws
