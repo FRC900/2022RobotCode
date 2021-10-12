@@ -16,7 +16,7 @@ jobs:
     container: frc900/zebros-2021-dev:latest
     defaults:
       run:
-        shell: bash --rc-file ~/.bashrc
+        shell: bash --rcfile ~/.bashrc --noprofile -e -o pipefail {0}
     
     steps:
 
