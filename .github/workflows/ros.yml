@@ -41,11 +41,14 @@ jobs:
 
       - name: Debug
         working-directory: ./zebROS_ws
-        - run: cmake --version
-        - run: ls -a ~
-        - run: cd ~
-        - run: pwd
-        - run: whoami
+        run: |
+          cmake --version
+          ls -a ~
+          cd ~
+          echo "Working directory:"
+          pwd
+          echo "Who am I? What am I?"
+          whoami
       
       - name: Build
         working-directory: ./zebROS_ws
