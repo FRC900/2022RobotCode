@@ -35,6 +35,13 @@ jobs:
         run: sudo apt install git -y
         continue-on-error: true
 
+      - name: Pre-checkout Debug
+        run: |
+          echo "Pre-checkout workspace"
+          echo "$GITHUB_WORKSPACE"
+          echo "Working directory"
+          pwd
+
       - uses: actions/checkout@v2
         with:
           repository: 'frc900/2020Offseason'
