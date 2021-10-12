@@ -58,6 +58,8 @@ jobs:
           ls /home
           echo "Anything at /home/ubuntu?"
           ls /home/ubuntu
+          echo "GitHub workspace"
+          echo "$GITHUB_WORKSPACE"
       
       - name: Build
         working-directory: ./zebROS_ws
