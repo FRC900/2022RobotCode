@@ -13,7 +13,11 @@ jobs:
   # Check out the code. This executes directly on the VM. 
   build:
     runs-on: [self-hosted, linux]
-    container: frc900/zebros-2021-dev:latest
+    container: 
+      image: frc900/zebros-2021-dev:latest
+      options: --user ubuntu
+      env:
+        HOME: /home/ubuntu
     defaults:
       run:
         shell: bash --rcfile ~/.bashrc --noprofile -e -o pipefail {0}
