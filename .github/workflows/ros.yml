@@ -23,6 +23,18 @@ jobs:
     
     steps:
 
+      - name: Update git - Update repository
+        run: sudo add-apt-repository ppa:git-core/ppa -y
+        continue-on-error: true
+
+      - name: Update git - Run apt update
+        run: sudo apt update
+        continue-on-error: true
+
+      - name: Update git - run install
+        run: sudo apt install git -y
+        continue-on-error: true
+
       - name: Pre-checkout Debug
         run: |
           echo "Pre-checkout workspace"
