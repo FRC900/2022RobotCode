@@ -19,21 +19,9 @@ jobs:
         HOME: /home/ubuntu
     defaults:
       run:
-        shell: bash --rcfile ~/.bashrc --noprofile -e -o pipefail {0}
+        shell: bash --rcfile /home/ubuntu/.bashrc --noprofile -e -o pipefail {0}
     
     steps:
-
-      - name: Update git - Update repository
-        run: sudo add-apt-repository ppa:git-core/ppa -y
-        continue-on-error: true
-
-      - name: Update git - Run apt update
-        run: sudo apt update
-        continue-on-error: true
-
-      - name: Update git - run install
-        run: sudo apt install git -y
-        continue-on-error: true
 
       - name: Pre-checkout Debug
         run: |
