@@ -35,7 +35,7 @@ class Video2ROS:
         image_path = rospack.get_path('tf_object_detection') + '/src/'
         self.capture = cv2.VideoCapture(image_path + str(self.filename))
         #Can be removed, just to check it acutally uses the config
-        print(self.filename, self.framerate, self.pub_topic)
+        print("Video name =", self.filename, "Framerate =", self.framerate, "Topic that video is getting published to", self.pub_topic)
         print(self.capture)
         bridge = CvBridge()
 
