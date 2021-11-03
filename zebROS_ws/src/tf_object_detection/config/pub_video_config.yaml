@@ -2,5 +2,5 @@ pub_topic: "c920/rect_image"
 framerate: 30
 show_video: true
 
-#Edit me!
+#Add a video in the src directory and put its name here
 filename: "testvid.mp4"
