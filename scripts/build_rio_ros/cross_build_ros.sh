@@ -18,7 +18,7 @@ git clone https://github.com/ros/urdfdom_headers.git
 cd urdfdom_headers
 wget https://raw.githubusercontent.com/ros-gbp/urdfdom_headers-release/master/indigo/package.xml
 # Fix the version in package.xml to read 1.0.0
-sed -i -e 's/:{version}/1.0.0/' package.xml 
+sed -i -e 's/:{version}/1.0.5/' package.xml 
 
 cd ~/melodic_arm_cross_ws/src
 #git clone https://github.com/jbeder/yaml-cpp.git
@@ -66,7 +66,7 @@ sed -i -e '/<\/package>/i  <build_depend>urdfdom_headers<\/build_depend>' urdf/u
 
 cd ~/melodic_arm_cross_ws
 # Do a fresh build - kill off any lingering dependencies
-rm -rf ~/wpilib/2021/roborio/arm-frc2022-linux-gnueabi/opt/ros/melodic devel_isolated build_isolated
+rm -rf ~/wpilib/2022/roborio/arm-frc2022-linux-gnueabi/opt/ros/melodic devel_isolated build_isolated
 
 
 # Note - if this fails looking for gencpp*cmake, run from a new terminal
