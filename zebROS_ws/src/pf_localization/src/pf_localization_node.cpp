@@ -139,6 +139,7 @@ void publish_prediction(const ros::TimerEvent &/*event*/)
 // Extra arg here allows for switching between bearing only vs. 2d x,y position
 // detection messages based on how the subscribe call is defined
 void goalCallback(const field_obj::Detection::ConstPtr& msg, const bool bearingOnly){
+  ros::Time begin  = ros::Time::now();
   // TODO - just transform all of the detection coords to base_link here,
   // remove the need to do so inside the particle filter
   geometry_msgs::TransformStamped zed_to_baselink;
@@ -165,6 +166,8 @@ void goalCallback(const field_obj::Detection::ConstPtr& msg, const bool bearingO
     pf->resample();
     last_measurement = ros::Time::now();
   }
+  ros::Duration dur = ros::Time::now() - begin;
+  ROS_INFO_STREAM("goalCallback runtime: " << dur << " num of beacons: " << msg->objects.size());
 
   #ifdef EXTREME_VERBOSE
   ROS_INFO("goalCallback called");
