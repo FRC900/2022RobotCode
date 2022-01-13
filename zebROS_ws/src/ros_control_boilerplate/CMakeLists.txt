@@ -191,6 +191,7 @@ if (NOT "${ARM_PREFIX}" STREQUAL "arm-frc2022-linux-gnueabi")
 		${ALLWPILIB}/wpiutil/src/main/native/cpp/llvm/StringMap.cpp
 		${ALLWPILIB}/wpiutil/src/main/native/fmtlib/src/format.cpp
 	)
+    set(FRC_COMMON_WPILIB frc_common_wpilib)
 
 	set (FRCROBOT_HW_MAIN_SRCS ${FRCROBOT_HW_MAIN_SRCS} 
 		src/dummy_wpilib_common.cpp
@@ -332,7 +333,7 @@ if (NOT (("${ARM_PREFIX}" STREQUAL "arm-frc2022-linux-gnueabi") OR
 	target_link_libraries(frcrobot_sim_main
 		frc_robot_interface
 		frc_sim_wpilib
-		frc_common_wpilib
+		${FRC_COMMON_WPILIB}
 		${CTRE_LIB_DIR}/libCTRE_PhoenixSim.so
 		${CTRE_LIB_DIR}/libCTRE_PhoenixCCISim.so
 		${CTRE_LIB_DIR}/libCTRE_Phoenix_WPISim.so
@@ -366,7 +367,7 @@ target_link_libraries(frcrobot_hw_main
 	${LIB_GPIOD}
 	${REV_USER_LIBS}
 	frc_robot_interface
-	frc_common_wpilib
+	${FRC_COMMON_WPILIB}
 	${CTRE_LIB_DIR}/libCTRE_Phoenix.so
 	${CTRE_LIB_DIR}/libCTRE_PhoenixCCI.so
 	${CTRE_LIB_DIR}/libCTRE_Phoenix_WPI.so
