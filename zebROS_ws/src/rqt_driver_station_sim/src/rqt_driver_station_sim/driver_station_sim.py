@@ -5,9 +5,10 @@ import argparse
 import rospy
 import rospkg
 import threading
+import sys
 from PyQt5.QtWidgets import QWidget, QCheckBox, QApplication, QHBoxLayout, QVBoxLayout
 from PyQt5 import QtCore, QtWidgets
-#from PyQt5 import QtGui 
+#from PyQt5 import QtGui
 from qt_gui.plugin import Plugin
 from python_qt_binding import loadUi
 from python_qt_binding.QtWidgets import QWidget
@@ -82,19 +83,19 @@ class DriverStationSim(Plugin):
         if(self.auto_state != state):
             self.auto_state = state
             self.display_auto_state()
-    
+
 
     def display_auto_state(self):
         if self.auto_state == 0:
             self._widget.auto_state_readback_text.setText("Not ready")
             self._widget.auto_state_readback_text.setStyleSheet("background-color:#ff5555;")
-        elif self.auto_state == 1: 
+        elif self.auto_state == 1:
             self._widget.auto_state_readback_text.setText("Ready, waiting for auto period")
-            self._widget.auto_state_readback_text.setStyleSheet("background-color:#ffffff;") 
-        elif self.auto_state == 2: 
+            self._widget.auto_state_readback_text.setStyleSheet("background-color:#ffffff;")
+        elif self.auto_state == 2:
             self._widget.auto_state_readback_text.setText("Running")
-            self._widget.auto_state_readback_text.setStyleSheet("background-color:#ffff00")       
-        elif self.auto_state == 3: 
+            self._widget.auto_state_readback_text.setStyleSheet("background-color:#ffff00")
+        elif self.auto_state == 3:
             self._widget.auto_state_readback_text.setText("Finished")
             self._widget.auto_state_readback_text.setStyleSheet("background-color:#00ff00;")
 	elif self.auto_state == 4:
@@ -128,10 +129,10 @@ class DriverStationSim(Plugin):
         loadUi(ui_file, self._widget)
         # Give QObjects reasonable names
         self._widget.setObjectName('DriverStationSim')
-        # Show _widget.windowTitle on left-top of each plugin (when 
-        # it's set in _widget). This is useful when you open multiple 
-        # plugins at once. Also if you open multiple instances of your 
-        # plugin at once, these lines add number to make it easy to 
+        # Show _widget.windowTitle on left-top of each plugin (when
+        # it's set in _widget). This is useful when you open multiple
+        # plugins at once. Also if you open multiple instances of your
+        # plugin at once, these lines add number to make it easy to
         # tell from pane to pane.
 
         talons = []
@@ -234,6 +235,9 @@ class DriverStationSim(Plugin):
                 if(not auto_last and auto and not practice):
                     rospy.logwarn("autoLast")
                     start_time = rospy.get_time()
+                if(disable and enable_last):
+                    rospy.logwarn("restarting auto node")
+                    os.system("/bin/bash -c \"ROS_NAMESPACE=auto rosrun behaviors auto_node &\"")
                 if(not practice_last and practice):
                     rospy.logwarn("practiceLast")
                     start_time = rospy.get_time()
@@ -276,14 +280,14 @@ class DriverStationSim(Plugin):
                 match_msg.matchNumber = 1
                 match_msg.Autonomous = auto
                 match_msg.DSAttached = True
-                
+
                 # TODO - FMS attached
                 # TODO - EStopped?
 
                 enable_last = match_msg.Enabled
                 auto_last = auto
                 practice_last = practice
-                
+
                 match_pub.publish(match_msg)
 
                 # Publish integer auto mode to auto_mode node
@@ -323,7 +327,7 @@ class DriverStationSim(Plugin):
         # TODO restore intrinsic configuration, usually using:
         # v = instance_settings.value(k)
         pass
-    
+
     def _parse_args(self, argv):
         parser = argparse.ArgumentParser(prog="rqt_driver_station_sim", add_help=False)
         DriverStationSim.add_arguments(parser)
