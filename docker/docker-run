@@ -4,12 +4,12 @@ dev_dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null && pwd )"
 dev_dir="$( dirname "$dev_dir" )"
 
 code_dir="$HOME/2022RobotCode"
-if [ ! -d "${code_dir}" ]
+if [ ! -d "$code_dir" ]
 then
     echo "~/2022RobotCode not a directory, trying ~/code/2022RobotCode"
     code_dir="$HOME/code/2022RobotCode"
 fi
-if [ ! -d "${code_dir}" ]
+if [ ! -d "$code_dir" ]
 then
     echo "~/code/2022RobotCode also not a directory, exiting"
     exit 1
@@ -19,5 +19,5 @@ set -e
 set -o pipefail
 
 docker run "$@" -it --net=host -v  /tmp/.X11-unix:/tmp/.X11-unix \
- -v "${code_dir}":/home/ubuntu/2022RobotCode \
+ -v "$code_dir":/home/ubuntu/2022RobotCode \
  -e DISPLAY=$DISPLAY --privileged --user ubuntu frc900/zebros-2022-dev:latest /bin/bash
