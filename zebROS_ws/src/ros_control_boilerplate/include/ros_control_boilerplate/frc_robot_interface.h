@@ -73,9 +73,8 @@
 
 #include "ros_control_boilerplate/tracer.h"
 
-#include "frc/PneumaticsModuleType.h"
-
 // WPILIB stuff
+#include "frc/PneumaticsModuleType.h"
 #include <hal/CTREPCM.h>
 #include <hal/FRCUsageReporting.h>
 #include <hal/HALBase.h>
@@ -135,21 +134,6 @@ class CustomProfileState
 	std::vector<std::vector<hardware_interface::CustomProfilePoint>> saved_points_;
 	std::vector<std::vector<double>> saved_times_;
 };
-
-#if 0
-//Stuff from frcrobot_hw_interface
-class DoubleSolenoidHandle
-{
-	public:
-		DoubleSolenoidHandle(HAL_SolenoidHandle forward, HAL_SolenoidHandle reverse)
-			: forward_(forward)
-			  , reverse_(reverse)
-		{
-		}
-		HAL_SolenoidHandle forward_;
-		HAL_SolenoidHandle reverse_;
-};
-#endif
 
 /// \brief Hardware interface for a robot
 class FRCRobotInterface : public hardware_interface::RobotHW
