@@ -99,6 +99,8 @@ cd ~/wpilib/2022/roborio/arm-frc2022-linux-gnueabi/lib/wpilib/linux/athena/share
 scp -P 22 *.so admin@$1:wpilib
 cd ~/wpilib/2022/roborio/arm-frc2022-linux-gnueabi/lib/ctre/linux/athena/shared
 scp -P 22 *.so admin@$1:wpilib
+cd ~/wpilib/2022/roborio/arm-frc2022-linux-gnueabi/lib/rev/linux/athena/shared
+scp -P 22 *.so admin@$1:wpilib
 # Remove debugging versions of libraries to save space
 ssh -p 22 admin@$1 rm wpilib/*d.so wpilib/*jni.so
 
