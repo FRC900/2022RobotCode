@@ -157,12 +157,6 @@ include_directories(${WPI_SYSROOT}/include/wpilib)
 # Non-rio builds are more complex - we have to grab appropriate
 # parts of WPIlib source and include it manually
 if (NOT "${ARM_PREFIX}" STREQUAL "arm-frc2022-linux-gnueabi")
-    # This is needed for non-RIO hardware platforms
-	set (PLATFORM_SPECIFIC_LIBS
-		${PLATFORM_SPECIFIC_LIBS}
-		#${CTRE_LIB_DIR}/libCTRE_PhoenixPlatform_socketcan.so
-	)
-
 	# WPIlib code common to both hardware and sim interfaces.
 	# Create it as a library to avoid building all of these twice
 	add_library(frc_common_wpilib STATIC
@@ -249,7 +243,6 @@ if (NOT "${ARM_PREFIX}" STREQUAL "arm-frc2022-linux-gnueabi")
 	  LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 	  RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 	)
-
 endif()
 
 # Don't build sim code for the Rio or Jetson -
