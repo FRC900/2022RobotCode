@@ -43,7 +43,7 @@ ssh -p 22 admin@$1 'opkg install ntp ntp-tickadj ntp-utils ntpdate rsync htop cu
 ssh -p 22 admin@$1 'opkg clean'
 ssh -p 22 admin@$1 'opkg install gflags gflags-bash-completion libglog0 gperftools-dev openssl'
 ssh -p 22 admin@$1 'opkg clean'
-ssh -p 22 admin@$1 'opkg install gpgme-dev gpgme libgpg-error-dev libgpg-error0 libassuan-dev libassuan0'
+ssh -p 22 admin@$1 'opkg install gpgme-dev gpgme libgpg-error-dev libgpg-error0 libassuan-dev libassuan0 rsync'
 ssh -p 22 admin@$1 'opkg clean'
 
 # This installs python3 which takes up a lot of space - avoid installing it if possible

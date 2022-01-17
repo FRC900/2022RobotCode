@@ -63,7 +63,7 @@ sudo apt install -y \
     python-pyqt5 \
     python-pyqtgraph \
     python-scipy \
-	python3 \
+    python3 \
     qt4-designer \
     rsync \
     software-properties-common \
@@ -79,15 +79,15 @@ sudo apt install -y \
 #TensorRT requires a newer version of cmake than standard apt repos provide
 cd
 #wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | gpg --dearmor - | sudo tee /etc/apt/trusted.gpg.d/kitware.gpg >/dev/null
-wget https://github.com/Kitware/CMake/releases/download/v3.19.6/cmake-3.19.6.tar.gz 
-tar -xf cmake-3.19.6.tar.gz
-cd cmake-3.19.6
+wget https://github.com/Kitware/CMake/releases/download/v3.21.3/cmake-3.21.3.tar.gz 
+tar -xf cmake-3.21.3.tar.gz
+cd cmake-3.21.3
 cmake -GNinja -DCMAKE_BUILD_TYPE:STRING=Release .
 sudo ninja install
 sudo mv /usr/bin/cmake /usr/bin/cmake.old
 sudo ln -s /usr/local/bin/cmake /usr/bin/cmake
 cd ..
-sudo rm -rf cmake-3.19.6*
+sudo rm -rf cmake-3.21.3*
 
 #sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-10 30 --slave /usr/bin/g++ g++ /usr/bin/g++-10
 #sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-7 90 --slave /usr/bin/g++ g++ /usr/bin/g++-7
@@ -263,17 +263,17 @@ sudo chmod 644 /usr/local/zed/settings/*
 cp ~/2022RobotCode/.vimrc ~/2022RobotCode/.gvimrc ~
 sudo cp ~/2022RobotCode/kjaget.vim /usr/share/vim/vim80/colors
 
-cd &&\
-    wget https://github.com/git-lfs/git-lfs/releases/download/v2.13.1/git-lfs-linux-arm64-v2.13.1.tar.gz &&\
-	mkdir git-lfs-install &&\
-	cd git-lfs-install &&\
-	tar -xzf ../git-lfs-linux-arm64-v2.13.1.tar.gz &&\
-	sudo ./install.sh &&\
-	cd &&\
-	rm -rf git-lfs-linux-arm64-v2.13.1.tar.gz git-lfs-install &&\
-	git lfs install &&\
-	cd ~/2022RobotCode &&\
-	git lfs pull
+cd
+wget https://github.com/git-lfs/git-lfs/releases/download/v3.0.1/git-lfs-linux-arm64-v3.0.1.tar.gz
+mkdir git-lfs-install
+cd git-lfs-install
+tar -xzf ../git-lfs-linux-arm64-v3.0.1.tar.gz
+sudo ./install.sh
+cd
+rm -rf git-lfs-linux-arm64-v3.0.1.tar.gz git-lfs-install
+git lfs install
+cd ~/2022RobotCode
+git lfs pull
 
 git config --global user.email "progammers@team900.org"
 git config --global user.name "Team900 Jetson NX"
