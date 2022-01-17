@@ -98,10 +98,23 @@ class DriverStationSim(Plugin):
         elif self.auto_state == 3:
             self._widget.auto_state_readback_text.setText("Finished")
             self._widget.auto_state_readback_text.setStyleSheet("background-color:#00ff00;")
-	elif self.auto_state == 4:
-	    self._widget.auto_state_readback_text.setText("Error")
+        elif self.auto_state == 4:
+            self._widget.auto_state_readback_text.setText("Error")
             self._widget.auto_state_readback_text.setStyleSheet("background-color:#ff5555;")
 
+    def get_alliance_location(self): # returns (allianceColor, driverStationLocation) -- for color, 0 = red and 1 = blue
+        if self._widget.red1.isChecked():
+            return (0, 1)
+        if self._widget.red2.isChecked():
+            return (0, 2)
+        if self._widget.red3.isChecked():
+            return (0, 3)
+        if self._widget.blue1.isChecked():
+            return (1, 1)
+        if self._widget.blue2.isChecked():
+            return (1, 2)
+        if self._widget.blue3.isChecked():
+            return (1, 3)
 
     def __init__(self, context):
         super(DriverStationSim, self).__init__(context)
@@ -272,11 +285,13 @@ class DriverStationSim(Plugin):
                     match_msg.Disabled = True
                     match_msg.Enabled = False
 
+                alliance_and_driver_station = self.get_alliance_location()
+
                 #Publish Data
                 match_msg.header.stamp = rospy.Time.now()
                 match_msg.gameSpecificData = [ord(c) for c in self._widget.game_specific_data.text()]
-                match_msg.allianceColor = 1
-                match_msg.driverStationLocation = 1
+                match_msg.allianceColor = alliance_and_driver_station[0]
+                match_msg.driverStationLocation = alliance_and_driver_station[1]
                 match_msg.matchNumber = 1
                 match_msg.Autonomous = auto
                 match_msg.DSAttached = True
