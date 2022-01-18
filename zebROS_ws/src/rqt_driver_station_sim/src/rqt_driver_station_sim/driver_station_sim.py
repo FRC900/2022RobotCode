@@ -5,7 +5,7 @@ import argparse
 import rospy
 import rospkg
 import threading
-import sys
+import subprocess
 from PyQt5.QtWidgets import QWidget, QCheckBox, QApplication, QHBoxLayout, QVBoxLayout
 from PyQt5 import QtCore, QtWidgets
 #from PyQt5 import QtGui
@@ -104,17 +104,17 @@ class DriverStationSim(Plugin):
 
     def get_alliance_location(self): # returns (allianceColor, driverStationLocation) -- for color, 0 = red and 1 = blue
         if self._widget.red1.isChecked():
-            return (0, 1)
+            return 0, 1
         if self._widget.red2.isChecked():
-            return (0, 2)
+            return 0, 2
         if self._widget.red3.isChecked():
-            return (0, 3)
+            return 0, 3
         if self._widget.blue1.isChecked():
-            return (1, 1)
+            return 1, 1
         if self._widget.blue2.isChecked():
-            return (1, 2)
+            return 1, 2
         if self._widget.blue3.isChecked():
-            return (1, 3)
+            return 1, 3
 
     def __init__(self, context):
         super(DriverStationSim, self).__init__(context)
@@ -250,7 +250,7 @@ class DriverStationSim(Plugin):
                     start_time = rospy.get_time()
                 if(disable and enable_last):
                     rospy.logwarn("restarting auto node")
-                    os.system("/bin/bash -c \"ROS_NAMESPACE=auto rosrun behaviors auto_node &\"")
+                    subprocess.call("/bin/bash -c \"ROS_NAMESPACE=auto rosrun behaviors auto_node &\"", shell=True, stdout=subprocess.PIPE)
                 if(not practice_last and practice):
                     rospy.logwarn("practiceLast")
                     start_time = rospy.get_time()
@@ -285,13 +285,10 @@ class DriverStationSim(Plugin):
                     match_msg.Disabled = True
                     match_msg.Enabled = False
 
-                alliance_and_driver_station = self.get_alliance_location()
-
                 #Publish Data
                 match_msg.header.stamp = rospy.Time.now()
                 match_msg.gameSpecificData = [ord(c) for c in self._widget.game_specific_data.text()]
-                match_msg.allianceColor = alliance_and_driver_station[0]
-                match_msg.driverStationLocation = alliance_and_driver_station[1]
+                match_msg.allianceColor, match_msg.driverStationLocation = self.get_alliance_location()
                 match_msg.matchNumber = 1
                 match_msg.Autonomous = auto
                 match_msg.DSAttached = True
