@@ -5,7 +5,6 @@ import argparse
 import rospy
 import rospkg
 import threading
-import subprocess
 from PyQt5.QtWidgets import QWidget, QCheckBox, QApplication, QHBoxLayout, QVBoxLayout
 from PyQt5 import QtCore, QtWidgets
 #from PyQt5 import QtGui
