@@ -194,7 +194,6 @@ if (NOT "${ARM_PREFIX}" STREQUAL "arm-frc2022-linux-gnueabi")
 		${ALLWPILIB}/hal/src/main/native/athena/CTREPCM.cpp
 		${ALLWPILIB}/hal/src/main/native/athena/CTREPDP.cpp
 		${ALLWPILIB}/hal/src/main/native/athena/HALInitializer.cpp
-		#${ALLWPILIB}/hal/src/main/native/athena/Ports.cpp
 		${ALLWPILIB}/hal/src/main/native/athena/REVPDH.cpp
 		${ALLWPILIB}/hal/src/main/native/athena/rev/PDHFrames.cpp
 		${ALLWPILIB}/hal/src/main/native/athena/REVPH.cpp
@@ -213,16 +212,10 @@ if (NOT "${ARM_PREFIX}" STREQUAL "arm-frc2022-linux-gnueabi")
 			${ALLWPILIB}/hal/src/main/native/athena/mockdata/MockHooks.cpp
 			${ALLWPILIB}/wpilibc/src/main/native/cpp/DigitalInput.cpp
 			${ALLWPILIB}/wpilibc/src/main/native/cpp/DigitalOutput.cpp
-			#${ALLWPILIB}/wpilibc/src/main/native/cpp/Error.cpp
-			#${ALLWPILIB}/wpilibc/src/main/native/cpp/frc2/Timer.cpp
 			${ALLWPILIB}/wpilibc/src/main/native/cpp/I2C.cpp
-			#${ALLWPILIB}/wpilibc/src/main/native/cpp/RobotController.cpp #TODO- duplicate?
-			#${ALLWPILIB}/wpilibc/src/main/native/cpp/SensorUtil.cpp
 			${ALLWPILIB}/wpiutil/src/main/native/cpp/llvm/ConvertUTF.cpp
 			${ALLWPILIB}/wpiutil/src/main/native/cpp/llvm/ConvertUTFWrapper.cpp
-			${ALLWPILIB}/wpiutil/src/main/native/cpp/timestamp.cpp
-			#${ALLWPILIB}/wpiutil/src/main/native/unix/Demangle.cpp
-			#${ALLWPILIB}/wpiutil/src/main/native/unix/StackTrace.cpp
+			#${ALLWPILIB}/wpiutil/src/main/native/cpp/timestamp.cpp
 		)
 	else() # anything we don't want to support GPIO access on - x86, older Jetson, etc
 		set (FRCROBOT_HW_MAIN_SRCS ${FRCROBOT_HW_MAIN_SRCS}

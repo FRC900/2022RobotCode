@@ -31,9 +31,9 @@ hardware_interface:
        # operation of real Talons
        - {name: dummy_talon, type: can_talon_srx, local: false}
 
-       - {name: s0101, type: solenoid, module_type: revph, module_id: 1, channel: 1, local_hardware: true, local_update: true}
-       - {name: pdh, type: pdh, module: 1}
-       - {name: ph, type: ph, ph_id: 1}
+       - {name: s0101, type: solenoid, module_type: ctrepcm, module_id: 0, channel: 1, local_hardware: true, local_update: true}
+       - {name: pdp, type: pdp}
+       - {name: pcm, type: pcm, pcm_id: 0}
        - {name: robot_code_ready_rio, local: true, type: ready}
          
 # Create controllers for each joint
@@ -68,12 +68,12 @@ robot_controller_state_controller:
    type: robot_controller_state_controller/RobotControllerStateController
    publish_rate: 20
 
-ph_state_controller:
-    type: ph_state_controller/PHStateController
+pcm_state_controller:
+    type: pcm_state_controller/PCMStateController
     publish_rate: 20
 
-pdh_state_controller:
-    type: pdh_state_controller/PDHStateController
+pdp_state_controller:
+    type: pdp_state_controller/PDPStateController
     publish_rate: 20
 
 solenoid_controller:
