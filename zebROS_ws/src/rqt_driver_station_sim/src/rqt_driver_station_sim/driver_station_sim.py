@@ -248,9 +248,6 @@ class DriverStationSim(Plugin):
                 if(not auto_last and auto and not practice):
                     rospy.logwarn("autoLast")
                     start_time = rospy.get_time()
-                if(disable and enable_last):
-                    rospy.logwarn("restarting auto node")
-                    subprocess.call("/bin/bash -c \"ROS_NAMESPACE=auto rosrun behaviors auto_node &\"", shell=True, stdout=subprocess.PIPE)
                 if(not practice_last and practice):
                     rospy.logwarn("practiceLast")
                     start_time = rospy.get_time()
