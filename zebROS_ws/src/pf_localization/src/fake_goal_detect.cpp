@@ -35,8 +35,8 @@ class FakeGoalDetection
 			{
 				if (msgIn->markers[i].ids[0] == -1) // stage publishes odom as marker -1
 					continue;                       // ignore it here
-				if (msgIn->markers[i].ids[0] >= 900) {
-					// that's a power cell!
+				if (msgIn->markers[i].ids[0] == 80) {
+					// that's a red cargo!
 					field_obj::Object power_cell;
 
 					const auto &p = msgIn->markers[i].pose.position;
@@ -45,7 +45,19 @@ class FakeGoalDetection
 					power_cell.location.z = p.z;
 					power_cell.angle = atan2(power_cell.location.y, power_cell.location.x) * 180. / M_PI;
 					power_cell.confidence = msgIn->markers[i].ids_confidence[0];
-					power_cell.id = "power_cell";
+					power_cell.id = "red_cargo";
+					msgOut.objects.push_back(power_cell);
+				} else if (msgIn->markers[i].ids[0] == 90) {
+					// that's a blue cargo!
+					field_obj::Object power_cell;
+
+					const auto &p = msgIn->markers[i].pose.position;
+					power_cell.location.x = p.x;
+					power_cell.location.y = p.y;
+					power_cell.location.z = p.z;
+					power_cell.angle = atan2(power_cell.location.y, power_cell.location.x) * 180. / M_PI;
+					power_cell.confidence = msgIn->markers[i].ids_confidence[0];
+					power_cell.id = "blue_cargo";
 					msgOut.objects.push_back(power_cell);
 				} else {
 					field_obj::Object dummy;
