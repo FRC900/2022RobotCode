@@ -16,6 +16,7 @@
 
 #include <thread>
 #include <atomic>
+#include <functional>
 
 #include "std_msgs/Bool.h"
 //VARIABLES ---------------------------------------------------------
@@ -42,6 +43,8 @@ std::map<std::string, nav_msgs::Path> premade_paths;
 
 ros::ServiceClient spline_gen_cli_;
 
+std::function<void()> preemptAll; // function to preempt all actions, set in main
+
 //FUNCTIONS -------
 
 //server callback for stop autonomous execution
@@ -64,7 +67,7 @@ void matchDataCallback(const frc_msgs::MatchSpecificData::ConstPtr& msg)
 	if((auto_started && !msg->Enabled))
 	{
 		auto_started = false;
-		// auto_stopped = true;
+		preemptAll();
 	}
 }
 
@@ -442,7 +445,6 @@ bool resetMaps(std_srvs::Empty::Request &req,
 	return true;
 }
 
-
 int main(int argc, char** argv)
 {
 	//SETUP --------------------------------------------------------------------------------------------
@@ -477,6 +479,11 @@ int main(int argc, char** argv)
 	actionlib::SimpleActionClient<path_follower_msgs::PathAction> path_ac("/path_follower/path_follower_server", true); //TODO fix this path
 	actionlib::SimpleActionClient<behavior_actions::ShooterAction> shooter_ac("/shooter/shooter_server", true);
 	actionlib::SimpleActionClient<behavior_actions::IntakeAction> intake_ac("/powercell_intake/powercell_intake_server", true);
+	preemptAll = [&path_ac, &shooter_ac, &intake_ac](){ // must include all actions called
+		path_ac.cancelGoalsAtAndBeforeTime(ros::Time::now());
+		shooter_ac.cancelGoalsAtAndBeforeTime(ros::Time::now());
+		intake_ac.cancelGoalsAtAndBeforeTime(ros::Time::now());
+	};
 
 	//other variables
 	ros::Rate r(10); //used in various places where we wait TODO: config?
