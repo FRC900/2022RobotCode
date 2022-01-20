@@ -17,8 +17,6 @@
 		<rosparam file="$(find ros_control_boilerplate)/config/2022_swerve_drive.yaml" command="load"/>
 		<rosparam file="$(find ros_control_boilerplate)/config/2022_compbot_offsets.yaml" command="load"/>
 		<rosparam file="$(find ros_control_boilerplate)/config/robot_code_ready_controller_jetson.yaml" command="load"/>
-		<rosparam file="$(find behaviors)/config/alignmentOffsets.yaml" command="load"/>
-
 
 		<!--
 		<node name="zero_wheel_service" pkg="talon_swerve_drive_controller" type="zero_wheel_service" output="screen"> </node>
@@ -65,14 +63,14 @@
 	<include file="$(find controller_node)/launch/path_follower.launch"/>
 	<include file="$(find behaviors)/launch/auto_node.launch"/>
 
-	<!-- 2022 TODO add actionlib servers with namespaces -->
-
 	<group ns="cmd_vel_mux">
 		<node name="twist_mux" pkg="twist_mux" type="twist_mux">
 			<rosparam command="load" file="$(find talon_swerve_drive_controller)/config/2022_twist_mux.yaml"/>
 			<remap from="cmd_vel_out" to="/frcrobot_jetson/swerve_drive_controller/cmd_vel"/>
 		</node>
 	</group>
+
+	<!-- 2022 TODO add actionlib servers with namespaces -->
 
 	<include file="$(find tf_object_detection)/launch/test_detection.launch">
 		<arg name="input_type" value="live_camera" />
