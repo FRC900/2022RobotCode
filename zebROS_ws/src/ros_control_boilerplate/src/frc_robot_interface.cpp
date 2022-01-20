@@ -3405,16 +3405,19 @@ void FRCRobotInterface::read(const ros::Time &time, const ros::Duration &period)
 	}
 #endif
 	read_tracer_.start_unique("solenoid");
+#if 0
 	for (size_t i = 0; i < num_solenoids_; i++)
 	{
 		if (solenoid_local_hardwares_[i])
 		{
-			ROS_INFO_STREAM("read : solenoid = " << solenoids_[i]->Get() <<  " " << solenoids_[i]->GetChannel());
+			//ROS_INFO_STREAM("read : solenoid = " << solenoids_[i]->Get() <<  " " << solenoids_[i]->GetChannel());
+			// TODO - only works if robot is enabled, so not sure how best to handle this
 			solenoid_state_[i] = solenoids_[i]->Get();
-			if (pcms_.size() && pcms_[0])
-				ROS_INFO_STREAM("pcms_[0]->GetSolenoids() = " << pcms_[0]->GetSolenoids());
+			//if (pcms_.size() && pcms_[0])
+				//ROS_INFO_STREAM("pcms_[0]->GetSolenoids() = " << pcms_[0]->GetSolenoids());
 		}
 	}
+#endif
 
 #if 0
 	for (size_t i = 0; i < num_double_solenoids_; i++)
@@ -4740,9 +4743,8 @@ void FRCRobotInterface::write(const ros::Time& time, const ros::Duration& period
 				if (solenoid_local_hardwares_[i])
 				{
 					solenoids_[i]->Set(on);
-					ROS_INFO_STREAM("solenoids_[" << i << "]->Set(" << on << ")");
-					ROS_INFO_STREAM("solenoids_[" << i << "]->Get() = " << solenoids_[i]->Get());
 				}
+				solenoid_state_[i] = on;
 				ROS_INFO_STREAM_NAMED(name_, "Solenoid " << solenoid_names_[i] <<
 						" at channel " << solenoid_channels_[i] <<
 						" at " << (solenoid_module_types_[i] == frc::PneumaticsModuleType::CTREPCM ? "ctrepcm" : "revph") <<
