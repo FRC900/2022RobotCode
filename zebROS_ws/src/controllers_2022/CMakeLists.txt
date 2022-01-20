@@ -131,9 +131,9 @@ include_directories(
 
 ## Declare a C++ library
 ## TODO - uncomment and add source files here
-#add_library(controllers_2022
-#src/conroller.cpp src/controller2.cpp etc...
-#)
+add_library(controllers_2022
+  src/intake_controller.cpp
+)
 
 ## Add cmake target dependencies of the library
 ## as an example, code may need to be generated before libraries
@@ -230,4 +230,3 @@ install(FILES
 
 ## Add folders to be run by python nosetests
 # catkin_add_nosetests(test)
-
