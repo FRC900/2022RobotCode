@@ -750,7 +750,10 @@ void FRCRobotInterface::ph_read_thread(std::shared_ptr<frc::PneumaticHub> ph_han
 		ph_state.setPressureSwitch(ph_handle->GetPressureSwitch());
 		ph_state.setCompressorCurrent(static_cast<double>(ph_handle->GetCompressorCurrent().value()));
 		for (size_t i = 0; i < 2; i++)
+		{
 			ph_state.setAnalogVoltage(static_cast<double>(ph_handle->GetAnalogVoltage(i).value()), i);
+			ph_state.setPressure(static_cast<double>(ph_handle->GetPressure(i).value()), i);
+		}
 
 		{
 			// Copy to state shared with read() thread

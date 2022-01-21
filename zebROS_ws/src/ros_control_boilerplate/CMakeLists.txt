@@ -1,8 +1,5 @@
 cmake_minimum_required(VERSION 3.0.2)
 project(ros_control_boilerplate)
-if(NOT CMAKE_BUILD_TYPE AND DEFINED CMAKE_TOOLCHAIN_FILE)  # Cross-build for Rio
-  set(CMAKE_BUILD_TYPE RelWithDebInfo)
-endif()
 
 include ("../cmake_modules/CMakeOpt.cmake")
 
@@ -215,7 +212,6 @@ if (NOT "${ARM_PREFIX}" STREQUAL "arm-frc2022-linux-gnueabi")
 			${ALLWPILIB}/wpilibc/src/main/native/cpp/I2C.cpp
 			${ALLWPILIB}/wpiutil/src/main/native/cpp/llvm/ConvertUTF.cpp
 			${ALLWPILIB}/wpiutil/src/main/native/cpp/llvm/ConvertUTFWrapper.cpp
-			#${ALLWPILIB}/wpiutil/src/main/native/cpp/timestamp.cpp
 		)
 	else() # anything we don't want to support GPIO access on - x86, older Jetson, etc
 		set (FRCROBOT_HW_MAIN_SRCS ${FRCROBOT_HW_MAIN_SRCS}
