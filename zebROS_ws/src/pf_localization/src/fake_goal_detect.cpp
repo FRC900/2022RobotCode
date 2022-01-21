@@ -36,10 +36,10 @@ class FakeGoalDetection
 			{
 				if (msgIn->markers[i].ids[0] == -1) // stage publishes odom as marker -1
 					continue;                       // ignore it here
-				if (nh_params_.hasParam(std::to_string(msgIn->markers[i].ids[0]))) {
+				if (nh_params_.hasParam("id"+std::to_string(msgIn->markers[i].ids[0]))) {
 					// that's in the config file!
 					std::string id;
-					nh_params_.getParam(std::to_string(msgIn->markers[i].ids[0]), id); // get its id (specified in the config file)
+					nh_params_.getParam("id"+std::to_string(msgIn->markers[i].ids[0]), id); // get its id (specified in the config file)
 
 					field_obj::Object obj;
 

@@ -63,6 +63,7 @@
 	</node>
 
 	<rosparam file="$(find pf_localization)/config/skills_challenge_params.yaml" command="load"/>
+	<rosparam file="$(find pf_localization)/config/fake_goal_detect_params.yaml" command="load"/>
 	<node pkg="pf_localization" type="pf_localization_node" name="pf_localization" output="screen" >
 	</node>
 	<!--
