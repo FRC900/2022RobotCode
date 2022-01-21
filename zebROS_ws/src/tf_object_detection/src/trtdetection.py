@@ -215,6 +215,7 @@ def main():
     global detection_graph, sess, pub, category_index, pub_debug, min_confidence, vis
     sub_topic = "/obj_detection/c920/rect_image"
     pub_topic = "obj_detection_msg"
+    
     rospy.init_node('tf_object_detection', anonymous=True)
     min_confidence = 0.1
     

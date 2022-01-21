@@ -97,12 +97,12 @@ def run_inference_for_single_image(msg):
         obj.label = str(category_index.get(output_dict['detection_classes'][i])['name'])
         detection.objects.append(obj)
 
+    visualize(output_dict, image_np)
     pub.publish(detection)
 
     #hard_neg_mine(output_dict, image_np)
     #mine_undetected_power_cells(output_dict, image_np)
 
-    visualize(output_dict, image_np)
 
 def visualize(output_dict, image_np):
     if pub_debug.get_num_connections() > 0:
@@ -174,7 +174,7 @@ def hard_neg_mine(output_dict, image_np):
 def main():
     global detection_graph, sess, pub, category_index, pub_debug, min_confidence, vis
 
-    sub_topic = "/c920/rect_image"
+    sub_topic = "/obj_detection/c920/rect_image"
     pub_topic = "obj_detection_msg"
 
     rospy.init_node('tf_object_detection', anonymous = True)
@@ -184,7 +184,7 @@ def main():
 
     if rospy.has_param('image_topic'):
         sub_topic = rospy.get_param('image_topic')
-
+    print("SUB/PUB TOPIC" + str(sub_topic) + str(pub_topic))
     # Path to frozen detection graph. This is the actual model that is used for the object detection.
     # This shouldn't need to change
     rospack = rospkg.RosPack()
@@ -217,7 +217,7 @@ def main():
     vis = BBoxVisualization(category_dict)
 
     sub = rospy.Subscriber(sub_topic, Image, run_inference_for_single_image)
-    pub = rospy.Publisher(pub_topic, TFDetection, queue_size=2)
+    pub = rospy.Publisher(pub_topic, TFDetection, queue_size=1)
     pub_debug = rospy.Publisher("debug_image", Image, queue_size=1)
 
     try:

@@ -2,7 +2,7 @@ import numpy as np
 import cv2
 from tracker import Tracker
 import time
-import imageio
+#import imageio
 images = []
 import random
 import re
@@ -195,8 +195,8 @@ def main():
 				except Exception as e:
 					print(e)
 			cv2.imshow('image',frame)
-			cv2.imwrite("image"+str(i)+".jpg", frame)
-			images.append(imageio.imread("image"+str(i)+".jpg"))
+			#cv2.imwrite("image"+str(i)+".jpg", frame)
+			#images.append(imageio.imread("image"+str(i)+".jpg"))
 			#time.sleep(0.1)
 			if i >= 100:
 
@@ -205,7 +205,7 @@ def main():
 				cv2.destroyAllWindows()
 				break
 
-	imageio.mimsave('Multi-Object-Tracking.gif', images, duration=0.08)
+	#imageio.mimsave('Multi-Object-Tracking.gif', images, duration=0.08)
 			
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           
 
