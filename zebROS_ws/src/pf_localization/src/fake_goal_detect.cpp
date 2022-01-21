@@ -13,13 +13,14 @@
 class FakeGoalDetection
 {
 	public:
-		FakeGoalDetection(ros::NodeHandle &n)
+		FakeGoalDetection(ros::NodeHandle &n, ros::NodeHandle &nh_params)
 			: rd_{}
 			, gen_{rd_()}
 			, covariance_(0.0004)
 			, sub_(n.subscribe("base_marker_detection", 2, &FakeGoalDetection::cmdVelCallback, this))
 			, pub_(n.advertise<field_obj::Detection>("goal_detect_msg", 2))
 			, pubd_(n.advertise<field_obj::Detection>("/tf_object_detection/object_detection_world", 2))
+			, nh_params_(nh_params)
 
 		{
 			n.param("covariance", covariance_, covariance_);
@@ -35,30 +36,21 @@ class FakeGoalDetection
 			{
 				if (msgIn->markers[i].ids[0] == -1) // stage publishes odom as marker -1
 					continue;                       // ignore it here
-				if (msgIn->markers[i].ids[0] == 80) {
-					// that's a red cargo!
-					field_obj::Object power_cell;
+				if (nh_params_.hasParam(std::to_string(msgIn->markers[i].ids[0]))) {
+					// that's in the config file!
+					std::string id;
+					nh_params_.getParam(std::to_string(msgIn->markers[i].ids[0]), id); // get its id (specified in the config file)
+
+					field_obj::Object obj;
 
 					const auto &p = msgIn->markers[i].pose.position;
-					power_cell.location.x = p.x;
-					power_cell.location.y = p.y;
-					power_cell.location.z = p.z;
-					power_cell.angle = atan2(power_cell.location.y, power_cell.location.x) * 180. / M_PI;
-					power_cell.confidence = msgIn->markers[i].ids_confidence[0];
-					power_cell.id = "red_cargo";
-					msgOut.objects.push_back(power_cell);
-				} else if (msgIn->markers[i].ids[0] == 90) {
-					// that's a blue cargo!
-					field_obj::Object power_cell;
-
-					const auto &p = msgIn->markers[i].pose.position;
-					power_cell.location.x = p.x;
-					power_cell.location.y = p.y;
-					power_cell.location.z = p.z;
-					power_cell.angle = atan2(power_cell.location.y, power_cell.location.x) * 180. / M_PI;
-					power_cell.confidence = msgIn->markers[i].ids_confidence[0];
-					power_cell.id = "blue_cargo";
-					msgOut.objects.push_back(power_cell);
+					obj.location.x = p.x;
+					obj.location.y = p.y;
+					obj.location.z = p.z;
+					obj.angle = atan2(obj.location.y, obj.location.x) * 180. / M_PI;
+					obj.confidence = msgIn->markers[i].ids_confidence[0];
+					obj.id = id;
+					msgOut.objects.push_back(obj);
 				} else {
 					field_obj::Object dummy;
 
@@ -116,17 +108,19 @@ class FakeGoalDetection
 		std::mt19937 gen_;
 		std::normal_distribution<double> normalDistribution_;
 		double covariance_;
-		ros::Subscriber sub_;
-		ros::Publisher  pub_;
-		ros::Publisher pubd_; // d for detection
+		ros::Subscriber       sub_;
+		ros::Publisher        pub_;
+		ros::Publisher       pubd_; // d for detection
+		ros::NodeHandle nh_params_;
 };
 
 int main(int argc, char** argv)
 {
-    ros::init(argc, argv, "fake_goal_detect");
+  ros::init(argc, argv, "fake_goal_detect");
 
-	ros::NodeHandle n;
-	FakeGoalDetection fakeGoalDetection(n);
+	ros::NodeHandle nh;
+	ros::NodeHandle nh_params(nh, "fake_goal_detect_params"); // node handle for a lower-down namespace
+	FakeGoalDetection fakeGoalDetection(nh, nh_params);
 
 	ros::spin();
 	return 0;
