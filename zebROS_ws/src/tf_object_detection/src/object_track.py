@@ -116,7 +116,7 @@ def main():
 
 
 
-	tracker = Tracker(150, 30, 5)
+	tracker = Tracker(150, 10, 5)
 	skip_frame_count = 0
 	track_colors = [(255, 0, 0), (0, 255, 0), (0, 0, 255), (255, 255, 0),
 					(127, 127, 255), (255, 0, 255), (255, 127, 255),
@@ -127,16 +127,13 @@ def main():
 					(127, 0, 255), (127, 0, 127),(127, 10, 255), (0,255, 127),(255, 0, 0), (0, 255, 0), (0, 0, 255), (255, 255, 0),
 					(127, 127, 255), (255, 0, 255), (255, 127, 255),
 					(127, 0, 255), (127, 0, 127),(127, 10, 255), (0,255, 127)]
+	print(data[1])
 
 	for i in range(data.shape[1]):
 		# Array of 2d points
 		centers = data[:,i,:]
 		print(type(centers))
 		print("\n\n")
-		if i >= 75:
-			print(centers)
-			print(centers[0])
-			#time.sleep(2)
 
 		delcount = 0
 		print(centers)
