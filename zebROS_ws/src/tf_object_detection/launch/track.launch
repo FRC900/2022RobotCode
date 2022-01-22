@@ -5,6 +5,9 @@
   <arg name="zed_node_name" default="zed_objdetect" />
   <arg name="camera_model"  default="zed2" />
 
+  
+  <include file="$(find controller_node)/launch/2022_sim.launch" />
+
   <include file="$(find zed_wrapper)/launch/include/zed_camera.launch.xml" if="$(eval input_type != 'video')">
     <arg name="common_params_file"   value="$(find controller_node)/config/zed_objdet/common.yaml" />
     <arg name="camera_params_file"   value="$(find controller_node)/config/zed_objdet/$(arg camera_model).yaml" />
