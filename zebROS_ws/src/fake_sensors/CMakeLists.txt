@@ -12,6 +12,10 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   sensor_msgs
   std_msgs
+  geometry_msgs
+  marker_msgs
+  ar_track_alvar_msgs
+  field_obj
   tf2
   tf2_geometry_msgs
   tf2_ros
@@ -138,6 +142,9 @@ include_directories(
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
 add_executable(fake_imu_node src/fake_imu.cpp)
+add_executable(fake_goal_detect_node src/fake_goal_detect.cpp)
+add_executable(fake_cmd_vel_out_node src/fake_cmd_vel_out.cpp)
+add_executable(ar_msg_to_goal_detect_node src/ar_msg_to_goal_detect.cpp)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -148,9 +155,21 @@ add_executable(fake_imu_node src/fake_imu.cpp)
 ## Add cmake target dependencies of the executable
 ## same as for the library above
 add_dependencies(fake_imu_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+add_dependencies(fake_goal_detect_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+add_dependencies(fake_cmd_vel_out_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+add_dependencies(ar_msg_to_goal_detect_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Specify libraries to link a library or executable target against
 target_link_libraries(fake_imu_node
+  ${catkin_LIBRARIES}
+)
+target_link_libraries(fake_goal_detect_node
+  ${catkin_LIBRARIES}
+)
+target_link_libraries(fake_cmd_vel_out_node
+  ${catkin_LIBRARIES}
+)
+target_link_libraries(ar_msg_to_goal_detect_node
   ${catkin_LIBRARIES}
 )
 
