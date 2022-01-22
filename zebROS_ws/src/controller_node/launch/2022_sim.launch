@@ -19,7 +19,7 @@
 	</node>
 
 	<group ns="imu">
-		<node pkg="pf_localization" type="fake_imu_node" name="fake_imu" >
+		<node pkg="fake_sensors" type="fake_imu_node" name="fake_imu" >
 			<remap from="imu" to="/imu/imu/data" />
 			<remap from="/imu/base_pose_ground_truth" to="/base_pose_ground_truth" />
 		</node>
