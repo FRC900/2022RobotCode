@@ -670,42 +670,26 @@ void FRCRobotInterface::pcm_read_thread(std::shared_ptr<frc::PneumaticsControlMo
 #endif
 	ros::Duration(2.1 + pcm_id / 10.).sleep(); // Sleep for a few seconds to let CAN start up
 	ROS_INFO_STREAM("Starting pcm " << pcm_id << " read thread at " << ros::Time::now());
-			ROS_WARN_STREAM(__FUNCTION__ << " " << __LINE__);
-	//pcm_handle->ClearAllStickyFaults();
-			ROS_WARN_STREAM(__FUNCTION__ << " " << __LINE__);
+	//pcm_handle->ClearAllStickyFaults(); TODO broken in wpilib
 	for (ros::Rate r(poll_frequency); ros::ok(); r.sleep())
 	{
 		tracer->start("main loop");
 
 		hardware_interface::PCMState pcm_state(pcm_id);
-			ROS_WARN_STREAM(__FUNCTION__ << " " << __LINE__);
 		pcm_state.setCompressorEnabled(pcm_handle->GetCompressor());
-			ROS_WARN_STREAM(__FUNCTION__ << " " << __LINE__);
 		pcm_state.setPressureSwitch(pcm_handle->GetPressureSwitch());
-			ROS_WARN_STREAM(__FUNCTION__ << " " << __LINE__);
 		pcm_state.setCompressorCurrent(static_cast<double>(pcm_handle->GetCompressorCurrent().value()));
-			ROS_WARN_STREAM(__FUNCTION__ << " " << __LINE__);
 		pcm_state.setClosedLoopControl(pcm_handle->GetCompressorConfigType() != frc::CompressorConfigType::Disabled);
-			ROS_WARN_STREAM(__FUNCTION__ << " " << __LINE__);
 		pcm_state.setCurrentTooHigh(pcm_handle->GetCompressorCurrentTooHighFault());
-			ROS_WARN_STREAM(__FUNCTION__ << " " << __LINE__);
 		pcm_state.setCurrentTooHighSticky(pcm_handle->GetCompressorCurrentTooHighStickyFault());
-			ROS_WARN_STREAM(__FUNCTION__ << " " << __LINE__);
 
 		pcm_state.setShorted(pcm_handle->GetCompressorShortedFault());
-			ROS_WARN_STREAM(__FUNCTION__ << " " << __LINE__);
 		pcm_state.setShortedSticky(pcm_handle->GetCompressorShortedStickyFault());
-			ROS_WARN_STREAM(__FUNCTION__ << " " << __LINE__);
 		pcm_state.setNotConntected(pcm_handle->GetCompressorNotConnectedFault());
-			ROS_WARN_STREAM(__FUNCTION__ << " " << __LINE__);
 		pcm_state.setNotConnecteSticky(pcm_handle->GetCompressorNotConnectedStickyFault());
-			ROS_WARN_STREAM(__FUNCTION__ << " " << __LINE__);
 		pcm_state.setVoltageFault(pcm_handle->GetSolenoidVoltageFault());
-			ROS_WARN_STREAM(__FUNCTION__ << " " << __LINE__);
 		pcm_state.setVoltageSticky(pcm_handle->GetSolenoidVoltageStickyFault());
-			ROS_WARN_STREAM(__FUNCTION__ << " " << __LINE__);
 		pcm_state.setSolenoidDisabledList(pcm_handle->GetSolenoidDisabledList());
-			ROS_WARN_STREAM(__FUNCTION__ << " " << __LINE__);
 
 		{
 			// Copy to state shared with read() thread
