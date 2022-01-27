@@ -19,6 +19,7 @@
 """
 from __future__ import print_function
 import rospy
+import re
 from tf2_ros import *
 from field_obj.msg import Detection, Object
 import tf2_msgs.msg
@@ -266,26 +267,9 @@ class Sort(object):
 	  return np.concatenate(ret)
 	return np.empty((0,5))
 
-def parse_args():
-	"""Parse input arguments."""
-	parser = argparse.ArgumentParser(description='SORT demo')
-	parser.add_argument('--display', dest='display', help='Display online tracker output (slow) [False]',action='store_true')
-	parser.add_argument("--seq_path", help="Path to detections.", type=str, default='data')
-	parser.add_argument("--phase", help="Subdirectory in seq_path.", type=str, default='train')
-	parser.add_argument("--max_age",
-						help="Maximum number of frames to keep alive a track without associated detections.",
-						type=int, default=1)
-	parser.add_argument("--min_hits",
-						help="Minimum number of associated detections before track is initialised.",
-						type=int, default=3)
-	parser.add_argument("--iou_threshold", help="Minimum IOU for match.", type=float, default=0.3)
-	args = parser.parse_args()
-	return args
-
 
 global frame, total_frames, mot_tracker, tfBuffer, listener
 frame = 0
-total_frames = 0
 
 def callback(msg):
 	print("Got called back!")
@@ -295,24 +279,39 @@ def callback(msg):
 
 	total_time = 0.0
 	total_frames = 0
-	#mot_tracker = Sort(max_age=1,
-	#                   min_hits=args.min_hits,
-	#                   iou_threshold=args.iou_threshold)  # create instance of the SORT tracker
 
 
 	frame += 1  # detection and frame numbers begin at 1
 	print("Frame" + str(frame))
 	detList = []
+	detDict = {}
+	for key in trackerDict.keys():
+		detDict[key] = []
+
+
 	if test:
 		print("Using test")
 		for detection in msg.objects:
+				# Adds detections and then converts to np array,
 				tempDetList = []
 				tempDetList.append(float(detection.location.x - boundingAdd))
 				tempDetList.append(float(detection.location.y - boundingAdd))
 				tempDetList.append(float(detection.location.x + boundingAdd))
 				tempDetList.append(float(detection.location.y + boundingAdd))
 				tempDetList.append(float(detection.confidence))
-				detList.append(tempDetList)
+				tempDet = np.asarray(tempDetList)
+				# Trys to add point to the list and if not it makes the list
+				if len(detDict[str(detection.id)]) == 0:
+					print("Len = 0")
+					print(tempDet)
+					detDict[str(detection.id)] = tempDet
+					print(detDict[str(detection.id)])
+
+				else:
+					print("concatenateing")
+					print(tempDet)
+					detDict[str(detection.id)] = np.vstack((detDict[str(detection.id)], tempDet))
+					print(detDict[str(detection.id)])
 
 	else:
 		for detection in msg.objects:
@@ -329,35 +328,58 @@ def callback(msg):
 			print(detection.id)
 			print(point)
 			tempDetList = []
-			# SORT wants bounding boxes, just makes all objects 4x4 needed for IOU to work (hopefully)
+			# SORT wants bounding boxes, just makes all objects boundingXboudningAdd needed for IOU to work (hopefully)
 			tempDetList.append(float(point.point.x - boundingAdd))
 			tempDetList.append(float(point.point.y - boundingAdd))
 			tempDetList.append(float(point.point.x + boundingAdd))
 			tempDetList.append(float(point.point.y + boundingAdd))
 			tempDetList.append(float(detection.confidence))
-			detList.append(tempDetList)
+			if len(detDict[str(detection.id)]) == 0:
+				detDict[str(detection.id)] = tempDet
 
-	dets = np.asarray(detList)
+			else:
+				detDict[str(detection.id)] = np.vstack((detDict[str(detection.id)], tempDet))
+
+
+	trackers = []
+	for key, value in detDict.items():
+		if len(value) == 0:
+			detDict[key] = np.empty((0, 5))
+			continue
+
+		tempDetection = trackerDict[key].update(detDict[key])
+		tempDetection = tempDetection.tolist()
+		for idx, i in enumerate(tempDetection):
+			tempDetection[idx].insert(4, key)
+		trackers.append(tempDetection)
+
 	#time.sleep(11)
 	total_frames += 1
-
-
-	trackers = mot_tracker.update(dets)
 	predictedCord = []
 
-	for i in trackers:
-		tempPredCord = []
-		tempPredCord.append(round(i[0] + boundingAdd))
-		tempPredCord.append(round(i[1] + boundingAdd))
-		tempPredCord.append(i[-1])
-		predictedCord.append(tempPredCord)
+	# Goes through each detection and
+	for ii in trackers:
+		for i in ii:
+			if len(i) > 1:
+				tempPredCord = []
+				try:
+					print(i)
+					tempPredCord.append(round(i[0] + boundingAdd))
+					tempPredCord.append(round(i[1] + boundingAdd))
+					tempPredCord.append(i[-1])
+					predictedCord.append(tempPredCord)
+				except Exception as e:
+					print(i)
+					print(traceback.format_exc())
+					time.sleep(1)
 
 	predictedCord = np.asarray(predictedCord)
-	print("--------Prediction⬇️--------")
+	print("--------Prediction--------")
 	print(predictedCord)
-	print("--------Actual⬇️--------")
+	print("--------Actual--------")
 	print(centers)
-	visualize(centers, predictedCord)
+	if test:
+		visualize(centers, predictedCord)
 
 	#time.sleep(1)
 
@@ -376,6 +398,7 @@ def visualize(groundTruth, prediction):
 					(127, 127, 255), (255, 0, 255), (255, 127, 255),
 					(127, 0, 255), (127, 0, 127),(127, 10, 255), (0,255, 127)]
 
+	img = np.ones((512,512,3),np.int32)*255
 	img = np.full((512, 512, 3),255, dtype = np.uint8)
 	img[:, :] = [255, 255, 255]
 	for idx, value in enumerate(predictedCord):
@@ -397,7 +420,7 @@ def visualize(groundTruth, prediction):
 		y = int(i[1])
 		cv2.circle(img,(x,y), 6, (0,0,0),-1)
 
-global image
+
 def generateTestData(centers):
 	data = Detection()
 	header = std_msgs.msg.Header()
@@ -409,6 +432,7 @@ def generateTestData(centers):
 		obj.location.x = i[0]
 		obj.location.y = i[1]
 		obj.location.z = 1
+
 		obj.id = "blue_cargo"
 		obj.confidence = 1
 
@@ -418,66 +442,70 @@ def generateTestData(centers):
 	#print(data)
 	return data
 
+
+
+def testDataEdit(data):
+		NPdata = data
+		NPdata = np.delete(NPdata, 2, 0)
+		NPdata = np.delete(NPdata, 3, 0)
+		NPdata = np.delete(NPdata, 4, 0)
+		NPdata = np.delete(NPdata, 4, 0)
+
+		invalidNumber = 9999
+		stillarray = np.arange(300).reshape(150,2)
+		#stillarray[stillarray > 151] = 0
+		stillarray[:, 1] += 30
+		NPdata = np.concatenate((NPdata, [stillarray]), axis=0)
+
+		stillarray = np.arange(300).reshape(150,2)
+		stillarray[stillarray > 151] = invalidNumber
+		NPdata = np.concatenate((NPdata, [stillarray]), axis=0)
+
+
+		stillarray = np.arange(300).reshape(150,2)
+		stillarray[stillarray < 233] = 0
+		stillarray[:, 1] -= 60
+		NPdata = np.concatenate((NPdata, [stillarray]), axis=0)
+		return NPdata
+
+
 test = True
 
-global tfBuffer, listener, objs, pub, NPdata, i, centers, boundingAdd # Set to at least 10 or 20
+global tfBuffer, listener, objs, pub, NPdata, i, centers, trackerDict, image, boundingAdd # Set to at least 10 or 20
 if __name__ == '__main__':
 
 
 
-	img = np.ones((512,512,3),np.uint8)*255
-	display = False
-	NPdata = np.array(np.load('Detections.npy'))[0:10,0:150,0:150]
-	NPdata = np.delete(NPdata, 2, 0)
-	NPdata = np.delete(NPdata, 3, 0)
-	NPdata = np.delete(NPdata, 4, 0)
-	NPdata = np.delete(NPdata, 4, 0)
-
-	invalidNumber = 9999
-	stillarray = np.arange(300).reshape(150,2)
-	#stillarray[stillarray > 151] = 0
-	stillarray[:, 1] += 30
-	NPdata = np.concatenate((NPdata, [stillarray]), axis=0)
-
-	stillarray = np.arange(300).reshape(150,2)
-	stillarray[stillarray > 151] = invalidNumber
-	NPdata = np.concatenate((NPdata, [stillarray]), axis=0)
-
-
-	stillarray = np.arange(300).reshape(150,2)
-	stillarray[stillarray < 233] = 0
-	stillarray[:, 1] -= 60
-	NPdata = np.concatenate((NPdata, [stillarray]), axis=0)
-
-
-
-
-
-
-
-
-
-
-	with open("File", "a+") as file:
-		file.write(str(NPdata))
-	total_time = 0.0
-	total_frames = 0
-	objs = list()
-	rospack = rospkg.RosPack()
-	THIS_DIR = os.path.join(rospack.get_path('tf_object_detection'), 'src/')
-	PATH_TO_LABELS = os.path.join(THIS_DIR, '2020Game_label_map.pbtxt')
-	#category_index = label_map_util.create_category_index_from_labelmap(PATH_TO_LABELS, use_display_name=True)
-	#time.sleep(3)
-	#for i in range(10):
-	#    objs.append(Sort(max_age=10,
-	#                   min_hits=3, iou_threshold=.1))
-
 	# If detected point is x,y bounding add will make the bounding boxes (x - boundingAdd, y - boundingAdd) (x + boundingAdd, y + boundingAdd)
 	# See lines around 306
 	boundingAdd = 20
-	mot_tracker = Sort(max_age=5,
-					   min_hits=3,
-					   iou_threshold=.3)
+
+	if test:
+		img = np.ones((512,512,3),np.uint8)*255
+
+		NPdata = np.array(np.load('Detections.npy'))[0:10,0:150,0:150]
+		NPdata = testDataEdit(NPdata)
+		invalidNumber = 9999
+
+	rospack = rospkg.RosPack()
+	THIS_DIR = os.path.join(rospack.get_path('tf_object_detection'), 'src/')
+	PATH_TO_LABELS = os.path.join(THIS_DIR, '2020Game_label_map.pbtxt')
+
+	# Make each object its own trackers
+	# TODO make this 2022 when it is ready
+
+	with open("2020Game_label_map.pbtxt") as f:
+		pbtext = f.read()
+	# Gets all of the object ids
+	ids = re.findall("'(.*)'", pbtext)
+	trackerDict = {}
+
+	for i in ids:
+		trackerDict[str(i)] = Sort(max_age=5, min_hits=3, iou_threshold=.3)
+	trackerDict["blue_cargo"] = Sort(max_age=5, min_hits=3, iou_threshold=.3)
+	print(trackerDict)
+
+
 	rospy.init_node('object_tracking', anonymous=True)
 	tfBuffer = tf2_ros.Buffer()
 	listener = tf2_ros.TransformListener(tfBuffer)
@@ -507,6 +535,7 @@ if __name__ == '__main__':
 					print("Exiting")
 					exit()
 				centers = np.delete(centers, np.where(centers > 9998)[0], axis=0)
+				# Only for testing
 				pub.publish(generateTestData(centers))
 				i += 1
 
