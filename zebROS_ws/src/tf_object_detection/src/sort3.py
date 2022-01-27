@@ -513,7 +513,8 @@ if __name__ == '__main__':
 	#det_sub = rospy.Subscriber(, Detection)
 
 	# http://wiki.ros.org/ROS/Tutorials/CustomMessagePublisherSubscriber%28python%29
-	pub = rospy.Publisher("/tf_object_detection/object_detection_world", Detection)
+	if test:
+		pub = rospy.Publisher("/tf_object_detection/object_detection_world", Detection)
 	sub = rospy.Subscriber("/tf_object_detection/object_detection_world", Detection, callback)
 	#img_sub = message_filters.Subscriber("/tf_object_detection/debug_image", Image)
 
