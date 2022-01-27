@@ -535,6 +535,12 @@ if __name__ == '__main__':
 					print("Exiting")
 					exit()
 				centers = np.delete(centers, np.where(centers > 9998)[0], axis=0)
+
+				for ii in range(3):
+					if random.random() > .8:
+						centers = np.delete(centers, random.randint(0, centers.shape[0]-1), 0)
+						print("deleting data")
+				print(centers.shape)
 				# Only for testing
 				pub.publish(generateTestData(centers))
 				i += 1
