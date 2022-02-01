@@ -51,7 +51,6 @@ For a more detailed simulation example, see sim_hw_interface.cpp
 
 #include <ros_control_boilerplate/frcrobot_sim_interface.h>
 #include <ros_control_boilerplate/set_limit_switch.h>
-#include "talon_interface/talon_command_interface.h"
 
 namespace ros_control_boilerplate
 {
@@ -347,17 +346,16 @@ void FRCRobotSimInterface::read(const ros::Time& time, const ros::Duration& peri
 	}
 	read_tracer_.start_unique("HAL_SimPeriodicBefore");
 	HAL_SimPeriodicBefore();
-	read_tracer_.start_unique("ShooterSim");
 
+	read_tracer_.start_unique("Update sim CTRE encoders");
 	// Set encoder values for each of our motors.
 	for (size_t i = 0; i < num_can_ctre_mcs_; i++)
 	{
 		ROS_INFO_NAMED("frcrobot_sim_interface", "Begin processing motor %d", (int)i);
-		auto &talon_state   = talon_state_[i];
-		auto &talon_cmd = talon_command_[i];
+		const auto &talon_state = talon_state_[i];
 		auto ctre_mc = std::dynamic_pointer_cast<ctre::phoenix::motorcontrol::can::WPI_TalonSRX>(ctre_mcs_[i]);
-		
-		if (!ctre_mc) 
+
+		if (!ctre_mc)
 		{
 			ROS_INFO_NAMED("frcrobot_sim_interface", "Unable to dynamic cast motor %d", (int) i);
 			continue;
@@ -365,38 +363,27 @@ void FRCRobotSimInterface::read(const ros::Time& time, const ros::Duration& peri
 
 		auto &sim_motor = ctre_mc->GetSimCollection();
 
-
 		// Generate the conversion factors to translate b/w the talon state and the sim units.
 		hardware_interface::FeedbackDevice encoder_feedback = talon_state.getEncoderFeedback();
 		int encoder_ticks_per_rotation = talon_state.getEncoderTicksPerRotation();
 		double conversion_factor = talon_state.getConversionFactor();
 
 		const double radians_scale = getConversionFactor(
-			encoder_ticks_per_rotation, 
-			encoder_feedback, 
+			encoder_ticks_per_rotation,
+			encoder_feedback,
 			hardware_interface::TalonMode_Position
 		) * conversion_factor;
 
 		const double radians_per_second_scale = getConversionFactor(
-			encoder_ticks_per_rotation, 
-			encoder_feedback, 
+			encoder_ticks_per_rotation,
+			encoder_feedback,
 			hardware_interface::TalonMode_Velocity
 		) * conversion_factor;
-		
-		// Since Talon FX controller's have an integrated motor encoder and
-		// there is no support for this type yet, we're going to manually set 
-		// the encoder type to a quad encoder.
-		if (can_ctre_mc_is_talon_fx_[i])
-		{
-			talon_cmd.setEncoderFeedback(hardware_interface::FeedbackDevice_QuadEncoder);  
-		}
-
 
 		// Get current mode of the motor controller.
-		hardware_interface::TalonMode mode = talon_state.getTalonMode();
-		auto mc_mode = ctre_mc->GetControlMode();
-		ROS_INFO_NAMED("frcrobot_sim_interface", "Motor %d: Talon State: %d. MC State: %d", (int)i, (int)mode, (int)mc_mode);
-
+		const auto mode = talon_state.getTalonMode();
+		//const auto mc_mode = ctre_mc->GetControlMode();
+		//ROS_INFO_NAMED("frcrobot_sim_interface", "Motor %d: Talon State: %d. MC State: %d", (int)i, (int)mode, (int)mc_mode);
 
 		// Set the encoder position based on the current motor mode.
 		if (mode == hardware_interface::TalonMode_Position)
@@ -422,6 +409,7 @@ void FRCRobotSimInterface::read(const ros::Time& time, const ros::Duration& peri
 	}
 
 #if 0
+	read_tracer_.start_unique("ShooterSim");
 	// This needs work.  It kinda takes commands but ends up at the wrong
 	// steady-state velocity.  Could be from the gearing, the unit conversion,
 	// or something else (or a combo of all of them)
