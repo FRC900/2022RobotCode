@@ -40,7 +40,6 @@ For a more detailed simulation example, see sim_hw_interface.cpp
 #include <ros/ros.h>
 
 #include "ctre/phoenix/unmanaged/Unmanaged.h"
-#include "ctre/phoenix/motorcontrol/can/WPI_TalonSRX.h"
 #include "frc/DriverStation.h"
 #include "frc/simulation/BatterySim.h"
 #include "frc/simulation/RoboRioSim.h"
@@ -327,6 +326,40 @@ bool FRCRobotSimInterface::init(ros::NodeHandle& root_nh, ros::NodeHandle &robot
 	return true;
 }
 
+void FRCRobotSimInterface::setSimCollection(
+		std::shared_ptr<ctre::phoenix::motorcontrol::can::TalonSRX> talon_srx,
+		std::shared_ptr<ctre::phoenix::motorcontrol::can::TalonFX> talon_fx,
+		double position,
+		double velocity,
+		double delta_position) const
+{
+	if (talon_fx)
+		setSimCollectionTalonFX(talon_fx, position, velocity, delta_position);
+	else if (talon_srx)
+		setSimCollectionTalonSRX(talon_srx, position, velocity, delta_position);
+}
+
+void FRCRobotSimInterface::setSimCollectionTalonFX(std::shared_ptr<ctre::phoenix::motorcontrol::can::TalonFX> talon_fx, double position, double velocity, double delta_position) const
+{
+	auto &collection = talon_fx->GetSimCollection();
+	if (delta_position)
+		collection.SetIntegratedSensorRawPosition(position);
+	else
+		collection.AddIntegratedSensorPosition(position);
+	collection.SetIntegratedSensorVelocity(velocity);
+}
+
+void FRCRobotSimInterface::setSimCollectionTalonSRX(std::shared_ptr<ctre::phoenix::motorcontrol::can::TalonSRX> talon_srx, double position, double velocity, double delta_position) const
+{
+	auto &collection = talon_srx->GetSimCollection();
+	if (delta_position)
+		collection.SetQuadratureRawPosition(position);
+	else
+		collection.AddQuadraturePosition(position);
+	collection.SetQuadratureVelocity(velocity);
+}
+
+
 void FRCRobotSimInterface::read(const ros::Time& time, const ros::Duration& period)
 {
 	// Run WPIlib physics sim for each mechanism.
@@ -351,17 +384,20 @@ void FRCRobotSimInterface::read(const ros::Time& time, const ros::Duration& peri
 	// Set encoder values for each of our motors.
 	for (size_t i = 0; i < num_can_ctre_mcs_; i++)
 	{
-		ROS_INFO_NAMED("frcrobot_sim_interface", "Begin processing motor %d", (int)i);
+		//ROS_INFO_NAMED("frcrobot_sim_interface", "Begin processing motor %d", (int)i);
 		const auto &talon_state = talon_state_[i];
-		auto ctre_mc = std::dynamic_pointer_cast<ctre::phoenix::motorcontrol::can::WPI_TalonSRX>(ctre_mcs_[i]);
+		auto victor_spx = std::dynamic_pointer_cast<ctre::phoenix::motorcontrol::can::VictorSPX>(ctre_mcs_[i]);
+		if (victor_spx) // no local sensors for Victor motor controllers
+			continue;
+		auto talon_srx = std::dynamic_pointer_cast<ctre::phoenix::motorcontrol::can::TalonSRX>(ctre_mcs_[i]);
+		auto talon_fx = std::dynamic_pointer_cast<ctre::phoenix::motorcontrol::can::TalonFX>(ctre_mcs_[i]);
 
-		if (!ctre_mc)
+		if (!victor_spx && !talon_srx && !talon_fx)
 		{
 			ROS_INFO_NAMED("frcrobot_sim_interface", "Unable to dynamic cast motor %d", (int) i);
 			continue;
 		}
 
-		auto &sim_motor = ctre_mc->GetSimCollection();
 
 		// Generate the conversion factors to translate b/w the talon state and the sim units.
 		hardware_interface::FeedbackDevice encoder_feedback = talon_state.getEncoderFeedback();
@@ -386,25 +422,35 @@ void FRCRobotSimInterface::read(const ros::Time& time, const ros::Duration& peri
 		//ROS_INFO_NAMED("frcrobot_sim_interface", "Motor %d: Talon State: %d. MC State: %d", (int)i, (int)mode, (int)mc_mode);
 
 		// Set the encoder position based on the current motor mode.
+		//auto &sim_motor = ctre_mc->GetSimCollection();
 		if (mode == hardware_interface::TalonMode_Position)
 		{
 			// Set encoder position to set point.
 			// Set velocity to 0.
-			sim_motor.SetQuadratureRawPosition(talon_state.getSetpoint() / radians_scale);
-			sim_motor.SetQuadratureVelocity(0);
+			setSimCollection(talon_srx, talon_fx,
+					talon_state.getSetpoint() / radians_scale,
+					0);
+			//sim_motor.SetQuadratureRawPosition(talon_state.getSetpoint() / radians_scale);
+			//sim_motor.SetQuadratureVelocity(0);
 		}
 		else if (mode == hardware_interface::TalonMode_Velocity)
 		{
 			// Set velocity to set point
 			// Set encoder position to current position + velocity * dt
-			sim_motor.SetQuadratureVelocity(talon_state.getSetpoint() / radians_per_second_scale);
-			sim_motor.AddQuadraturePosition(talon_state.getSpeed() * radians_per_second_scale * period.toSec());
+			setSimCollection(talon_srx, talon_fx, 0,
+					talon_state.getSetpoint() / radians_per_second_scale,
+					talon_state.getSpeed() * radians_per_second_scale * period.toSec());
+			//sim_motor.SetQuadratureVelocity(talon_state.getSetpoint() / radians_per_second_scale);
+			//sim_motor.AddQuadraturePosition(talon_state.getSpeed() * radians_per_second_scale * period.toSec());
 		}
 		else if (mode == hardware_interface::TalonMode_MotionMagic)
 		{
 			// Do some ~magic~ to figure out position/velocity.
-			sim_motor.SetQuadratureVelocity(talon_state.getActiveTrajectoryPosition() / radians_scale);
-			sim_motor.SetQuadratureRawPosition(talon_state.getActiveTrajectoryVelocity() / radians_per_second_scale);
+			setSimCollection(talon_srx, talon_fx,
+					talon_state.getActiveTrajectoryPosition() / radians_scale,
+					talon_state.getActiveTrajectoryVelocity() / radians_per_second_scale);
+			//sim_motor.SetQuadratureVelocity(talon_state.getActiveTrajectoryPosition() / radians_scale);
+			//sim_motor.SetQuadratureRawPosition(talon_state.getActiveTrajectoryVelocity() / radians_per_second_scale);
 		}
 	}
 
