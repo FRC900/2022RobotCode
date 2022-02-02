@@ -220,7 +220,6 @@ class holdPosition
 			*/
 
 			//in loop, send PID enable commands to rotation, x, y
-			double distance_travelled = 0;
 			const auto start_time = ros::Time::now().toSec();
 
 			geometry_msgs::Pose next_waypoint = goal->pose;
@@ -231,6 +230,13 @@ class holdPosition
 
 			while (ros::ok() && !preempted && !timed_out && !succeeded)
 			{
+				// If using a separate topic for orientation, merge the x+y from odom
+				// with the orientiation from that separate topic here
+				if (!use_odom_orientation_)
+				{
+					odom_.pose.pose.orientation = orientation_;
+				}
+
 				// This gets the point closest to current time plus lookahead distance
 				// on the path. We use this to generate a target for the x,y,orientation
 				ROS_INFO_STREAM("----------------------------------------------");
@@ -242,13 +248,6 @@ class holdPosition
 					<< ", " << odom_.pose.pose.position.y - starting_odom.pose.pose.position.y);
 				ROS_INFO_STREAM("    delta pose_ = " << pose_.pose.position.x - starting_pose.pose.position.x
 					<< ", " << pose_.pose.position.y - starting_pose.pose.position.y);
-
-				// If using a separate topic for orientation, merge the x+y from odom
-				// with the orientiation from that separate topic here
-				if (!use_odom_orientation_)
-				{
-					odom_.pose.pose.orientation = orientation_;
-				}
 
 				std_msgs::Bool enable_msg;
 				enable_msg.data = true;
@@ -290,7 +289,6 @@ class holdPosition
 				}
 
 				// Spin once to get the most up to date odom and yaw info
-				ros::spinOnce();
 
 				const double orientation_state = getYaw(odom_.pose.pose.orientation);
 				//ROS_INFO_STREAM("orientation_state = " << orientation_state);
@@ -309,8 +307,8 @@ class holdPosition
 					state_msg.data = orientation_state;
 					z_axis.state_pub_.publish(state_msg);
 
-					ros::spinOnce();
 					r.sleep();
+					ros::spinOnce();
 				}
 			}
 
