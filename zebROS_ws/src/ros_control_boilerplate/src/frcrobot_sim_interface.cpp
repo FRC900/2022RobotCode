@@ -367,10 +367,7 @@ void FRCRobotSimInterface::read(const ros::Time& time, const ros::Duration& peri
 	// them configurable via config file?
 	// This could happen at the end of write() or beginning of read(),
 	// shouldn't matter which just so long as the sim mechanisms are
-	// TODO : needed for standalone robots, but not
 	// updated once per control loop using the appropriate timestep
-
-
 
 	read_tracer_.start_unique("FeedEnable");
 	if (num_can_ctre_mcs_)
@@ -386,23 +383,26 @@ void FRCRobotSimInterface::read(const ros::Time& time, const ros::Duration& peri
 	{
 		//ROS_INFO_NAMED("frcrobot_sim_interface", "Begin processing motor %d", (int)i);
 		const auto &talon_state = talon_state_[i];
-		auto victor_spx = std::dynamic_pointer_cast<ctre::phoenix::motorcontrol::can::VictorSPX>(ctre_mcs_[i]);
+		const auto victor_spx = std::dynamic_pointer_cast<ctre::phoenix::motorcontrol::can::VictorSPX>(ctre_mcs_[i]);
 		if (victor_spx) // no local sensors for Victor motor controllers
 			continue;
+
+		// Sim collection for each type of motor is a different class with different;y
+		// named methods, so need to see which type the ctre_mc_ base class pointer
+		// started out as
 		auto talon_srx = std::dynamic_pointer_cast<ctre::phoenix::motorcontrol::can::TalonSRX>(ctre_mcs_[i]);
 		auto talon_fx = std::dynamic_pointer_cast<ctre::phoenix::motorcontrol::can::TalonFX>(ctre_mcs_[i]);
 
-		if (!victor_spx && !talon_srx && !talon_fx)
+		if (!talon_srx && !talon_fx)
 		{
 			ROS_INFO_NAMED("frcrobot_sim_interface", "Unable to dynamic cast motor %d", (int) i);
 			continue;
 		}
 
-
 		// Generate the conversion factors to translate b/w the talon state and the sim units.
 		hardware_interface::FeedbackDevice encoder_feedback = talon_state.getEncoderFeedback();
-		int encoder_ticks_per_rotation = talon_state.getEncoderTicksPerRotation();
-		double conversion_factor = talon_state.getConversionFactor();
+		const int encoder_ticks_per_rotation = talon_state.getEncoderTicksPerRotation();
+		const double conversion_factor = talon_state.getConversionFactor();
 
 		const double radians_scale = getConversionFactor(
 			encoder_ticks_per_rotation,
@@ -418,8 +418,6 @@ void FRCRobotSimInterface::read(const ros::Time& time, const ros::Duration& peri
 
 		// Get current mode of the motor controller.
 		const auto mode = talon_state.getTalonMode();
-		//const auto mc_mode = ctre_mc->GetControlMode();
-		//ROS_INFO_NAMED("frcrobot_sim_interface", "Motor %d: Talon State: %d. MC State: %d", (int)i, (int)mode, (int)mc_mode);
 
 		// Set the encoder position based on the current motor mode.
 		//auto &sim_motor = ctre_mc->GetSimCollection();
@@ -430,8 +428,6 @@ void FRCRobotSimInterface::read(const ros::Time& time, const ros::Duration& peri
 			setSimCollection(talon_srx, talon_fx,
 					talon_state.getSetpoint() / radians_scale,
 					0);
-			//sim_motor.SetQuadratureRawPosition(talon_state.getSetpoint() / radians_scale);
-			//sim_motor.SetQuadratureVelocity(0);
 		}
 		else if (mode == hardware_interface::TalonMode_Velocity)
 		{
@@ -440,8 +436,6 @@ void FRCRobotSimInterface::read(const ros::Time& time, const ros::Duration& peri
 			setSimCollection(talon_srx, talon_fx, 0,
 					talon_state.getSetpoint() / radians_per_second_scale,
 					talon_state.getSpeed() * radians_per_second_scale * period.toSec());
-			//sim_motor.SetQuadratureVelocity(talon_state.getSetpoint() / radians_per_second_scale);
-			//sim_motor.AddQuadraturePosition(talon_state.getSpeed() * radians_per_second_scale * period.toSec());
 		}
 		else if (mode == hardware_interface::TalonMode_MotionMagic)
 		{
@@ -449,8 +443,6 @@ void FRCRobotSimInterface::read(const ros::Time& time, const ros::Duration& peri
 			setSimCollection(talon_srx, talon_fx,
 					talon_state.getActiveTrajectoryPosition() / radians_scale,
 					talon_state.getActiveTrajectoryVelocity() / radians_per_second_scale);
-			//sim_motor.SetQuadratureVelocity(talon_state.getActiveTrajectoryPosition() / radians_scale);
-			//sim_motor.SetQuadratureRawPosition(talon_state.getActiveTrajectoryVelocity() / radians_per_second_scale);
 		}
 	}
 
