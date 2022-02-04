@@ -65,12 +65,12 @@ omnidir_robot
 )
 
 # Simulated AR tags
-objdet_target ( pose [ -1.720 -0.200 1.000 0.000 ] fiducial_return 100 color "cyan")
-objdet_target ( pose [ -1.720  0.480 1.000 0.000 ] fiducial_return   0 color "yellow")
-objdet_target ( pose [ -1.720  1.145 1.000 0.000 ] fiducial_return 200 color "green")
-objdet_target ( pose [ -1.720  1.638 1.000 0.000 ] fiducial_return 400 color "blue")
-objdet_target ( pose [ -1.720  2.263 1.000 0.000 ] fiducial_return 500 color "purple")
-objdet_target ( pose [ -1.720  3.103 1.000 0.000 ] fiducial_return 300 color "orange")
+objdet_target ( pose [ -1.72 -0.2   1 0 ] fiducial_return 100 color "cyan")
+objdet_target ( pose [ -1.72  0.48  1 0 ] fiducial_return 600 color "yellow")
+objdet_target ( pose [ -1.72  1.145 1 0 ] fiducial_return 200 color "green")
+objdet_target ( pose [ -1.72  1.638 1 0 ] fiducial_return 400 color "blue")
+objdet_target ( pose [ -1.72  2.263 1 0 ] fiducial_return 500 color "purple")
+objdet_target ( pose [ -1.72  3.103 1 0 ] fiducial_return 300 color "orange")
 
 # Game pieces
 # Numeric IDs get mapped to IDs in 2022Game_label_map.pbtxt
