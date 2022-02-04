@@ -3641,6 +3641,8 @@ void FRCRobotInterface::write(const ros::Time& time, const ros::Duration& period
 			tc.resetMotorCommutation();
 			tc.resetAbsoluteSensorRange();
 			tc.resetSensorInitializationStrategy();
+			tc.resetClearPositionOnLimitF();
+			tc.resetClearPositionOnLimitR();
 		}
 
 		if (bool enable_read_thread; tc.enableReadThreadChanged(enable_read_thread))
