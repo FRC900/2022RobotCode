@@ -54,7 +54,6 @@ class holdPosition
 			: nh_(nh)
 			, as_(nh_, name, boost::bind(&holdPosition::executeCB, this, _1), false)
 			, action_name_(name)
-			//, path_follower_(time_offset)
 			, server_timeout_(server_timeout)
 			, debug_(true) // TODO - config item?
 			, ros_rate_(ros_rate)
