@@ -1,5 +1,3 @@
-#pragma once
-
 #include <ros/ros.h>
 #include <realtime_tools/realtime_buffer.h> //code for real-time buffer - stop multple things writing to same variable at same time
 
@@ -24,7 +22,7 @@ public:
     {
     }
 
-    bool IntakeController::init(hardware_interface::RobotHW *hw,
+    bool init(hardware_interface::RobotHW *hw,
                                 ros::NodeHandle                 &/*root_nh*/,
                                 ros::NodeHandle                 &controller_nh)
     {
@@ -56,12 +54,11 @@ public:
         //Initialize your ROS server
         intake_arm_service_ = controller_nh.advertiseService("intake_arm_command", &IntakeController::cmdServiceArm, this);
         intake_roller_service_ = controller_nh.advertiseService("intake_roller_command", &IntakeController::cmdServiceRoller, this);
-        intake_disable_service_ = controller_nh.advertiseService("intake_disable", &IntakeController::disableIntakeCallback, this);
 
         return true;
     }
 
-    void IntakeController::starting(const ros::Time &/*time*/) {
+    void starting(const ros::Time &/*time*/) {
         //give command buffer(s) an initial value
         arm_extend_cmd_buffer_.writeFromNonRT(true);
         percent_out_cmd_buffer_.writeFromNonRT(0.0);
@@ -69,7 +66,7 @@ public:
         forward_disabled_.writeFromNonRT(false);
     }
 
-    void IntakeController::update(const ros::Time &/*time*/, const ros::Duration &/*period*/) {
+    void update(const ros::Time &/*time*/, const ros::Duration &/*period*/) {
         //grab value from command buffer(s)
         const bool arm_extend_cmd = *(arm_extend_cmd_buffer_.readFromRT());
         double arm_extend_double;
@@ -91,7 +88,7 @@ public:
         intake_arm_joint_.setCommand(arm_extend_double);
     }
 
-    void IntakeController::stopping(const ros::Time &/*time*/) {
+    void stopping(const ros::Time &/*time*/) {
     }
 
 private:
@@ -103,11 +100,10 @@ private:
     ros::ServiceServer intake_arm_service_;
     ros::ServiceServer intake_roller_service_;
 
-    ros::ServiceServer intake_disable_service_;
     realtime_tools::RealtimeBuffer<bool> forward_disabled_; //set to true by the indexer server when it's finishing up properly storing a ball, to ensure the proper gap
 
 
-    bool IntakeController::cmdServiceArm(controllers_2022_msgs::IntakeArmSrv::Request &req, controllers_2022_msgs::IntakeArmSrv::Response &/*response*/) {
+    bool cmdServiceArm(controllers_2022_msgs::IntakeArmSrv::Request &req, controllers_2022_msgs::IntakeArmSrv::Response &/*response*/) {
         if(isRunning())
         {
             //assign request value to command buffer(s)
@@ -121,7 +117,7 @@ private:
         return true;
     }
 
-    bool IntakeController::cmdServiceRoller(controllers_2022_msgs::IntakeRollerSrv::Request &req, controllers_2022_msgs::IntakeRollerSrv::Response &/*response*/) {
+    bool cmdServiceRoller(controllers_2022_msgs::IntakeRollerSrv::Request &req, controllers_2022_msgs::IntakeRollerSrv::Response &/*response*/) {
         if(isRunning())
         {
             //assign request value to command buffer(s)
@@ -135,18 +131,6 @@ private:
         return true;
     }
 
-    bool IntakeController::disableIntakeCallback(std_srvs::SetBool::Request &req, std_srvs::SetBool::Response &) {
-        if(isRunning())
-        {
-            forward_disabled_.writeFromNonRT(req.data);
-        }
-        else
-        {
-            ROS_ERROR_STREAM("Can't accept new commands. IntakeController is not running.");
-            return false;
-        }
-        return true;
-    }
 
 }; //class
 }//namespace

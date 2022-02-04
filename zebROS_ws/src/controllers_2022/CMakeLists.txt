@@ -7,8 +7,8 @@ include("../cmake_modules/CMakeOpt.cmake")
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
-  controller_interface
   controllers_2022_msgs
+  controller_interface
   ddynamic_reconfigure
   hardware_interface
   pluginlib
@@ -16,6 +16,7 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   std_msgs
   std_srvs
+  talon_controllers
 )
 
 ## System dependencies are found with CMake's conventions
