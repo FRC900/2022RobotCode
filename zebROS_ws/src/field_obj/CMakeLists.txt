@@ -51,6 +51,8 @@ find_package(catkin REQUIRED COMPONENTS
    Object.msg
    TFDetection.msg
    TFObject.msg
+   TrackDetection.msg
+   TrackObject.msg
  )
 
 ## Generate services in the 'srv' folder

@@ -26,7 +26,7 @@ import tf2_msgs.msg
 import geometry_msgs.msg
 from sensor_msgs.msg import Image
 import tf2_geometry_msgs
-from field_obj.msg import TFDetection, TFObject
+from field_obj.msg import TFDetection, TFObject, TrackDetection, TrackObject
 #from object_detection.utils import label_map_util
 from geometry_msgs.msg import PointStamped, Point
 import rospkg
@@ -279,7 +279,7 @@ def callback(msg):
 
 	total_time = 0.0
 	total_frames = 0
-
+	zList = []
 
 	frame += 1  # detection and frame numbers begin at 1
 	print("Frame" + str(frame))
@@ -294,12 +294,17 @@ def callback(msg):
 		for detection in msg.objects:
 				# Adds detections and then converts to np array,
 				tempDetList = []
+				tempZ = []
 				tempDetList.append(float(detection.location.x - boundingAdd))
 				tempDetList.append(float(detection.location.y - boundingAdd))
 				tempDetList.append(float(detection.location.x + boundingAdd))
 				tempDetList.append(float(detection.location.y + boundingAdd))
 				tempDetList.append(float(detection.confidence))
 				tempDet = np.asarray(tempDetList)
+				tempZ.append(int(detection.location.x))
+				tempZ.append(int(detection.location.y))
+				tempZ.append(int(detection.location.z))
+				zList.append(tempZ)
 				# Trys to add point to the list and if not it makes the list
 				if len(detDict[str(detection.id)]) == 0:
 					print("Len = 0")
@@ -328,7 +333,7 @@ def callback(msg):
 			print(detection.id)
 			print(point)
 			tempDetList = []
-			# SORT wants bounding boxes, just makes all objects boundingXboudningAdd needed for IOU to work (hopefully)
+			# SORT wants bounding boxes, just makes all objects bounding*boudningAdd needed for IOU to work (hopefully)
 			tempDetList.append(float(point.point.x - boundingAdd))
 			tempDetList.append(float(point.point.y - boundingAdd))
 			tempDetList.append(float(point.point.x + boundingAdd))
@@ -348,6 +353,8 @@ def callback(msg):
 			continue
 
 		tempDetection = trackerDict[key].update(detDict[key])
+		#print(trackerDict[key].trackers[0].kf.P)
+
 		tempDetection = tempDetection.tolist()
 		for idx, i in enumerate(tempDetection):
 			tempDetection[idx].insert(4, key)
@@ -356,26 +363,57 @@ def callback(msg):
 	#time.sleep(11)
 	total_frames += 1
 	predictedCord = []
+	DetectionPub = TrackDetection()
+	DetectionPub.header = std_msgs.msg.Header()
+	DetectionPub.header.frame_id = "map"
 
+	objs = []
 	# Goes through each detection and
+	print(trackers)
+
 	for ii in trackers:
 		for i in ii:
 			if len(i) > 1:
 				tempPredCord = []
 				try:
 					print(i)
-					tempPredCord.append(round(i[0] + boundingAdd))
-					tempPredCord.append(round(i[1] + boundingAdd))
-					tempPredCord.append(i[-1])
+					x = round(i[0] + boundingAdd)
+					y = round(i[1] + boundingAdd)
+					trackID = i[-1]
+					IDstr = i[-2]
+					tempPredCord.append(x)
+					tempPredCord.append(y)
+					tempPredCord.append(trackID)
 					predictedCord.append(tempPredCord)
+
+					obj = TrackObject()
+					obj.trackID = int(trackID)
+					obj.id = IDstr
+					obj.location.x = x
+					obj.location.y = y
+					print("zlist")
+					print(zList)
+					for i in zList:
+						print(int(i[0]),int(x),int(i[1]),int(y))
+						if int(i[0]) == int(x) and int(i[1]) == int(y):
+							obj.location.z = i[2]
+					# Not sure what to put, could be the recorded Z but then two values would be the predicted and 1 would be the actual
+					
+					objs.append(obj)
+
+
+
 				except Exception as e:
 					print(i)
 					print(traceback.format_exc())
 					time.sleep(1)
-
+	DetectionPub.objects = objs
+	print(DetectionPub.objects)
+	pub.publish(DetectionPub)
+	time.sleep(1)
 	predictedCord = np.asarray(predictedCord)
 	print("--------Prediction--------")
-	print(predictedCord)
+	#print(msg)
 	print("--------Actual--------")
 	print(centers)
 	if test:
