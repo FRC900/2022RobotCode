@@ -22,12 +22,34 @@ class FakeTerabeeDist
                     			msgOut.header.frame_id = "terabee";
                     			msgOut.seq = msgIn->seq;
                           msgOut.stamp = msgIn->stamp;    //formatting same as above
-
                           msgOut.range = msgIn->ranges[0]+normalDistribution_(gen_));
-                          msgOut.radiation_type = 1
+                          msgOut.radiation_type = 1;
+                          msgOut.range_min = msgIn->min_range; //check lines 27-29
+                          msgOut.range_max = msgIn->max_range;
+                          msgOut. //field of view??
+
+
 
 
                     			pub_.publish(msgOut);
                     		}
+              private:
+                      		std::random_device rd_;
+                      		std::mt19937 gen_;
+                      		std::normal_distribution<double> normalDistribution_;
+                      		double zCovariance_;
+                      		ros::Subscriber sub_;
+                      		ros::Publisher  pub_;
+                      };
 
+            int main(int argc, char** argv)
+                      {
+                          ros::init(argc, argv, "fake_terabee");
+
+                	ros::NodeHandle n;
+                      	FakeTerabeeDist fakeTerabeeDist(n);
+
+                	ros::spin();
+                      	return 0;
+                      }
 }
