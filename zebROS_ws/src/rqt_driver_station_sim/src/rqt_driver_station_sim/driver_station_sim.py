@@ -81,7 +81,7 @@ class DriverStationSim(Plugin):
     def _talon_state_callback(self, msg):
         # name + ": " + percent_output + "%, set to " + setpoint
         for i in range(len(self._widget.talon_state_widgets)):
-            self._widget.talon_state_widgets[i].setText(str(msg.name[i])+" (in "+str(msg.talon_mode[i])+" mode): "+str(msg.motor_output_percent[i])+"%, setpoint: "+str(msg.set_point[i]))
+            self._widget.talon_state_widgets[i].setText(str(msg.name[i])+" (in "+str(msg.talon_mode[i])+" mode): "+str(msg.motor_output_percent[i])+"%, speed: "+str(msg.speed[i])+", setpoint: "+str(msg.set_point[i]))
             # self._widget.talon_state_widgets[i].adjustSize()
 
     def auto_state_slot(self, state):
