@@ -2,5 +2,5 @@ geometry_msgs/Pose pose
 ---
 bool timed_out
 bool success
-bool isAligned
 ---
+bool isAligned
