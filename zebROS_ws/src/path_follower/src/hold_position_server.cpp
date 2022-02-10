@@ -172,7 +172,7 @@ class holdPosition
 			bool preempted = false;
 			bool timed_out = false;
 			bool succeeded = false;
-
+			bool isAlligned = false;
 			//const size_t num_waypoints = goal->pose;
 
 			// Since paths are robot-centric, the initial odom value is 0,0,0 for the path.
@@ -226,6 +226,9 @@ class holdPosition
 			ROS_INFO_STREAM("Before transform: next_waypoint = (" << next_waypoint.position.x << ", " << next_waypoint.position.y << ", " << getYaw(next_waypoint.orientation) << ")");
 			tf2::doTransform(next_waypoint, next_waypoint, odom_to_base_link_tf);
 			ROS_INFO_STREAM("After transform: next_waypoint = (" << next_waypoint.position.x << ", " << next_waypoint.position.y << ", " << getYaw(next_waypoint.orientation) << ")");
+			
+
+			path_follower_msgs::holdPositionResult result;
 
 			while (ros::ok() && !preempted && !timed_out && !succeeded)
 			{
@@ -235,7 +238,18 @@ class holdPosition
 				{
 					odom_.pose.pose.orientation = orientation_;
 				}
-
+				// If the current position is already close enough to where we want it to be
+				if (abs(next_waypoint.position.x - odom_.pose.pose.position.x) < dist_threshold && abs(next_waypoint.position.y - odom_.pose.pose.position.y) < dist_threshold && abs(next_waypoint.orientation - odom_.pose.pose.orientation) < angle_threshold) {
+					
+				ROS_WARN("%s: Finished - isAlligned", action_name_.c_str());
+				result.timed_out = false;
+				result.success = false;
+				result.isAligned = true;
+				as_.setSucceeded(result);
+	
+				}
+				
+				
 				// This gets the point closest to current time plus lookahead distance
 				// on the path. We use this to generate a target for the x,y,orientation
 				ROS_INFO_STREAM("----------------------------------------------");
