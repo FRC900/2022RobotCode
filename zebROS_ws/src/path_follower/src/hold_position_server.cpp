@@ -254,9 +254,8 @@ class holdPosition
 				feedback.isAligned = true;
 				// setSucceeded for feedback
 				as_.publishFeedback(feedback);
-				// Probably good to stop the loop if we are already close enough?
-				break;
-	
+					
+
 				}
 				
 				
