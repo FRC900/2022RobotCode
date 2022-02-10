@@ -41,7 +41,10 @@ class holdPosition
 
 		// If true, use the subscribed pose topic for odom rather than the odom subscriber
 		bool use_pose_for_odom_;
+		
+		int dist_threshold_;
 
+		int angle_threshold_;
 	public:
 		holdPosition(const std::string &name, const ros::NodeHandle &nh,
 				   double server_timeout,
@@ -50,7 +53,9 @@ class holdPosition
 				   const std::string &pose_topic,
 				   bool use_odom_orientation,
 				   bool use_pose_for_odom,
-				   double time_offset)
+				   double time_offset,
+				   int dist_threshold,
+				   int angle_threshold)
 			: nh_(nh)
 			, as_(nh_, name, boost::bind(&holdPosition::executeCB, this, _1), false)
 			, action_name_(name)
@@ -59,6 +64,8 @@ class holdPosition
 			, ros_rate_(ros_rate)
 			, use_odom_orientation_(use_odom_orientation)
 			, use_pose_for_odom_(use_pose_for_odom)
+			, dist_threshold_(dist_threshold)
+			, angle_threshold_(angle_threshold)
 		{
 
 			// TODO - not sure which namespace base_trajectory should go in
@@ -239,13 +246,15 @@ class holdPosition
 					odom_.pose.pose.orientation = orientation_;
 				}
 				// If the current position is already close enough to where we want it to be
-				if (abs(next_waypoint.position.x - odom_.pose.pose.position.x) < dist_threshold && abs(next_waypoint.position.y - odom_.pose.pose.position.y) < dist_threshold && abs(next_waypoint.orientation - odom_.pose.pose.orientation) < angle_threshold) {
+				if (abs(next_waypoint.position.x - odom_.pose.pose.position.x) < dist_threshold_ && abs(next_waypoint.position.y - odom_.pose.pose.position.y) < dist_threshold_ && abs(getYaw(next_waypoint.orientation) - getYaw(odom_.pose.pose.orientation)) < angle_threshold_) {
 					
 				ROS_WARN("%s: Finished - isAlligned", action_name_.c_str());
 				result.timed_out = false;
 				result.success = false;
 				result.isAligned = true;
 				as_.setSucceeded(result);
+				// Probably good to stop the loop if we are already close enough?
+				break;
 	
 				}
 				
@@ -349,7 +358,8 @@ class holdPosition
 			z_axis.enable_pub_.publish(enable_msg);
 
 			//log result and set actionlib server state appropriately
-			path_follower_msgs::holdPositionResult result;
+			// Declared above
+			//path_follower_msgs::holdPositionResult result;
 
 			if (preempted)
 			{
@@ -408,7 +418,10 @@ int main(int argc, char **argv)
 	double time_offset = 0;
 	bool use_odom_orientation = false;
 	bool use_pose_for_odom = false;
+	//cm that the robot can be away from the desired goal
+	int dist_threshold = 2;
 
+	int angle_threshold = 2;
 	std::string odom_topic = "/frcrobot_jetson/swerve_drive_controller/odom";
 	std::string pose_topic = "/zed_ar/pose";
 	nh.getParam("/hold_position/hold_position/server_timeout", server_timeout);
@@ -418,6 +431,8 @@ int main(int argc, char **argv)
 	nh.getParam("/hold_position/hold_position/use_odom_orientation", use_odom_orientation);
 	nh.getParam("/hold_position/hold_position/time_offset", time_offset);
 	nh.getParam("/hold_position/hold_position/use_pose_for_odom", use_pose_for_odom);
+	nh.getParam("/hold_position/hold_position/dist_threshold", dist_threshold);
+	nh.getParam("/hold_position/hold_position/angle_threshold", angle_threshold);
 
 	holdPosition hold_position_server("hold_position_server", nh,
 								  server_timeout,
@@ -426,7 +441,9 @@ int main(int argc, char **argv)
 								  pose_topic,
 								  use_odom_orientation,
 								  use_pose_for_odom,
-								  time_offset);
+								  time_offset,
+								  dist_threshold,
+								  angle_threshold);
 
 	AlignActionAxisConfig x_axis("x", "x_position_pid/pid_enable", "x_position_pid/x_cmd_pub", "x_position_pid/x_state_pub", "x_position_pid/pid_debug", "x_timeout_param", "x_error_threshold_param");
 	AlignActionAxisConfig y_axis("y", "y_position_pid/pid_enable", "y_position_pid/y_cmd_pub", "y_position_pid/y_state_pub", "y_position_pid/pid_debug", "y_timeout_param", "y_error_threshold_param");
