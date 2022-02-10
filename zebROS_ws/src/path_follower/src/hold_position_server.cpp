@@ -179,7 +179,7 @@ class holdPosition
 			bool preempted = false;
 			bool timed_out = false;
 			bool succeeded = false;
-			bool isAlligned = false;
+			bool isAligned = false;
 			//const size_t num_waypoints = goal->pose;
 
 			// Since paths are robot-centric, the initial odom value is 0,0,0 for the path.
@@ -236,6 +236,7 @@ class holdPosition
 			
 
 			path_follower_msgs::holdPositionResult result;
+			path_follower_msgs::holdPositionFeedback feedback;
 
 			while (ros::ok() && !preempted && !timed_out && !succeeded)
 			{
@@ -246,13 +247,13 @@ class holdPosition
 					odom_.pose.pose.orientation = orientation_;
 				}
 				// If the current position is already close enough to where we want it to be
-				if (abs(next_waypoint.position.x - odom_.pose.pose.position.x) < dist_threshold_ && abs(next_waypoint.position.y - odom_.pose.pose.position.y) < dist_threshold_ && abs(getYaw(next_waypoint.orientation) - getYaw(odom_.pose.pose.orientation)) < angle_threshold_) {
+				if (fabs(next_waypoint.position.x - odom_.pose.pose.position.x) < dist_threshold_ && fabs(next_waypoint.position.y - odom_.pose.pose.position.y) < dist_threshold_ && fabs(getYaw(next_waypoint.orientation) - getYaw(odom_.pose.pose.orientation)) < angle_threshold_) {
 					
 				ROS_WARN("%s: Finished - isAlligned", action_name_.c_str());
-				result.timed_out = false;
-				result.success = false;
-				result.isAligned = true;
-				as_.setSucceeded(result);
+			
+				feedback.isAligned = true;
+				// setSucceeded for feedback
+				as_.publishFeedback(feedback);
 				// Probably good to stop the loop if we are already close enough?
 				break;
 	
