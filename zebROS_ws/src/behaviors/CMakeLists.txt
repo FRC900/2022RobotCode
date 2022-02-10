@@ -16,6 +16,8 @@ find_package(catkin REQUIRED COMPONENTS
   #controllers_2019_msgs
   #controllers_2020_msgs
   controllers_2022_msgs
+  ddynamic_reconfigure
+  dynamic_reconfigure_wrapper # TODO change to ddynamic_reconfigure, need to change 2022_shooter_server
   frc_msgs
   field_obj
   geometry_msgs
@@ -110,10 +112,9 @@ include_directories(
 ##     and list every .cfg file to be processed
 
 ## Generate dynamic reconfigure parameters in the 'cfg' folder
-# generate_dynamic_reconfigure_options(
-#   cfg/DynReconf1.cfg
-#   cfg/DynReconf2.cfg
-# )
+generate_dynamic_reconfigure_options(
+  cfg/Shooter2022.cfg
+)
 
 ###################################
 ## catkin specific configuration ##
@@ -155,6 +156,10 @@ add_dependencies(game_piece_path_server ${${PROJECT_NAME}_EXPORTED_TARGETS} ${ca
 add_executable(2022_climb_server_node src/2022_climb_server.cpp)
 target_link_libraries(2022_climb_server_node ${catkin_LIBRARIES})
 add_dependencies(2022_climb_server_node ${behaviors_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+
+add_executable(2022_shooter_server_node src/2022_shooter_server.cpp)
+target_link_libraries(2022_shooter_server_node ${catkin_LIBRARIES})
+add_dependencies(2022_shooter_server_node ${behaviors_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 # 2020 actionlib servers
 if (0)
