@@ -15,6 +15,7 @@ class ShooterAction2022
 protected:
 
   ros::NodeHandle nh_;
+  ros::NodeHandle nh_params_;
   actionlib::SimpleActionServer<behavior_actions::Shooter2022Action> as_;
   std::string action_name_;
   // create message that is used to publish feedback
@@ -37,22 +38,23 @@ public:
     as_(nh_, name, boost::bind(&ShooterAction2022::executeCB, this, _1), false),
     action_name_(name)
   {
-    if (!nh_.getParam("high_goal_speed", config_.high_goal_speed))
+    nh_params_ = ros::NodeHandle(nh_, "shooter_server_2022");
+    if (!nh_params_.getParam("high_goal_speed", config_.high_goal_speed))
   	{
   		SHOOTER_ERROR("Couldn't find param high_goal_speed. Aborting initialization.");
       exit(EXIT_FAILURE);
   	}
-    if (!nh_.getParam("low_goal_speed", config_.low_goal_speed))
+    if (!nh_params_.getParam("low_goal_speed", config_.low_goal_speed))
   	{
   		SHOOTER_ERROR("Couldn't find param low_goal_speed. Aborting initialization.");
       exit(EXIT_FAILURE);
   	}
-    if (!nh_.getParam("eject_speed", config_.eject_speed))
+    if (!nh_params_.getParam("eject_speed", config_.eject_speed))
   	{
   		SHOOTER_ERROR("Couldn't find param eject_speed. Aborting initialization.");
       exit(EXIT_FAILURE);
   	}
-    if (!nh_.getParam("error_margin", config_.error_margin))
+    if (!nh_params_.getParam("error_margin", config_.error_margin))
   	{
   		SHOOTER_ERROR("Couldn't find param error_margin. Aborting initialization.");
       exit(EXIT_FAILURE);
@@ -61,7 +63,7 @@ public:
     talon_states_sub_ = nh_.subscribe("/frcrobot_jetson/talon_states", 1, &ShooterAction2022::talonStateCallback, this);
     as_.start();
 
-    dynamic_reconfigure_server_.init(nh_, config_);
+    dynamic_reconfigure_server_.init(nh_params_, config_);
   }
 
   ~ShooterAction2022(void)
