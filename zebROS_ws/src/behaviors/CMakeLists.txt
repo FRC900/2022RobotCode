@@ -17,7 +17,6 @@ find_package(catkin REQUIRED COMPONENTS
   #controllers_2020_msgs
   controllers_2022_msgs
   ddynamic_reconfigure
-  dynamic_reconfigure_wrapper # TODO change to ddynamic_reconfigure, need to change 2022_shooter_server
   frc_msgs
   field_obj
   geometry_msgs
@@ -112,9 +111,9 @@ include_directories(
 ##     and list every .cfg file to be processed
 
 ## Generate dynamic reconfigure parameters in the 'cfg' folder
-generate_dynamic_reconfigure_options(
-  cfg/Shooter2022.cfg
-)
+# generate_dynamic_reconfigure_options(
+#  cfg/Shooter2022.cfg
+# )
 
 ###################################
 ## catkin specific configuration ##

@@ -1,8 +1,7 @@
 #include <ros/ros.h>
 #include <actionlib/server/simple_action_server.h>
 #include <behavior_actions/Shooter2022Action.h>
-#include <dynamic_reconfigure_wrapper/dynamic_reconfigure_wrapper.h> // TODO change to use ddynamic_reconfigure
-#include <behaviors/Shooter2022Config.h>
+#include <ddynamic_reconfigure/ddynamic_reconfigure.h>
 #include <std_msgs/Float64.h>
 #include "talon_state_msgs/TalonState.h"
 
@@ -21,8 +20,11 @@ protected:
   // create message that is used to publish feedback
   behavior_actions::Shooter2022Feedback feedback_;
 
-  DynamicReconfigureWrapper<behaviors::Shooter2022Config> dynamic_reconfigure_server_;
-  behaviors::Shooter2022Config config_;
+  double high_goal_speed_;
+  double low_goal_speed_;
+  double eject_speed_;
+  double error_margin_;
+  ddynamic_reconfigure::DDynamicReconfigure ddr_;
 
   ros::Publisher shooter_command_pub_;
 
@@ -30,40 +32,27 @@ protected:
 
   double current_speed_;
 
-  uint8_t last_mode_;
-
 public:
 
   ShooterAction2022(std::string name) :
     as_(nh_, name, boost::bind(&ShooterAction2022::executeCB, this, _1), false),
-    action_name_(name)
+    action_name_(name),
+    nh_params_(nh_, "shooter_server_2022"),
+    ddr_(nh_params_)
   {
-    nh_params_ = ros::NodeHandle(nh_, "shooter_server_2022");
-    if (!nh_params_.getParam("high_goal_speed", config_.high_goal_speed))
-  	{
-  		SHOOTER_ERROR("Couldn't find param high_goal_speed. Aborting initialization.");
-      exit(EXIT_FAILURE);
-  	}
-    if (!nh_params_.getParam("low_goal_speed", config_.low_goal_speed))
-  	{
-  		SHOOTER_ERROR("Couldn't find param low_goal_speed. Aborting initialization.");
-      exit(EXIT_FAILURE);
-  	}
-    if (!nh_params_.getParam("eject_speed", config_.eject_speed))
-  	{
-  		SHOOTER_ERROR("Couldn't find param eject_speed. Aborting initialization.");
-      exit(EXIT_FAILURE);
-  	}
-    if (!nh_params_.getParam("error_margin", config_.error_margin))
-  	{
-  		SHOOTER_ERROR("Couldn't find param error_margin. Aborting initialization.");
-      exit(EXIT_FAILURE);
-  	}
+    high_goal_speed_ = 25;
+    ddr_.registerVariable<double>("high_goal_speed", &high_goal_speed_, "High Goal Shooting Speed", 0, 27);
+    low_goal_speed_ = 20;
+    ddr_.registerVariable<double>("low_goal_speed", &low_goal_speed_, "Low Goal Shooting Speed", 0, 27);
+    eject_speed_ = 7;
+    ddr_.registerVariable<double>("eject_speed", &eject_speed_, "Eject Cargo - Shooting Speed", 0, 27);
+    error_margin_ = 0.25;
+    ddr_.registerVariable<double>("error_margin", &error_margin_, "Shooter margin of error", 0, 2);
     shooter_command_pub_ = nh_.advertise<std_msgs::Float64>("/frcrobot_jetson/shooter_controller/command", 2);
     talon_states_sub_ = nh_.subscribe("/frcrobot_jetson/talon_states", 1, &ShooterAction2022::talonStateCallback, this);
     as_.start();
 
-    dynamic_reconfigure_server_.init(nh_params_, config_);
+    ddr_.publishServicesTopics();
   }
 
   ~ShooterAction2022(void)
@@ -81,6 +70,8 @@ public:
       {
         msg.data = 0;
         shooter_command_pub_.publish(msg);
+        feedback_.close_enough = false;
+        as_.publishFeedback(feedback_);
         ROS_INFO("%s: Preempted", action_name_.c_str());
         // set the action state to preempted
         as_.setPreempted();
@@ -88,18 +79,18 @@ public:
       }
       switch (goal->mode) {
         case behavior_actions::Shooter2022Goal::HIGH_GOAL:
-          feedback_.close_enough = fabs(config_.high_goal_speed - current_speed_) < config_.error_margin;
-          msg.data = config_.high_goal_speed;
+          feedback_.close_enough = fabs(high_goal_speed_ - current_speed_) < error_margin_;
+          msg.data = high_goal_speed_;
           shooter_command_pub_.publish(msg);
           break;
         case behavior_actions::Shooter2022Goal::LOW_GOAL:
-          feedback_.close_enough = fabs(config_.low_goal_speed - current_speed_) < config_.error_margin;
-          msg.data = config_.low_goal_speed;
+          feedback_.close_enough = fabs(low_goal_speed_ - current_speed_) < error_margin_;
+          msg.data = low_goal_speed_;
           shooter_command_pub_.publish(msg);
           break;
         case behavior_actions::Shooter2022Goal::EJECT:
-          feedback_.close_enough = fabs(config_.eject_speed - current_speed_) < config_.error_margin;
-          msg.data = config_.eject_speed;
+          feedback_.close_enough = fabs(eject_speed_ - current_speed_) < error_margin_;
+          msg.data = eject_speed_;
           shooter_command_pub_.publish(msg);
           break;
       }
@@ -110,17 +101,13 @@ public:
 
   void talonStateCallback(const talon_state_msgs::TalonState talon_state)
   {
-    bool foundTalon = false;
     for (size_t i = 0; i < talon_state.name.size(); i++) {
       if (talon_state.name[i] == "shooter_leader") {
-        foundTalon = true;
         current_speed_ = talon_state.speed[i];
+        return;
       }
     }
-    if (!foundTalon) {
-      SHOOTER_ERROR("Couldn't find talon in /frcrobot_jetson/talon_states. :(");
-      return;
-    }
+    SHOOTER_ERROR("Couldn't find talon in /frcrobot_jetson/talon_states. :(");
   }
 
 };
