@@ -22,13 +22,11 @@ class FakeTerabeeDist
                     			msgOut.header.frame_id = "terabee";
                     			msgOut.seq = msgIn->seq;
                           msgOut.stamp = msgIn->stamp;    //formatting same as above
-                          msgOut.range = msgIn->ranges[0]+normalDistribution_(gen_));
+                          msgOut.range = msgIn->ranges[0]+normalDistribution_(gen_)); //adding noise
                           msgOut.radiation_type = 1;
                           msgOut.range_min = msgIn->min_range; //check lines 27-29
                           msgOut.range_max = msgIn->max_range;
-                          msgOut. //field of view??
-
-
+                          msgOut.field_of_view = msgIn->angle_max-angle_min
 
 
                     			pub_.publish(msgOut);
