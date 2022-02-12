@@ -19,8 +19,6 @@ field_obj::Detection lastObjectDetection;
 tf2_ros::TransformListener *tfListener;
 tf2_ros::Buffer *tfBuffer;
 
-std::string game_piece_frame_id = "intake";
-
 double maximumZ = 1.0;
 
 // Callback function to retrieve the most recent object detection message
@@ -84,12 +82,11 @@ bool genPath(behavior_actions::GamePiecePickup::Request &req, behavior_actions::
 
 	Line l = Line(cameraToRobotTransform.transform.translation.x, cameraToRobotTransform.transform.translation.y, req.endpoint.position.x, req.endpoint.position.y);
 
-	ROS_INFO_STREAM("Line from " << l.x1 << "," << l.y1 << " to " << l.x2 << "," << l.y2);
-
 	std::vector<std::array<double, 3>> points; // List of all points
 	points.push_back({0, 0, 0}); // First point is always {0,0,0} and not transformed, robot current position
 
 	std::vector<std::array<double, 3>> objectPoints; // List of object points (so we can sort)
+	std::vector<std::array<double, 3>> secondaryObjectPoints; // List of secondary object points (for later)
 
 	for (size_t i = 0; i < lastObjectDetection.objects.size(); i++) // filter out selected object detections
 	{
@@ -99,13 +96,41 @@ bool genPath(behavior_actions::GamePiecePickup::Request &req, behavior_actions::
 		}
 	}
 
+	for (size_t i = 0; i < lastObjectDetection.objects.size(); i++) // filter out secondary object detections
+	{
+		if ((lastObjectDetection.objects[i].id == req.secondary_object_id) && (lastObjectDetection.objects[i].location.z <= maximumZ))
+		{
+			secondaryObjectPoints.push_back({lastObjectDetection.objects[i].location.x, lastObjectDetection.objects[i].location.y, 0});
+		}
+	}
+
 	std::sort(objectPoints.begin(), objectPoints.end(), [&l](std::array<double, 3> a, std::array<double, 3> b) {
 		return fabs(pointOnLine(l, a[0]) - a[1]) < fabs(pointOnLine(l, b[0]) - b[1]); // sort objects by closest to line
 	});
 
+	size_t secondaryObjects = 0;
+	std::vector<size_t> secondaryObjectIndices;
 	for (size_t i = 0; i < std::min(objects_num, objectPoints.size()); i++) { // Add object points to list of points
-		ROS_INFO_STREAM("Choosing game piece at " << objectPoints[i][0] << "," << objectPoints[i][1] << " relative to " << lastObjectDetection.header.frame_id);
+		ROS_INFO_STREAM("game_piece_path_gen: choosing game piece at " << objectPoints[i][0] << "," << objectPoints[i][1] << " relative to " << lastObjectDetection.header.frame_id);
 		points.push_back(objectPoints[i]);
+
+		std::array<double, 3> nextPoint;
+		if (i == (std::min(objects_num, objectPoints.size())-1)) {
+			nextPoint = {req.endpoint.position.x, req.endpoint.position.y, req.endpoint.orientation.z};
+		} else {
+			nextPoint = objectPoints[i+1];
+		}
+		// Add any close enough secondary points to the line between this point and the next point
+		Line l2 = Line(objectPoints[i][0], objectPoints[i][1], nextPoint[0], nextPoint[1]);
+		for (auto p : secondaryObjectPoints) {
+			if (fabs(pointOnLine(l2, p[0]) - p[1]) <= req.secondary_max_distance && secondaryObjects < req.secondary_max_objects) { // if the secondary object is close enough and the limit has not been reached,
+				// add to path
+				ROS_INFO_STREAM("game_piece_path_gen: adding secondary game piece at " << p[0] << "," << p[1] << " relative to " << lastObjectDetection.header.frame_id);
+				secondaryObjectIndices.push_back(points.size());
+				points.push_back(p);
+				secondaryObjects++;
+			}
+		}
 	}
 
 	if (points.size() == 1) // No objects added
@@ -136,7 +161,7 @@ bool genPath(behavior_actions::GamePiecePickup::Request &req, behavior_actions::
 		if (i == 0)
 		{
 			spline_gen_srv.request.points[point_index] = generateTrajectoryPoint(points[i][0], points[i][1], points[i][2]);
-			spline_gen_srv.request.point_frame_id[point_index] = game_piece_frame_id;
+			spline_gen_srv.request.point_frame_id[point_index] = req.primary_frame_id;
 			base_trajectory_msgs::PathOffsetLimit path_offset_limit;
 			spline_gen_srv.request.path_offset_limit.push_back(path_offset_limit);
 			point_index++;
@@ -154,7 +179,7 @@ bool genPath(behavior_actions::GamePiecePickup::Request &req, behavior_actions::
 			for (double offset : gamePieceIntakeOffsets) {
 				double rotation = std::atan2(points[i][1]-points[0][1], points[i][0]-points[0][0]); // atan2(deltaY/deltaX)
 				spline_gen_srv.request.points[point_index] = generateTrajectoryPoint(points[i][0] + offset, points[i][1], rotation);
-				spline_gen_srv.request.point_frame_id[point_index] = game_piece_frame_id;
+				spline_gen_srv.request.point_frame_id[point_index] = (std::find(secondaryObjectIndices.begin(), secondaryObjectIndices.end(), i)==secondaryObjectIndices.end()) ? req.primary_frame_id : req.secondary_frame_id;
 				base_trajectory_msgs::PathOffsetLimit path_offset_limit;
 				spline_gen_srv.request.path_offset_limit.push_back(path_offset_limit);
 				point_index++;
@@ -193,12 +218,6 @@ int main(int argc, char **argv)
 	ros::NodeHandle nh;
 
 	ros::NodeHandle nh_params(nh, "game_piece_path_gen_params"); // node handle for a lower-down namespace
-
-	if (nh_params.hasParam("game_piece_frame_id")) {
-		if (!nh_params.getParam("game_piece_frame_id", game_piece_frame_id)) {
-			ROS_WARN_STREAM("game_piece_path_gen : getting frame id failed, defaulting to \"intake\"");
-		}
-	}
 
 	if (nh_params.hasParam("game_piece_intake_offsets")) {
 		if (!nh_params.getParam("game_piece_intake_offsets", gamePieceIntakeOffsets)) {
