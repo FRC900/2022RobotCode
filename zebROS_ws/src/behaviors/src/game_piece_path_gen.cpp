@@ -37,7 +37,8 @@ trajectory_msgs::JointTrajectoryPoint generateTrajectoryPoint(double x, double y
 	return point;
 }
 
-struct Line {
+class Line {
+public:
 	double x1;
 	double y1;
 	double x2;
@@ -47,6 +48,9 @@ struct Line {
 		this->x2 = x2;
 		this->y1 = y1;
 		this->y2 = y2;
+	}
+	double distance() {
+		return sqrt(abs(x2 - x1) + abs(y2 - y1)); // Pythagorean theorem
 	}
 };
 
@@ -108,20 +112,38 @@ bool genPath(behavior_actions::GamePiecePickup::Request &req, behavior_actions::
 		return fabs(pointOnLine(l, a[0]) - a[1]) < fabs(pointOnLine(l, b[0]) - b[1]); // sort objects by closest to line
 	});
 
+	std::vector<std::array<double, 3>> selectedObjectPoints; // List of selected primary object points
+
+	for (size_t i = 0; i < std::min(objects_num, objectPoints.size()); i++) { // Select closest objects to line
+		selectedObjectPoints.push_back(objectPoints[i]);
+	}
+
+	// sort selected objects by distance to start
+	std::sort(selectedObjectPoints.begin(), selectedObjectPoints.end(), [objectPoints, cameraToRobotTransform](std::array<double, 3> a, std::array<double, 3> b) {
+		Line la = Line(cameraToRobotTransform.transform.translation.x, cameraToRobotTransform.transform.translation.y, a[0], a[1]);
+		Line lb = Line(cameraToRobotTransform.transform.translation.x, cameraToRobotTransform.transform.translation.y, b[0], b[1]);
+		return la.distance() < lb.distance();
+	});
+
 	size_t secondaryObjects = 0;
 	std::vector<size_t> secondaryObjectIndices;
-	for (size_t i = 0; i < std::min(objects_num, objectPoints.size()); i++) { // Add object points to list of points
-		ROS_INFO_STREAM("game_piece_path_gen: choosing game piece at " << objectPoints[i][0] << "," << objectPoints[i][1] << " relative to " << lastObjectDetection.header.frame_id);
-		points.push_back(objectPoints[i]);
+	for (size_t i = 0; i < selectedObjectPoints.size(); i++) { // Add selected object points to list of points
+		ROS_INFO_STREAM("game_piece_path_gen: choosing game piece at " << selectedObjectPoints[i][0] << "," << selectedObjectPoints[i][1] << " relative to " << lastObjectDetection.header.frame_id);
+		points.push_back(selectedObjectPoints[i]);
 
 		std::array<double, 3> nextPoint;
-		if (i == (std::min(objects_num, objectPoints.size())-1)) {
+		if (i == (std::min(objects_num, selectedObjectPoints.size())-1)) {
 			nextPoint = {req.endpoint.position.x, req.endpoint.position.y, req.endpoint.orientation.z};
 		} else {
-			nextPoint = objectPoints[i+1];
+			nextPoint = selectedObjectPoints[i+1];
 		}
 		// Add any close enough secondary points to the line between this point and the next point
-		Line l2 = Line(objectPoints[i][0], objectPoints[i][1], nextPoint[0], nextPoint[1]);
+		Line l2 = Line(selectedObjectPoints[i][0], selectedObjectPoints[i][1], nextPoint[0], nextPoint[1]);
+		std::sort(secondaryObjectPoints.begin(), secondaryObjectPoints.end(), [selectedObjectPoints, i](std::array<double, 3> a, std::array<double, 3> b) {
+			Line la = Line(selectedObjectPoints[i][0], selectedObjectPoints[i][1], a[0], a[1]);
+			Line lb = Line(selectedObjectPoints[i][0], selectedObjectPoints[i][1], b[0], b[1]);
+			return la.distance() < lb.distance(); // sort objects by distance to point 1
+		});
 		for (auto p : secondaryObjectPoints) {
 			if (fabs(pointOnLine(l2, p[0]) - p[1]) <= req.secondary_max_distance && secondaryObjects < req.secondary_max_objects) { // if the secondary object is close enough and the limit has not been reached,
 				// add to path
