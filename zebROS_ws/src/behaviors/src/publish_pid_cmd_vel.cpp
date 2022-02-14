@@ -188,7 +188,13 @@ int main(int argc, char ** argv)
 		}
 
 		else {
-			if (still_active) {
+			if (!pid_enable) {
+				ROS_INFO_STREAM("pid_enable is disabled");
+			}
+			else {
+				ROS_INFO_STREAM("timed out");
+			}
+			if (still_active == true) {
 				cmd_vel_msg.angular.z = 0.0;
 				cmd_vel_msg.linear.x = 0.0;
 				cmd_vel_msg.linear.y = 0.0;
