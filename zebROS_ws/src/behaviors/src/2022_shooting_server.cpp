@@ -88,7 +88,7 @@ public:
       // check that preempt has not been requested by the client
       if (as_.isPreemptRequested() || !ros::ok())
       {
-        ROS_INFO_STREAM("2022_shooting_server : sreempted");
+        ROS_INFO_STREAM("2022_shooting_server : preempted");
         // set the action state to preempted
         as_.setPreempted();
         success = false;
