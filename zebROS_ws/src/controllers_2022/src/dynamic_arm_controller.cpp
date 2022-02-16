@@ -99,6 +99,7 @@ void DynamicArmController::update(const ros::Time &time, const ros::Duration &/*
     current_iterations_++;
     if (current_iterations_ >= max_current_iterations_) {
       zeroed_ = true;
+      dynamic_arm_joint_.setCommand(0);
     }
   } else {
     current_iterations_ = 0;
