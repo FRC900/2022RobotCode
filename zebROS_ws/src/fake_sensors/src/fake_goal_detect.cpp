@@ -77,7 +77,7 @@ class FakeGoalDetection
 					geometry_msgs::TransformStamped transformStamped;
 
 					transformStamped.header.stamp = msgOut.header.stamp;
-					transformStamped.header.frame_id = "base_fiducial_link";
+					transformStamped.header.frame_id = msgOut.header.frame_id;
 					std::stringstream child_frame;
 					child_frame << obj.id << "_" << i;
 					transformStamped.child_frame_id = child_frame.str();
