@@ -47,6 +47,18 @@ bool DynamicArmController::init(hardware_interface::RobotHW *hw,
     return false;
   }
 
+  if (!controller_nh.getParam("dynamic_arm_current_threshold", current_threshold_))
+  {
+    ROS_ERROR("dynamic_arm_controller : Could not find dynamic_arm_current_threshold");
+    return false;
+  }
+
+  if (!controller_nh.getParam("dynamic_arm_max_current_iterations", max_current_iterations_)) // 1 iteration = 10ms
+  {
+    ROS_ERROR("dynamic_arm_controller : Could not find dynamic_arm_current_threshold");
+    return false;
+  }
+
   /*
   if (!controller_nh.getParam("motion_s_curve_strength",config_.motion_s_curve_strength))
   {
@@ -83,8 +95,17 @@ void DynamicArmController::starting(const ros::Time &time) {
 
 void DynamicArmController::update(const ros::Time &time, const ros::Duration &/*duration*/)
 {
+  if (dynamic_arm_joint_.getOutputCurrent() >= current_threshold_) {
+    current_iterations_++;
+    if (current_iterations_ >= max_current_iterations_) {
+      dynamic_arm_joint_.setMode(hardware_interface::TalonMode_Disabled);
+    }
+  } else {
+    current_iterations_ = 0;
+  }
+
   // If we hit the limit switch, (re)zero the position.
-  if (dynamic_arm_joint_.getReverseLimitSwitch())
+  if (dynamic_arm_joint_.getReverseLimitSwitch()) // || currentIsAVeryHighValueForASustainedPeriodOfTime
   {
     ROS_INFO_THROTTLE(2, "dynamic_arm_controller : hit bottom limit switch");
     if (!last_zeroed_)

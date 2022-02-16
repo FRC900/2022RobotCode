@@ -77,6 +77,10 @@ namespace dynamic_arm_controller
   bool zeroed_;
   bool last_zeroed_;
 
+  double current_threshold_;
+  int max_current_iterations_;
+  int current_iterations_;
+
   DynamicReconfigureWrapper<DynamicArmConfig> dynamic_reconfigure_server_;
   DynamicArmConfig config_;
 
