@@ -43,9 +43,9 @@ class holdPosition
 		// If true, use the subscribed pose topic for odom rather than the odom subscriber
 		bool use_pose_for_odom_;
 		
-		int dist_threshold_;
+		double dist_threshold_;
 
-		int angle_threshold_;
+		double angle_threshold_;
 	public:
 		holdPosition(const std::string &name, const ros::NodeHandle &nh,
 				   double server_timeout,
@@ -55,8 +55,8 @@ class holdPosition
 				   bool use_odom_orientation,
 				   bool use_pose_for_odom,
 				   double time_offset,
-				   int dist_threshold,
-				   int angle_threshold)
+				   double dist_threshold,
+				   double angle_threshold)
 			: nh_(nh)
 			, as_(nh_, name, boost::bind(&holdPosition::executeCB, this, _1), false)
 			, action_name_(name)
@@ -261,16 +261,9 @@ class holdPosition
 				const auto posedif = fabs(getYaw(next_waypoint.orientation) - getYaw(odom_.pose.pose.orientation));
 				ROS_ERROR_STREAM("isnan xdif ydif posedif  " << isnan(xdif) << isnan(ydif) << isnan(posedif));
 			// checks if values are less than threshold or are nan, meaning the pose or x,y,z was not provided	
-				if (xdif < dist_threshold_ || isnan(xdif)   && ydif < dist_threshold_ || isnan(ydif)    && posedif < angle_threshold_ || isnan(angle_threshold_)) {
-					
-				ROS_WARN("%s: Finished - isAlligned", action_name_.c_str());
-			
-				feedback.isAligned = true;
-				// setSucceeded for feedback
+				feedback.isAligned = (xdif < dist_threshold_ || isnan(xdif)   && ydif < dist_threshold_ ||   isnan(ydif)    && posedif < angle_threshold_ || isnan(angle_threshold_));
 				as_.publishFeedback(feedback);
-					
-
-				}
+			
 				
 				
 				// This gets the point closest to current time plus lookahead distance
