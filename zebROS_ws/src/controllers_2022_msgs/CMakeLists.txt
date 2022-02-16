@@ -58,6 +58,8 @@ add_service_files(
    FILES
    DynamicArmSrv.srv
    Intake.srv
+   StraightMotorSrv.srv
+   ArcMotorSrv.srv
 )
 
 ## Generate actions in the 'action' folder
