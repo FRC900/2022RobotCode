@@ -98,7 +98,7 @@ void DynamicArmController::update(const ros::Time &time, const ros::Duration &/*
   if (dynamic_arm_joint_.getOutputCurrent() >= current_threshold_) {
     current_iterations_++;
     if (current_iterations_ >= max_current_iterations_) {
-      dynamic_arm_joint_.setMode(hardware_interface::TalonMode_Disabled);
+      zeroed_ = true;
     }
   } else {
     current_iterations_ = 0;
