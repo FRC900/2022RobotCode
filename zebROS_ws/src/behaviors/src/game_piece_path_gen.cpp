@@ -125,7 +125,7 @@ bool genPath(behavior_actions::GamePiecePickup::Request &req, behavior_actions::
 	// If not finding the optimal cargo, uncomment the print below.
 	// ROS_INFO_STREAM("Using position: " << cameraToMapTransform.transform.translation.x << ", " << cameraToMapTransform.transform.translation.y);
 
-	Line l = Line(cameraToRobotTransform.transform.translation.x, cameraToRobotTransform.transform.translation.y, req.endpoint.position.x, req.endpoint.position.y);
+	Line l = Line(0, 0, req.endpoint.position.x - cameraToRobotTransform.transform.translation.x, req.endpoint.position.y - cameraToRobotTransform.transform.translation.y);
 
 	std::vector<Point> points; // List of all points
 	points.push_back({0, 0, 0}); // First point is always {0,0,0} and not transformed, robot current position
@@ -160,9 +160,9 @@ bool genPath(behavior_actions::GamePiecePickup::Request &req, behavior_actions::
 	}
 
 	// sort selected objects by distance to start
-	std::sort(selectedObjectPoints.begin(), selectedObjectPoints.end(), [objectPoints, cameraToRobotTransform](Point a, Point b) {
-		Line la = Line(cameraToRobotTransform.transform.translation.x, cameraToRobotTransform.transform.translation.y, a[0], a[1]);
-		Line lb = Line(cameraToRobotTransform.transform.translation.x, cameraToRobotTransform.transform.translation.y, b[0], b[1]);
+	std::sort(selectedObjectPoints.begin(), selectedObjectPoints.end(), [objectPoints](Point a, Point b) {
+		Line la = Line(0, 0, a[0], a[1]);
+		Line lb = Line(0, 0, b[0], b[1]);
 		return hypot(la) < hypot(lb);
 	});
 
@@ -174,10 +174,10 @@ bool genPath(behavior_actions::GamePiecePickup::Request &req, behavior_actions::
 	// TODO what to do if selectedObjectPoints.size() == 0?
 
 	// Add any close enough secondary points to the line between the start and the first object
-	l2 = Line(cameraToRobotTransform.transform.translation.x, cameraToRobotTransform.transform.translation.y, selectedObjectPoints[0][0], selectedObjectPoints[0][1]);
-	std::sort(secondaryObjectPoints.begin(), secondaryObjectPoints.end(), [selectedObjectPoints, cameraToRobotTransform](Point a, Point b) {
-		Line la = Line(cameraToRobotTransform.transform.translation.x, cameraToRobotTransform.transform.translation.y, a[0], a[1]);
-		Line lb = Line(cameraToRobotTransform.transform.translation.x, cameraToRobotTransform.transform.translation.y, b[0], b[1]);
+	l2 = Line(0, 0, selectedObjectPoints[0][0], selectedObjectPoints[0][1]);
+	std::sort(secondaryObjectPoints.begin(), secondaryObjectPoints.end(), [selectedObjectPoints](Point a, Point b) {
+		Line la = Line(0, 0, a[0], a[1]);
+		Line lb = Line(0, 0, b[0], b[1]);
 		return hypot(la) < hypot(lb); // sort objects by distance to start
 	});
 	for (const auto &p : secondaryObjectPoints) {
