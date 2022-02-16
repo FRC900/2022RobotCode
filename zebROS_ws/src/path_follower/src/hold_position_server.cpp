@@ -1,3 +1,4 @@
+#include <cmath>
 #include <ros/ros.h>
 #include <actionlib/server/simple_action_server.h>
 #include <ddynamic_reconfigure/ddynamic_reconfigure.h>
@@ -176,6 +177,12 @@ class holdPosition
 
 		void executeCB(const path_follower_msgs::holdPositionGoalConstPtr &goal)
 		{
+			path_follower_msgs::holdPositionResult result;
+            path_follower_msgs::holdPositionFeedback feedback;
+			
+			// Resets isAligned
+			feedback.isAligned = false;
+            as_.publishFeedback(feedback);
 			bool preempted = false;
 			bool timed_out = false;
 			bool succeeded = false;
@@ -235,9 +242,6 @@ class holdPosition
 			ROS_INFO_STREAM("After transform: next_waypoint = (" << next_waypoint.position.x << ", " << next_waypoint.position.y << ", " << getYaw(next_waypoint.orientation) << ")");
 			
 
-			path_follower_msgs::holdPositionResult result;
-			path_follower_msgs::holdPositionFeedback feedback;
-
 			while (ros::ok() && !preempted && !timed_out && !succeeded)
 			{
 				// If using a separate topic for orientation, merge the x+y from odom
@@ -247,7 +251,17 @@ class holdPosition
 					odom_.pose.pose.orientation = orientation_;
 				}
 				// If the current position is already close enough to where we want it to be
-				if (fabs(next_waypoint.position.x - odom_.pose.pose.position.x) < dist_threshold_ && fabs(next_waypoint.position.y - odom_.pose.pose.position.y) < dist_threshold_ && fabs(getYaw(next_waypoint.orientation) - getYaw(odom_.pose.pose.orientation)) < angle_threshold_) {
+				
+				ROS_INFO_STREAM("Diffrence between waypoint and current X=" << fabs(next_waypoint.position.x - odom_.pose.pose.position.x) << " Dist threshold= " << dist_threshold_);
+				ROS_INFO_STREAM("Diffrence between waypoint and current Y=" << fabs(next_waypoint.position.y - odom_.pose.pose.  position.y) << " Dist threshold= " << dist_threshold_);
+				ROS_INFO_STREAM("Diffrence between waypoint and current POSE=" << fabs(getYaw(next_waypoint.orientation) - getYaw(odom_.pose.pose.orientation)) << " Pose threshold= " << angle_threshold_);
+				ROS_INFO_STREAM(next_waypoint.orientation << " <--Next waypoint currentpose--> " << getYaw(odom_.pose.pose.orientation));
+				const auto xdif = fabs(next_waypoint.position.x - odom_.pose.pose.position.x);
+				const auto ydif = fabs(next_waypoint.position.y - odom_.pose.pose.position.y);
+				const auto posedif = fabs(getYaw(next_waypoint.orientation) - getYaw(odom_.pose.pose.orientation));
+				ROS_ERROR_STREAM("isnan xdif ydif posedif  " << isnan(xdif) << isnan(ydif) << isnan(posedif));
+			// checks if values are less than threshold or are nan, meaning the pose or x,y,z was not provided	
+				if (xdif < dist_threshold_ || isnan(xdif)   && ydif < dist_threshold_ || isnan(ydif)    && posedif < angle_threshold_ || isnan(angle_threshold_)) {
 					
 				ROS_WARN("%s: Finished - isAlligned", action_name_.c_str());
 			
@@ -270,6 +284,7 @@ class holdPosition
 					<< ", " << odom_.pose.pose.position.y - starting_odom.pose.pose.position.y);
 				ROS_INFO_STREAM("    delta pose_ = " << pose_.pose.position.x - starting_pose.pose.position.x
 					<< ", " << pose_.pose.position.y - starting_pose.pose.position.y);
+				
 
 				if (!use_odom_orientation_)
 				{
@@ -418,10 +433,10 @@ int main(int argc, char **argv)
 	double time_offset = 0;
 	bool use_odom_orientation = false;
 	bool use_pose_for_odom = false;
-	//cm that the robot can be away from the desired goal
-	int dist_threshold = 2;
+	//meters and radians that the robot can be away from the desired goal
+	double dist_threshold = .05;
 
-	int angle_threshold = 2;
+	double angle_threshold = .35;
 	std::string odom_topic = "/frcrobot_jetson/swerve_drive_controller/odom";
 	std::string pose_topic = "/zed_ar/pose";
 	nh.getParam("/hold_position/hold_position/server_timeout", server_timeout);
