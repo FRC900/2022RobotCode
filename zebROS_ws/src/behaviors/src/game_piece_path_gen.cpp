@@ -54,6 +54,16 @@ public:
 		this->y1 = y1;
 		this->y2 = y2;
 	}
+	// A line between two points, ignoring the Z axis
+	Line(Point a, Point b) {
+		this->x1 = a[0];
+		this->y1 = a[1];
+		this->x2 = b[0];
+		this->y2 = b[1];
+	}
+	double lengthSquared() {
+		return (this->x2-this->x1)*(this->x2-this->x1) + (this->y2-this->y1)*(this->y2-this->y1);
+	}
 };
 
 double hypot(Line l) {
@@ -160,10 +170,10 @@ bool genPath(behavior_actions::GamePiecePickup::Request &req, behavior_actions::
 	}
 
 	// sort selected objects by distance to start
-	std::sort(selectedObjectPoints.begin(), selectedObjectPoints.end(), [objectPoints](Point a, Point b) {
-		Line la = Line(0, 0, a[0], a[1]);
-		Line lb = Line(0, 0, b[0], b[1]);
-		return hypot(la) < hypot(lb);
+	std::sort(selectedObjectPoints.begin(), selectedObjectPoints.end(), [objectPoints, &points](Point a, Point b) {
+		Line la = Line(points[0], a);
+		Line lb = Line(points[0], b);
+		return la.lengthSquared() < lb.lengthSquared();
 	});
 
 	size_t secondaryObjects = 0;
@@ -175,10 +185,10 @@ bool genPath(behavior_actions::GamePiecePickup::Request &req, behavior_actions::
 
 	// Add any close enough secondary points to the line between the start and the first object
 	l2 = Line(0, 0, selectedObjectPoints[0][0], selectedObjectPoints[0][1]);
-	std::sort(secondaryObjectPoints.begin(), secondaryObjectPoints.end(), [selectedObjectPoints](Point a, Point b) {
-		Line la = Line(0, 0, a[0], a[1]);
-		Line lb = Line(0, 0, b[0], b[1]);
-		return hypot(la) < hypot(lb); // sort objects by distance to start
+	std::sort(secondaryObjectPoints.begin(), secondaryObjectPoints.end(), [selectedObjectPoints, &points](Point a, Point b) {
+		Line la = Line(points[0], a);
+		Line lb = Line(points[0], b);
+		return la.lengthSquared() < lb.lengthSquared(); // sort objects by distance to start
 	});
 	for (const auto &p : secondaryObjectPoints) {
 		if (pointToLineSegmentDistance(l2, p[0], p[1]) <= req.secondary_max_distance && secondaryObjects < req.secondary_max_objects) { // if the secondary object is close enough and the limit has not been reached,
@@ -193,7 +203,7 @@ bool genPath(behavior_actions::GamePiecePickup::Request &req, behavior_actions::
 	for (auto p : pointsToRemove) {
 		secondaryObjectPoints.erase(std::remove(secondaryObjectPoints.begin(), secondaryObjectPoints.end(), p), secondaryObjectPoints.end());
 	}
-	pointsToRemove = std::vector<Point>();
+	pointsToRemove.clear();
 
 	for (size_t i = 0; i < selectedObjectPoints.size(); i++) { // Add selected object points to list of points
 		ROS_INFO_STREAM("game_piece_path_gen: choosing game piece at " << selectedObjectPoints[i][0] << "," << selectedObjectPoints[i][1] << " relative to " << lastObjectDetection.header.frame_id);
@@ -206,11 +216,11 @@ bool genPath(behavior_actions::GamePiecePickup::Request &req, behavior_actions::
 			nextPoint = selectedObjectPoints[i+1];
 		}
 		// Add any close enough secondary points to the line between this point and the next point
-		Line l2 = Line(selectedObjectPoints[i][0], selectedObjectPoints[i][1], nextPoint[0], nextPoint[1]);
+		Line l2 = Line(selectedObjectPoints[i], nextPoint);
 		std::sort(secondaryObjectPoints.begin(), secondaryObjectPoints.end(), [selectedObjectPoints, i](Point a, Point b) {
-			Line la = Line(selectedObjectPoints[i][0], selectedObjectPoints[i][1], a[0], a[1]);
-			Line lb = Line(selectedObjectPoints[i][0], selectedObjectPoints[i][1], b[0], b[1]);
-			return hypot(la) < hypot(lb); // sort objects by distance to point 1
+			Line la = Line(selectedObjectPoints[i], a);
+			Line lb = Line(selectedObjectPoints[i], b);
+			return la.lengthSquared() < lb.lengthSquared(); // sort objects by distance to point 1
 		});
 		std::vector<Point> pointsToRemove;
 		for (const auto &p : secondaryObjectPoints) {
@@ -226,7 +236,7 @@ bool genPath(behavior_actions::GamePiecePickup::Request &req, behavior_actions::
 		for (auto p : pointsToRemove) {
 			secondaryObjectPoints.erase(std::remove(secondaryObjectPoints.begin(), secondaryObjectPoints.end(), p), secondaryObjectPoints.end());
 		}
-		pointsToRemove = std::vector<Point>();
+		pointsToRemove.clear();
 	}
 
 	if (points.size() == 1) // No objects added
@@ -239,9 +249,9 @@ bool genPath(behavior_actions::GamePiecePickup::Request &req, behavior_actions::
 	// Add any close enough secondary points to the line between the last object and the end
 	l2 = Line(selectedObjectPoints[secondaryObjectPoints.size()-1][0], selectedObjectPoints[secondaryObjectPoints.size()-1][1], req.endpoint.position.x, req.endpoint.position.y);
 	std::sort(secondaryObjectPoints.begin(), secondaryObjectPoints.end(), [selectedObjectPoints](Point a, Point b) {
-		Line la = Line(selectedObjectPoints[selectedObjectPoints.size()-1][0], selectedObjectPoints[selectedObjectPoints.size()-1][1], a[0], a[1]);
-		Line lb = Line(selectedObjectPoints[selectedObjectPoints.size()-1][0], selectedObjectPoints[selectedObjectPoints.size()-1][1], b[0], b[1]);
-		return hypot(la) < hypot(lb); // sort objects by distance to last object
+		Line la = Line(selectedObjectPoints[selectedObjectPoints.size()-1], a);
+		Line lb = Line(selectedObjectPoints[selectedObjectPoints.size()-1], b);
+		return la.lengthSquared() < lb.lengthSquared(); // sort objects by distance to last object
 	});
 	for (const auto &p : secondaryObjectPoints) {
 		if (pointToLineSegmentDistance(l2, p[0], p[1]) <= req.secondary_max_distance && secondaryObjects < req.secondary_max_objects) { // if the secondary object is close enough and the limit has not been reached,
