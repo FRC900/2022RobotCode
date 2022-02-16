@@ -182,7 +182,6 @@ class holdPosition
 			
 			// Resets isAligned
 			feedback.isAligned = false;
-            as_.publishFeedback(feedback);
 			bool preempted = false;
 			bool timed_out = false;
 			bool succeeded = false;
@@ -259,7 +258,7 @@ class holdPosition
 				const auto xdif = fabs(next_waypoint.position.x - odom_.pose.pose.position.x);
 				const auto ydif = fabs(next_waypoint.position.y - odom_.pose.pose.position.y);
 				const auto posedif = fabs(getYaw(next_waypoint.orientation) - getYaw(odom_.pose.pose.orientation));
-				ROS_ERROR_STREAM("isnan xdif ydif posedif  " << isnan(xdif) << isnan(ydif) << isnan(posedif));
+				ROS_ERROR_STREAM("Dist and angle thresh are" << dist_threshold_ << " " << angle_threshold_);
 			// checks if values are less than threshold or are nan, meaning the pose or x,y,z was not provided	
 				feedback.isAligned = (xdif < dist_threshold_ || isnan(xdif)   && ydif < dist_threshold_ ||   isnan(ydif)    && posedif < angle_threshold_ || isnan(angle_threshold_));
 				as_.publishFeedback(feedback);
