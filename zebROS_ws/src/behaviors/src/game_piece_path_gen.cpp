@@ -66,10 +66,6 @@ public:
 	}
 };
 
-double hypot(Line l) {
-	return hypot(l.x2-l.x1, l.y2-l.y1);
-}
-
 double pointOnLine(Line l, double x) { // 2D
 	// y = m(x - x1) + y1
 	// m = (y2 - y1)/(x2 - x1)
@@ -183,60 +179,9 @@ bool genPath(behavior_actions::GamePiecePickup::Request &req, behavior_actions::
 
 	// TODO what to do if selectedObjectPoints.size() == 0?
 
-	// Add any close enough secondary points to the line between the start and the first object
-	l2 = Line(0, 0, selectedObjectPoints[0][0], selectedObjectPoints[0][1]);
-	std::sort(secondaryObjectPoints.begin(), secondaryObjectPoints.end(), [selectedObjectPoints, &points](Point a, Point b) {
-		Line la = Line(points[0], a);
-		Line lb = Line(points[0], b);
-		return la.lengthSquared() < lb.lengthSquared(); // sort objects by distance to start
-	});
-	for (const auto &p : secondaryObjectPoints) {
-		if (pointToLineSegmentDistance(l2, p[0], p[1]) <= req.secondary_max_distance && secondaryObjects < req.secondary_max_objects) { // if the secondary object is close enough and the limit has not been reached,
-			// add to path
-			ROS_INFO_STREAM("game_piece_path_gen: adding secondary game piece at " << p[0] << "," << p[1] << " relative to " << lastObjectDetection.header.frame_id);
-			secondaryObjectIndices.push_back(points.size());
-			points.push_back(p);
-			pointsToRemove.push_back(p);
-			secondaryObjects++;
-		}
-	}
-	for (auto p : pointsToRemove) {
-		secondaryObjectPoints.erase(std::remove(secondaryObjectPoints.begin(), secondaryObjectPoints.end(), p), secondaryObjectPoints.end());
-	}
-	pointsToRemove.clear();
-
 	for (size_t i = 0; i < selectedObjectPoints.size(); i++) { // Add selected object points to list of points
 		ROS_INFO_STREAM("game_piece_path_gen: choosing game piece at " << selectedObjectPoints[i][0] << "," << selectedObjectPoints[i][1] << " relative to " << lastObjectDetection.header.frame_id);
 		points.push_back(selectedObjectPoints[i]);
-
-		Point nextPoint;
-		if (i == (std::min(objects_num, selectedObjectPoints.size())-1)) {
-			nextPoint = {req.endpoint.position.x, req.endpoint.position.y, req.endpoint.orientation.z};
-		} else {
-			nextPoint = selectedObjectPoints[i+1];
-		}
-		// Add any close enough secondary points to the line between this point and the next point
-		Line l2 = Line(selectedObjectPoints[i], nextPoint);
-		std::sort(secondaryObjectPoints.begin(), secondaryObjectPoints.end(), [selectedObjectPoints, i](Point a, Point b) {
-			Line la = Line(selectedObjectPoints[i], a);
-			Line lb = Line(selectedObjectPoints[i], b);
-			return la.lengthSquared() < lb.lengthSquared(); // sort objects by distance to point 1
-		});
-		std::vector<Point> pointsToRemove;
-		for (const auto &p : secondaryObjectPoints) {
-			if (pointToLineSegmentDistance(l2, p[0], p[1]) <= req.secondary_max_distance && secondaryObjects < req.secondary_max_objects) { // if the secondary object is close enough and the limit has not been reached,
-				// add to path
-				ROS_INFO_STREAM("game_piece_path_gen: adding secondary game piece at " << p[0] << "," << p[1] << " relative to " << lastObjectDetection.header.frame_id);
-				secondaryObjectIndices.push_back(points.size());
-				points.push_back(p);
-				pointsToRemove.push_back(p);
-				secondaryObjects++;
-			}
-		}
-		for (auto p : pointsToRemove) {
-			secondaryObjectPoints.erase(std::remove(secondaryObjectPoints.begin(), secondaryObjectPoints.end(), p), secondaryObjectPoints.end());
-		}
-		pointsToRemove.clear();
 	}
 
 	if (points.size() == 1) // No objects added
@@ -246,28 +191,47 @@ bool genPath(behavior_actions::GamePiecePickup::Request &req, behavior_actions::
 		return false;
 	}
 
-	// Add any close enough secondary points to the line between the last object and the end
-	l2 = Line(selectedObjectPoints[secondaryObjectPoints.size()-1][0], selectedObjectPoints[secondaryObjectPoints.size()-1][1], req.endpoint.position.x, req.endpoint.position.y);
-	std::sort(secondaryObjectPoints.begin(), secondaryObjectPoints.end(), [selectedObjectPoints](Point a, Point b) {
-		Line la = Line(selectedObjectPoints[selectedObjectPoints.size()-1], a);
-		Line lb = Line(selectedObjectPoints[selectedObjectPoints.size()-1], b);
-		return la.lengthSquared() < lb.lengthSquared(); // sort objects by distance to last object
-	});
+	points.push_back({req.endpoint.position.x, req.endpoint.position.y, req.endpoint.orientation.z});
+
+	// For each secondary point, find the primaryPoint-primaryPoint line segment it is closest to.
+	// If the distance to the closest line segment is less than the limit, add the point between those two points.
+	std::map<std::pair<Point, Point>, std::vector<Point>> secondaryObjectsToAddForEachSegment;
 	for (const auto &p : secondaryObjectPoints) {
-		if (pointToLineSegmentDistance(l2, p[0], p[1]) <= req.secondary_max_distance && secondaryObjects < req.secondary_max_objects) { // if the secondary object is close enough and the limit has not been reached,
-			// add to path
-			ROS_INFO_STREAM("game_piece_path_gen: adding secondary game piece at " << p[0] << "," << p[1] << " relative to " << lastObjectDetection.header.frame_id);
-			secondaryObjectIndices.push_back(points.size());
-			points.push_back(p);
-			pointsToRemove.push_back(p);
-			secondaryObjects++;
+		std::pair<Point, Point> closestLinePoints;
+		double minDistance = std::numeric_limits<double>::max();
+		for (size_t i = 0; i < points.size()-1; i++) {
+			Line lineSegment = Line(points[i], points[i+1]);
+			double distance = pointToLineSegmentDistance(lineSegment, p[0], p[1]);
+			if (distance < minDistance) {
+				minDistance = distance;
+				closestLinePoints.first = points[i];
+				closestLinePoints.second = points[i+1];
+			}
+		}
+		if (minDistance <= req.secondary_max_distance) {
+			secondaryObjectsToAddForEachSegment[closestLinePoints].push_back(p);
 		}
 	}
-	for (auto p : pointsToRemove) {
-		secondaryObjectPoints.erase(std::remove(secondaryObjectPoints.begin(), secondaryObjectPoints.end(), p), secondaryObjectPoints.end());
+	for (auto &lineAndPoints : secondaryObjectsToAddForEachSegment) {
+		std::sort(lineAndPoints.second.begin(), lineAndPoints.second.end(), [&lineAndPoints](Point a, Point b) {
+			Line la = Line(lineAndPoints.first.first, a);
+			Line lb = Line(lineAndPoints.first.first, b);
+			return la.lengthSquared() < lb.lengthSquared(); // sort objects by distance to point 1
+		});
+		for (const Point &p : lineAndPoints.second) {
+			if (secondaryObjects > req.secondary_max_objects) {
+				break;
+			}
+			auto it = std::find(points.begin(), points.end(), lineAndPoints.first.second);
+			// Insert points before the last point of the segment.
+			ROS_INFO_STREAM("game_piece_path_gen: adding secondary game piece at " << p[0] << "," << p[1] << " relative to " << lastObjectDetection.header.frame_id);
+			points.insert(it, p);
+			secondaryObjectIndices.push_back(std::find(points.begin(), points.end(), p)-points.begin());
+		}
+		if (secondaryObjects > req.secondary_max_objects) {
+			break;
+		}
 	}
-
-	points.push_back({req.endpoint.position.x, req.endpoint.position.y, req.endpoint.orientation.z});
 
 	size_t points_num = points.size();
 	size_t pts;
