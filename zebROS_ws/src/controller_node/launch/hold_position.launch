@@ -12,8 +12,8 @@
 				<param name="use_pose_for_odom" value="$(arg use_pose_for_odom)"/>
 				
 				<!-- In meters and radians -->
-		        <param name="dist_theshold" value="0.05"/>
-       			<param name="angle_threshold" value="0.35"/>
+		        <param name="dist_threshold" value="0.06"/>
+       			<param name="angle_threshold" value="0.36"/>
 
 			</group>
             <node name="hold_position_server" pkg="path_follower" type="hold_position_server" output="screen">
