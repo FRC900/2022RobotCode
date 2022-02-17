@@ -79,7 +79,7 @@ namespace dynamic_arm_controller
 
   double current_threshold_;
   int max_current_iterations_;
-  int current_iterations_;
+  int current_iterations_{0};
 
   DynamicReconfigureWrapper<DynamicArmConfig> dynamic_reconfigure_server_;
   DynamicArmConfig config_;
