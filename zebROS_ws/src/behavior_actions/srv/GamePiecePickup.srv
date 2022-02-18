@@ -7,6 +7,8 @@ uint8 secondary_max_objects
 float64 secondary_max_distance
 string secondary_frame_id # probably side_roller or something
 
+float64 min_radius # if any primary object is within this radius of a secondary object, ignore both objects
+
 geometry_msgs/Pose endpoint # only x position, y position, and z rotation will be used
 ---
 bool success

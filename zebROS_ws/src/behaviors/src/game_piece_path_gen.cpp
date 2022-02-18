@@ -151,6 +151,26 @@ bool genPath(behavior_actions::GamePiecePickup::Request &req, behavior_actions::
 		}
 	}
 
+	// If primary and secondary objects are too close together, remove both
+	std::vector<Point> primaryObjectsToRemove;
+	std::vector<Point> secondaryObjectsToRemove;
+	double minRadiusSquared = req.min_radius * req.min_radius;
+	for (const Point &p : objectPoints) {
+		for (const Point &s : secondaryObjectPoints) {
+			Line line = Line(p, s);
+			if (line.lengthSquared() <= minRadiusSquared) {
+				primaryObjectsToRemove.push_back(p);
+				secondaryObjectsToRemove.push_back(s);
+			}
+		}
+	}
+	for (const Point &p : primaryObjectsToRemove) {
+		objectPoints.erase(std::remove(objectPoints.begin(), objectPoints.end(), p), objectPoints.end());
+	}
+	for (const Point &s : secondaryObjectsToRemove) {
+		secondaryObjectPoints.erase(std::remove(secondaryObjectPoints.begin(), secondaryObjectPoints.end(), s), secondaryObjectPoints.end());
+	}
+
 	std::sort(objectPoints.begin(), objectPoints.end(), [&l](Point a, Point b) {
 		return pointToLineSegmentDistance(l, a[0], a[1]) < pointToLineSegmentDistance(l, b[0], b[1]); // sort objects by closest to line
 	});
