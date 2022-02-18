@@ -35,7 +35,6 @@
 	<arg name="cam_info_topic" default="/zed_ar/left/camera_info" />
 	-->
 	<!-- TODO - would grayscale work? -->
-	<!--
 	<arg name="cam_image_topic" default="/zed_ar/left/image_rect_color" />
 	<arg name="cam_info_topic" default="/zed_ar/left/camera_info" />
 	<arg name="output_frame" default="/zed_ar_left_camera_frame" />
@@ -53,7 +52,6 @@
 	<node pkg="fake_sensors" type="ar_msg_to_goal_detect_node" name="ar_msg_to_goal_detect" >
 		<remap from="goal_detect_msg" to="/goal_detection/goal_detect_msg" />
 	</node>
--->
 
 	<!--
 	<node pkg="tf2_ros" type="static_transform_publisher" name="link_odomtomap" args="0 0 0 0 0 0 1 map odom" />
