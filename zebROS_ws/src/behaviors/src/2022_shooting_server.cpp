@@ -6,7 +6,7 @@
 #include <actionlib/server/simple_action_server.h>
 #include <actionlib/client/simple_action_client.h>
 #include <behavior_actions/Shooting2022Action.h>
-// #include <behavior_actions/Shooter2022Action.h>
+#include <behavior_actions/Shooter2022Action.h>
 // #include <behavior_actions/Indexer2022Action.h>
 
 class ShootingServer2022
@@ -20,15 +20,15 @@ protected:
   behavior_actions::Shooting2022Feedback feedback_;
 
   behavior_actions::Shooting2022Result result_;
-  // actionlib::SimpleActionClient<behavior_actions::Shooter2022Action> ac_shooter_;
+  actionlib::SimpleActionClient<behavior_actions::Shooter2022Action> ac_shooter_;
   // actionlib::SimpleActionClient<behavior_actions::Indexer2022Action> ac_indexer_;
 
 public:
 
   ShootingServer2022(std::string name) :
     as_(nh_, name, boost::bind(&ShootingServer2022::executeCB, this, _1), false),
-    action_name_(name)/*,
-    ac_shooter_("/insert_shooter_action_path_here", true),
+    action_name_(name),
+    ac_shooter_("/shooter/shooter_server_2022", true)/*,
     ac_indexer_("/insert_indexer_action_path_here", true)*/
   {
     as_.start();
@@ -42,21 +42,18 @@ public:
     feedback_.state = feedback_.WAITING_FOR_SHOOTER;
     as_.publishFeedback(feedback_);
     ROS_INFO_STREAM("2022_shooting_server : spinning up shooter");
-    /*
     bool isSpinningFast = false;
     behavior_actions::Shooter2022Goal goal;
     goal.mode = goal.HIGH_GOAL; // `goal.` might need to be replaced with `behavior_actions::Shooter2022Goal::`
     ac_shooter_.sendGoal(goal,
                          actionlib::SimpleActionClient<behavior_actions::Shooter2022Action>::SimpleDoneCallback(),
                          actionlib::SimpleActionClient<behavior_actions::Shooter2022Action>::SimpleActiveCallback(),
-                         [&isSpinningFast](const behavior_actions::Shooter2022FeedbackConstPtr &feedback){ isSpinningFast = feedback.close_enough; });
+                         [&isSpinningFast](const behavior_actions::Shooter2022FeedbackConstPtr &feedback){ isSpinningFast = feedback->close_enough; });
     ros::Rate r(100);
     while (ros::ok() && !isSpinningFast) {
       ros::spinOnce();
       r.sleep();
     }
-    */
-    ros::Duration(2.5).sleep();
     ROS_INFO_STREAM("2022_shooting_server : spun up shooter");
     return ros::ok();
   }
@@ -108,9 +105,13 @@ public:
       }
     }
 
+    ac_shooter_.cancelGoal(); // stop shooter
+
     if (success)
     {
       ROS_INFO_STREAM("2022_shooting_server : succeeded! yay!!");
+      // publish feedback
+      as_.publishFeedback(feedback_);
       // set the action state to succeeded
       as_.setSucceeded(result_);
     }
