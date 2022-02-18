@@ -56,13 +56,13 @@ public:
 	}
 	// A line between two points, ignoring the Z axis
 	Line(Point a, Point b) {
-		this->x1 = a[0];
-		this->y1 = a[1];
-		this->x2 = b[0];
-		this->y2 = b[1];
+		x1 = a[0];
+		y1 = a[1];
+		x2 = b[0];
+		y2 = b[1];
 	}
 	double lengthSquared() {
-		return (this->x2-this->x1)*(this->x2-this->x1) + (this->y2-this->y1)*(this->y2-this->y1);
+		return (x2-x1)*(x2-x1) + (y2-y1)*(y2-y1);
 	}
 };
 
@@ -145,10 +145,6 @@ bool genPath(behavior_actions::GamePiecePickup::Request &req, behavior_actions::
 		{
 			objectPoints.push_back({lastObjectDetection.objects[i].location.x, lastObjectDetection.objects[i].location.y, 0});
 		}
-	}
-
-	for (size_t i = 0; i < lastObjectDetection.objects.size(); i++) // filter out secondary object detections
-	{
 		if ((lastObjectDetection.objects[i].id == req.secondary_object_id) && (lastObjectDetection.objects[i].location.z <= maximumZ))
 		{
 			secondaryObjectPoints.push_back({lastObjectDetection.objects[i].location.x, lastObjectDetection.objects[i].location.y, 0});
