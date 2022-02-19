@@ -58,40 +58,12 @@ public:
 		behavior_actions::Intake2022Goal intake_goal;
 		intake_goal.go_fast = false;
 		intake_goal.reverse = false;
-		intake_goal.stop = false;
 		intake_ac_.sendGoal(intake_goal);
-		bool intake_finished_before_timeout = intake_ac_.waitForResult(ros::Duration(server_timeout_));
-		if (intake_finished_before_timeout) {
-			auto state = intake_ac_.getState();
-			auto result = intake_ac_.getResult();
-			ROS_INFO_STREAM("2022_intaking_server : intake action state: " << state.toString() << (result->timed_out ? " and it timed out." : "."));
-			if (state.state_ != actionlib::SimpleClientGoalState::StateEnum::SUCCEEDED) {
-				ROS_ERROR_STREAM("2022_intaking_server : intake action did not succeed. :( Aborting.");
-				// TODO set result_.correct_cargo based on indexer data
-				as_.setAborted(result_);
-				return;
-			}
-		}
 
 		// Do indexer stuff until we intake enough cargo.
 
 		ROS_INFO_STREAM("2022_intaking_server : deactivating intake");
-		intake_goal.go_fast = false;
-		intake_goal.reverse = false;
-		intake_goal.stop = true;
-		intake_ac_.sendGoal(intake_goal);
-		intake_finished_before_timeout = intake_ac_.waitForResult(ros::Duration(server_timeout_));
-		if (intake_finished_before_timeout) {
-			auto state = intake_ac_.getState();
-			auto result = intake_ac_.getResult();
-			ROS_INFO_STREAM("2022_intaking_server : intake action state: " << state.toString() << (result->timed_out ? " and it timed out." : "."));
-			if (state.state_ != actionlib::SimpleClientGoalState::StateEnum::SUCCEEDED) {
-				ROS_ERROR_STREAM("2022_intaking_server : intake action did not succeed. :( Aborting.");
-				// TODO set result_.correct_cargo based on indexer data
-				as_.setAborted(result_);
-				return;
-			}
-		}
+		intake_ac_.cancelGoal();
 
 		ROS_INFO_STREAM("2022_intaking_server : succeeded");
 		// TODO set result_.correct_cargo based on indexer data

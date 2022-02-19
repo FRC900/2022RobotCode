@@ -61,10 +61,10 @@ public:
 
 		bool success = true;
 
-		ROS_INFO_STREAM("2022_intake_server : calling intake controller with intake_arm_extend=" << (goal->stop ? "false" : "true") << ", percent_out=" << (goal->stop ? 0 : ((goal->reverse ? -1.0 : 1.0) * (goal->go_fast ? fast_speed_ : speed_))));
+		ROS_INFO_STREAM("2022_intake_server : calling intake controller with intake_arm_extend=true, percent_out=" << ((goal->reverse ? -1.0 : 1.0) * (goal->go_fast ? fast_speed_ : speed_)));
 		// controllers_2022_msgs::Intake srv;
-		// srv.request.intake_arm_extend = goal->stop ? false : true;
-		// srv.request.percent_out = goal->stop ? 0 : ((goal->reverse ? -1.0 : 1.0) * (goal->go_fast ? fast_speed_ : speed_));
+		// srv.request.intake_arm_extend = true;
+		// srv.request.percent_out = (goal->reverse ? -1.0 : 1.0) * (goal->go_fast ? fast_speed_ : speed_);
 		// if (!intake_client_.call(srv)) {
 		// 	ROS_ERROR_STREAM("2022_intake_server : intake controller service call failed. exiting.");
 		// 	result_.timed_out = false;
@@ -74,7 +74,21 @@ public:
 		// } else {
 		// 	result_.timed_out = false;
 		// 	success = true;
-		//}
+		// }
+		while (ros::ok() && !result_.timed_out) {
+			if (as_.isPreemptRequested() || !ros::ok()) {
+				ROS_INFO_STREAM("2022_intake_server : preempted. retracting & stopping intake.");
+				as_.setPreempted(result_);
+				// srv.request.intake_arm_extend = false;
+				// srv.request.percent_out = 0;
+				// if (!intake_client_.call(srv)) {
+				// 	ROS_ERROR_STREAM("2022_intake_server : failed to stop motors...");
+				// 	as_.setAborted(result_);
+				// 	return;
+				// }
+				return;
+			}
+		}
 
 		if(success)
 		{
