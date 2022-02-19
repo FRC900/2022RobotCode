@@ -37,8 +37,8 @@ public:
 			return;
 		}
 		if (!nh_.getParam("intake_server_timeout", server_timeout_)) {
-			ROS_WARN_STREAM("2022_intake_server : could not find intake_server_timeout, defaulting to 50 seconds");
-			server_timeout_ = 50;
+			ROS_WARN_STREAM("2022_intake_server : could not find intake_server_timeout, defaulting to 10 seconds");
+			server_timeout_ = 10;
 		}
 		// intake_client_ = nh_.serviceClient<controllers_2022_msgs::Intake>("/frcrobot_jetson/intake_controller/intake_command");
 		as_.start();
@@ -52,28 +52,30 @@ public:
 	{
 		// if(!intake_client_.waitForExistence(server_timeout_))
 		// {
-		//	ROS_ERROR_STREAM("2022_intake_server : intake controller service does not exist. exiting.");
-		//	result_.timed_out = true;
-		//	result_.success = false;
-		//	as_.setPreempted(result_);
-		//	return;
+		// 	ROS_ERROR_STREAM("2022_intake_server : intake controller service does not exist. exiting.");
+		// 	result_.timed_out = true;
+		// 	result_.success = false;
+		// 	as_.setPreempted(result_);
+		// 	return;
 		// }
 
 		bool success = true;
 
-		// Intake srv;
+		// controllers_2022_msgs::Intake srv;
 		// srv.request.intake_arm_extend = true;
 		// srv.request.percent_out = (goal.reverse ? -1.0 : 1.0) * (goal.go_fast ? fast_speed_ : speed_);
 		// if (!intake_client_.call(srv)) {
-		//	ROS_ERROR_STREAM("2022_intake_server : intake controller service call failed. exiting.");
-		//	result_.timed_out = false;
-		//	result_.success = false;
-		//	as_.setPreempted(result_);
-		//	return;
+		// 	ROS_ERROR_STREAM("2022_intake_server : intake controller service call failed. exiting.");
+		// 	result_.timed_out = false;
+		// 	result_.success = false;
+		// 	as_.setPreempted(result_);
+		// 	return;
 		// } else {
-		//	result_.timed_out = false;
-		//	result_.success = true;
+		// 	result_.timed_out = false;
+		// 	result_.success = true;
 		//}
+
+		// TODO add stopping to action call
 
 		if(success)
 		{

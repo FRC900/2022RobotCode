@@ -159,6 +159,7 @@ add_dependencies(2022_climb_server_node ${behaviors_EXPORTED_TARGETS} ${catkin_E
 add_executable(2022_shooter_server_node src/2022_shooter_server.cpp)
 target_link_libraries(2022_shooter_server_node ${catkin_LIBRARIES})
 add_dependencies(2022_shooter_server_node ${behaviors_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+
 add_executable(2022_intake_server_node src/2022_intake_server.cpp)
 target_link_libraries(2022_intake_server_node ${catkin_LIBRARIES})
 add_dependencies(2022_intake_server_node ${behaviors_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
@@ -166,6 +167,10 @@ add_dependencies(2022_intake_server_node ${behaviors_EXPORTED_TARGETS} ${catkin_
 add_executable(2022_index_server_node src/2022_index_server.cpp)
 target_link_libraries(2022_index_server_node ${catkin_LIBRARIES})
 add_dependencies(2022_index_server_node ${behaviors_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+
+add_executable(2022_intaking_server_node src/2022_intaking_server.cpp)
+target_link_libraries(2022_intaking_server_node ${catkin_LIBRARIES})
+add_dependencies(2022_intaking_server_node ${behaviors_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 # 2020 actionlib servers
 if (0)
