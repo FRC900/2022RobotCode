@@ -1,6 +1,7 @@
 # goal
 bool go_fast # default false. fast is *very fast*
 bool reverse # if false, the motor intakes. if true, the motor outtakes.
+bool stop # if true, the intake retracts and stops. if false (default): intake extends and spins.
 ---
 # result
 bool timed_out

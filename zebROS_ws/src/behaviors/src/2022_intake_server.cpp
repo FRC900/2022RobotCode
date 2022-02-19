@@ -62,8 +62,8 @@ public:
 		bool success = true;
 
 		// controllers_2022_msgs::Intake srv;
-		// srv.request.intake_arm_extend = true;
-		// srv.request.percent_out = (goal.reverse ? -1.0 : 1.0) * (goal.go_fast ? fast_speed_ : speed_);
+		// srv.request.intake_arm_extend = goal->stop ? false : true;
+		// srv.request.percent_out = goal->stop ? ((goal->reverse ? -1.0 : 1.0) * (goal->go_fast ? fast_speed_ : speed_)) : 0;
 		// if (!intake_client_.call(srv)) {
 		// 	ROS_ERROR_STREAM("2022_intake_server : intake controller service call failed. exiting.");
 		// 	result_.timed_out = false;
