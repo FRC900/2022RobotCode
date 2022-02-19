@@ -185,7 +185,6 @@ class holdPosition
 			bool preempted = false;
 			bool timed_out = false;
 			bool succeeded = false;
-			bool isAligned = false;
 			//const size_t num_waypoints = goal->pose;
 
 			// Since paths are robot-centric, the initial odom value is 0,0,0 for the path.
@@ -236,9 +235,9 @@ class holdPosition
 
 			geometry_msgs::Pose next_waypoint = goal->pose;
 
-			ROS_INFO_STREAM("Before transform: next_waypoint = (" << next_waypoint.position.x << ", " << next_waypoint.position.y << ", " << getYaw(next_waypoint.orientation) << ")");
+			//ROS_INFO_STREAM("Before transform: next_waypoint = (" << next_waypoint.position.x << ", " << next_waypoint.position.y << ", " << getYaw(next_waypoint.orientation) << ")");
 			tf2::doTransform(next_waypoint, next_waypoint, odom_to_base_link_tf);
-			ROS_INFO_STREAM("After transform: next_waypoint = (" << next_waypoint.position.x << ", " << next_waypoint.position.y << ", " << getYaw(next_waypoint.orientation) << ")");
+			ROS_INFO_STREAM("Next_waypoint = (" << next_waypoint.position.x << ", " << next_waypoint.position.y << ", " << getYaw(next_waypoint.orientation) << ")");
 			
 
 			while (ros::ok() && !preempted && !timed_out && !succeeded)
@@ -250,15 +249,9 @@ class holdPosition
 					odom_.pose.pose.orientation = orientation_;
 				}
 				// If the current position is already close enough to where we want it to be
-				
-				ROS_INFO_STREAM("Diffrence between waypoint and current X=" << fabs(next_waypoint.position.x - odom_.pose.pose.position.x) << " Dist threshold= " << dist_threshold_);
-				ROS_INFO_STREAM("Diffrence between waypoint and current Y=" << fabs(next_waypoint.position.y - odom_.pose.pose.  position.y) << " Dist threshold= " << dist_threshold_);
-				ROS_INFO_STREAM("Diffrence between waypoint and current POSE=" << fabs(getYaw(next_waypoint.orientation) - getYaw(odom_.pose.pose.orientation)) << " Pose threshold= " << angle_threshold_);
-				ROS_INFO_STREAM(next_waypoint.orientation << " <--Next waypoint currentpose--> " << getYaw(odom_.pose.pose.orientation));
 				const auto xdif = fabs(next_waypoint.position.x - odom_.pose.pose.position.x);
 				const auto ydif = fabs(next_waypoint.position.y - odom_.pose.pose.position.y);
 				const auto posedif = fabs(getYaw(next_waypoint.orientation) - getYaw(odom_.pose.pose.orientation));
-				ROS_ERROR_STREAM("Dist and angle thresh are" << dist_threshold_ << " " << angle_threshold_);
 			// checks if values are less than threshold or are nan, meaning the pose or x,y,z was not provided	
 				feedback.isAligned = (xdif < dist_threshold_ || isnan(xdif)   && ydif < dist_threshold_ ||   isnan(ydif)    && posedif < angle_threshold_ || isnan(angle_threshold_));
 				as_.publishFeedback(feedback);
@@ -267,15 +260,15 @@ class holdPosition
 				
 				// This gets the point closest to current time plus lookahead distance
 				// on the path. We use this to generate a target for the x,y,orientation
-				ROS_INFO_STREAM("----------------------------------------------");
+				
 				ROS_INFO_STREAM("current_position = " << odom_.pose.pose.position.x
 					<< " " << odom_.pose.pose.position.y
 					<< " " << getYaw(odom_.pose.pose.orientation));	// PID controllers.
 
-				ROS_INFO_STREAM("    delta odom_ = " << odom_.pose.pose.position.x - starting_odom.pose.pose.position.x
-					<< ", " << odom_.pose.pose.position.y - starting_odom.pose.pose.position.y);
-				ROS_INFO_STREAM("    delta pose_ = " << pose_.pose.position.x - starting_pose.pose.position.x
-					<< ", " << pose_.pose.position.y - starting_pose.pose.position.y);
+				//ROS_INFO_STREAM("    delta odom_ = " << odom_.pose.pose.position.x - starting_odom.pose.pose.position.x
+				//	<< ", " << odom_.pose.pose.position.y - starting_odom.pose.pose.position.y);
+				//ROS_INFO_STREAM("    delta pose_ = " << pose_.pose.position.x - starting_pose.pose.position.x
+				//	<< ", " << pose_.pose.position.y - starting_pose.pose.position.y);
 				
 
 				if (!use_odom_orientation_)
@@ -390,7 +383,9 @@ class holdPosition
 				as_.setSucceeded(result);
 			}
 
-			ROS_INFO_STREAM("Elapsed time driving = " << ros::Time::now().toSec() - start_time);
+			
+			
+ROS_INFO_STREAM("Elapsed time driving = " << ros::Time::now().toSec() - start_time);
 		}
 
 		// Assorted get/set methods used by dynamic reoconfigure callback code
@@ -428,7 +423,7 @@ int main(int argc, char **argv)
 	//meters and radians that the robot can be away from the desired goal
 	double dist_threshold = .05;
 
-	double angle_threshold = .35;
+	double angle_threshold = .036;
 	std::string odom_topic = "/frcrobot_jetson/swerve_drive_controller/odom";
 	std::string pose_topic = "/zed_ar/pose";
 	nh.getParam("/hold_position/hold_position/server_timeout", server_timeout);
@@ -440,7 +435,7 @@ int main(int argc, char **argv)
 	nh.getParam("/hold_position/hold_position/use_pose_for_odom", use_pose_for_odom);
 	nh.getParam("/hold_position/hold_position/dist_threshold", dist_threshold);
 	nh.getParam("/hold_position/hold_position/angle_threshold", angle_threshold);
-
+	ROS_WARN("DistanceThreshold: " << dist_threshold_ << " Angle Thresh:" << angle_threshold_);
 	holdPosition hold_position_server("hold_position_server", nh,
 								  server_timeout,
 								  ros_rate,
