@@ -52,9 +52,11 @@ public:
 	{
 		// if(!intake_client_.waitForExistence(server_timeout_))
 		// {
-		// 	ROS_ERROR_STREAM("2022_intake_server : intake controller service does not exist. exiting.");
-		// 	as_.setPreempted();
-		// 	return;
+		//	ROS_ERROR_STREAM("2022_intake_server : intake controller service does not exist. exiting.");
+		//	result_.timed_out = true;
+		//	result_.success = false;
+		//	as_.setPreempted(result_);
+		//	return;
 		// }
 
 		bool success = true;
@@ -63,11 +65,14 @@ public:
 		// srv.request.intake_arm_extend = true;
 		// srv.request.percent_out = (goal.reverse ? -1.0 : 1.0) * (goal.go_fast ? fast_speed_ : speed_);
 		// if (!intake_client_.call(srv)) {
-		// 	ROS_ERROR_STREAM("2022_intake_server : intake controller service call failed. exiting.");
-		// 	as_.setPreempted();
-		// 	return;
+		//	ROS_ERROR_STREAM("2022_intake_server : intake controller service call failed. exiting.");
+		//	result_.timed_out = false;
+		//	result_.success = false;
+		//	as_.setPreempted(result_);
+		//	return;
 		// } else {
-		//	success = true;
+		//	result_.timed_out = false;
+		//	result_.success = true;
 		//}
 
 		if(success)
@@ -86,7 +91,7 @@ int main(int argc, char** argv)
 {
 	ros::init(argc, argv, "intake_server_2022");
 
-	IntakeServer2022 fibonacci("intake_server_2022");
+	IntakeServer2022 intake("intake_server_2022");
 	ros::spin();
 
 	return 0;
