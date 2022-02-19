@@ -32,6 +32,10 @@
 			<node name="game_piece_path_server" pkg="behaviors" type="game_piece_path_server" output="screen" >
 		   	</node>
 
+			<rosparam file="$(find behaviors)/config/path_intake_actionlib_config.yaml" command="load"/>
+			<node name="path_intake_actionlib_server" pkg="behaviors" type="path_intake_actionlib_server" output="screen" >
+		   	</node>
+
             <node name="path_follower_publish_pid_cmd_vel_node" pkg="behaviors" type="publish_pid_cmd_vel_node" output="screen">
                 <param name="orient_topic" value="orient_pid/orient_command" />
                 <param name="x_topic" value="x_position_pid/x_command" />
