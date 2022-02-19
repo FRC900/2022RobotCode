@@ -135,7 +135,7 @@ void FRCRobotSimInterface::joystickCallback(const sensor_msgs::JoyConstPtr &msg,
 	HAL_JoystickButtons hal_buttons;
 	hal_buttons.count = std::min(msg->buttons.size(), 32UL); // DriverStationGui.cpp used 32, comment below says 16?
 	hal_buttons.buttons = 0;
-	for(size_t i = 0; i < msg->buttons.size(); i++)
+	for(size_t i = 0; i < hal_buttons.count; i++)
 	{
 		// TODO This is probably so wrong
 		// GenericHID.h : The buttons are returned in a single 16 bit
