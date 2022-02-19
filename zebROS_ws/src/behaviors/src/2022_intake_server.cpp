@@ -54,28 +54,27 @@ public:
 		// {
 		// 	ROS_ERROR_STREAM("2022_intake_server : intake controller service does not exist. exiting.");
 		// 	result_.timed_out = true;
-		// 	result_.success = false;
-		// 	as_.setPreempted(result_);
+		// 	success = false;
+		// 	as_.setAborted(result_);
 		// 	return;
 		// }
 
 		bool success = true;
 
+		ROS_INFO_STREAM("2022_intake_server : calling intake controller with intake_arm_extend=" << (goal->stop ? "false" : "true") << ", percent_out=" << (goal->stop ? 0 : ((goal->reverse ? -1.0 : 1.0) * (goal->go_fast ? fast_speed_ : speed_))));
 		// controllers_2022_msgs::Intake srv;
 		// srv.request.intake_arm_extend = goal->stop ? false : true;
-		// srv.request.percent_out = goal->stop ? ((goal->reverse ? -1.0 : 1.0) * (goal->go_fast ? fast_speed_ : speed_)) : 0;
+		// srv.request.percent_out = goal->stop ? 0 : ((goal->reverse ? -1.0 : 1.0) * (goal->go_fast ? fast_speed_ : speed_));
 		// if (!intake_client_.call(srv)) {
 		// 	ROS_ERROR_STREAM("2022_intake_server : intake controller service call failed. exiting.");
 		// 	result_.timed_out = false;
-		// 	result_.success = false;
-		// 	as_.setPreempted(result_);
+		// 	success = false;
+		// 	as_.setAborted(result_);
 		// 	return;
 		// } else {
 		// 	result_.timed_out = false;
-		// 	result_.success = true;
+		// 	success = true;
 		//}
-
-		// TODO add stopping to action call
 
 		if(success)
 		{
