@@ -20,12 +20,25 @@ std::vector <std::string> topic_array;
 std_msgs::Float64 intake_arc_cmd;
 std_msgs::Float64 intake_straight_cmd;
 std_msgs::Float64 shooter_cmd;
+std_msgs::Float64 climber_cmd;
 ros::Publisher intake_straight_pub;
 ros::Publisher intake_arc_pub;
 ros::Publisher shooter_pub;
+ros::Publisher climber_pub;
 
 ros::Time last_header_stamp;
 double trigger_threshold = 0.5;
+
+//#define SHOOTER_VELOCITY_MODE
+#ifdef SHOOTER_VELOCITY_MODE
+const std::string shooter_topic_name = "/frcrobot_jetson/shooter_controller/command";
+constexpr double shooter_increment = 1.0;
+constexpr double shooter_max_value = std::numeric_limits<double>::max(); // kinda optimistic
+#else // Shooter running in % out mode
+const std::string shooter_topic_name = "/frcrobot_jetson/shooter_percent_out_controller/command";
+constexpr double shooter_increment = 0.1;
+constexpr double shooter_max_value = 1.0;
+#endif
 
 void buttonBoxCallback(const ros::MessageEvent<frc_msgs::ButtonBoxState const>& event)
 {
@@ -364,7 +377,7 @@ void evaluateCommands(const ros::MessageEvent<frc_msgs::JoystickState const>& ev
 			//Joystick1: directionUp
 			if(joystick_states_array[0].directionUpPress)
 			{
-				shooter_cmd.data = shooter_cmd.data + 1;
+				shooter_cmd.data = std::min(shooter_max_value, shooter_cmd.data + shooter_increment);
 				ROS_INFO_STREAM("Set shooter_cmd.data to " << shooter_cmd.data);
 			}
 			if(joystick_states_array[0].directionUpButton)
@@ -377,7 +390,7 @@ void evaluateCommands(const ros::MessageEvent<frc_msgs::JoystickState const>& ev
 			//Joystick1: directionDown
 			if(joystick_states_array[0].directionDownPress)
 			{
-				shooter_cmd.data = std::max(0.0, shooter_cmd.data - 1);
+				shooter_cmd.data = std::min(shooter_max_value, shooter_cmd.data - shooter_increment);
 				ROS_INFO_STREAM("Set shooter_cmd.data to " << shooter_cmd.data);
 			}
 			if(joystick_states_array[0].directionDownButton)
@@ -448,7 +461,8 @@ int main(int argc, char **argv)
 
 	intake_straight_pub = n.advertise<std_msgs::Float64>("/frcrobot_jetson/intake_straight_controller/command", 1, true);
 	intake_arc_pub = n.advertise<std_msgs::Float64>("/frcrobot_jetson/intake_arc_controller/command", 1, true);
-	shooter_pub = n.advertise<std_msgs::Float64>("/frcrobot_jetson/shooter_controller/command", 1, true);
+	shooter_pub = n.advertise<std_msgs::Float64>(shooter_topic_name, 1, true);
+	shooter_pub = n.advertise<std_msgs::Float64>("/frcrobot_jetson/climber_controller/command", 1, true);
 
 	intake_arc_cmd.data = 0.0;
 	intake_straight_cmd.data = 0.0;
