@@ -79,6 +79,10 @@
 	<include file="$(find controller_node)/launch/distance_to_pose.launch"/>
 	<include file="$(find behaviors)/launch/auto_node.launch"/>
 
+	<rosparam file="$(find behaviors)/config/path_intake_actionlib_config.yaml" command="load"/>
+	<node name="path_intake_actionlib_server" pkg="behaviors" type="path_intake_actionlib_server" output="screen">
+	</node>
+
 	<group ns="index">
 		<node name="index_server_2022" pkg="behaviors" type="2022_index_server_node" output="screen"/>
 		<rosparam command="load" file="$(find behaviors)/config/2022_index_server.yaml"/>
