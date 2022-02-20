@@ -7,6 +7,7 @@
 #include <behavior_actions/PathIntakeAction.h>
 #include <path_follower_msgs/PathAction.h>
 #include <geometry_msgs/Pose.h>
+// #include <behavior_actions/Intake2022Action.h>
 
 // This actionlib server will first generate a path with game_piece_path_gen, then run that path using PathAction, then intake a game piece using IntakeAction.
 
@@ -33,6 +34,7 @@ class PathIntakeAction{
 
     ros::ServiceClient game_piece_path_gen_client;
 
+    // actionlib::SimpleActionClient<behavior_actions::Intake2022Action> intake_ac_;
     actionlib::SimpleActionClient<path_follower_msgs::PathAction> path_ac_;
 
   public:
@@ -40,7 +42,8 @@ class PathIntakeAction{
       // boost bind is like a callback
       as_(nh_, name, boost::bind(&PathIntakeAction::executeCB, this, _1), false),
       action_name_(name),
-      path_ac_("/path_follower/path_follower_server", true)
+      path_ac_("/path_follower/path_follower_server", true)/*,
+      intake_ac_("/intake/intake_server_2022", true)*/
     {
       game_piece_path_gen_client = nh_.serviceClient<behavior_actions::GamePiecePickup>("game_piece_path_gen"); // TODO fix path once we know what it is
 
@@ -111,10 +114,19 @@ class PathIntakeAction{
       bool timed_out = false;
       feedback_.percentage_done = 0; // not implemented yet
 
-      ROS_INFO_STREAM("path_intake_actionlib_server : Following path and intaking");
+      feedback_.current_action = feedback_.START_INTAKE;
+      as_.publishFeedback(feedback_);
+
+      ROS_INFO_STREAM("path_intake_actionlib_server : starting intake");
+      // behavior_actions::Intake2022Goal intakeGoal;
+      // intakeGoal.go_fast = false;
+      // intakeGoal.reverse = false;
+      // intake_ac_.sendGoal(intakeGoal);
 
       feedback_.current_action = feedback_.GENERATE_PATH;
       as_.publishFeedback(feedback_);
+
+      ROS_INFO_STREAM("path_intake_actionlib_server : generating path");
 
       // call path generation server which returns path
 
@@ -148,10 +160,10 @@ class PathIntakeAction{
         // TODO jump to cleanup
       }
 
+      ROS_INFO_STREAM("path_intake_actionlib_server : following path");
+
       feedback_.current_action = feedback_.FOLLOW_PATH;
       as_.publishFeedback(feedback_);
-
-      // TODO figure out how to intake while following path
 
       // call path following PathAction
       if(!path_ac_.waitForServer(ros::Duration(10))){
@@ -165,6 +177,16 @@ class PathIntakeAction{
       path_ac_.sendGoal(pathGoal);
       waitForActionlibServer(path_ac_, 100, "running path"); // iterate??
 
+      ROS_INFO_STREAM("path_intake_actionlib_server : stopping intake");
+
+      feedback_.current_action = feedback_.STOP_INTAKE;
+      as_.publishFeedback(feedback_);
+
+      // intake_ac_.cancelGoalsAtAndBeforeTime(ros::Time::now());
+
+      ROS_INFO_STREAM("path_intake_actionlib_server : done");
+
+      feedback_.current_action = feedback_.DONE;
       as_.publishFeedback(feedback_);
 
       if(as_.isPreemptRequested() || !ros::ok()){
