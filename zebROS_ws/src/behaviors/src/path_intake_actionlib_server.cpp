@@ -12,7 +12,7 @@
 // This actionlib server will first generate a path with game_piece_path_gen, then run that path using PathAction, then intake a game piece using IntakeAction.
 
 template <typename T>
-void waitForActionlibServer(T &action_client, double timeout, const std::string &activity);
+void waitForActionlibServer(T &action_client, double timeout, const std::string &activity, std::function<bool()> stop);
 
 using Point = std::array<double, 3>;
 using Pose = std::pair<Point, double>;
@@ -75,29 +75,29 @@ class PathIntakeAction{
       }
 
       // TODO dynamic reconfigure?
-      // if (!nh_.getParam("secondary_max_objects", secondary_max_objects_))
-      // {
-      //   ROS_ERROR_STREAM("path_intake_actionlib_server : could not find secondary_max_objects");
-      //   return;
-      // }
+      if (!nh_.getParam("secondary_max_objects", secondary_max_objects_))
+      {
+        ROS_ERROR_STREAM("path_intake_actionlib_server : could not find secondary_max_objects");
+        return;
+      }
 
-      // if (!nh_.getParam("secondary_max_distance", secondary_max_distance_))
-      // {
-      //   ROS_ERROR_STREAM("path_intake_actionlib_server : could not find secondary_max_distance");
-      //   return;
-      // }
+      if (!nh_.getParam("secondary_max_distance", secondary_max_distance_))
+      {
+        ROS_ERROR_STREAM("path_intake_actionlib_server : could not find secondary_max_distance");
+        return;
+      }
 
-      // if (!nh_.getParam("secondary_frame_id", secondary_frame_id_))
-      // {
-      //   ROS_ERROR_STREAM("path_intake_actionlib_server : could not find secondary_frame_id");
-      //   return;
-      // }
+      if (!nh_.getParam("secondary_frame_id", secondary_frame_id_))
+      {
+        ROS_ERROR_STREAM("path_intake_actionlib_server : could not find secondary_frame_id");
+        return;
+      }
 
-      // if (!nh_.getParam("min_radius", min_radius_))
-      // {
-      //   ROS_ERROR_STREAM("path_intake_actionlib_server : could not find min_radius");
-      //   return;
-      // }
+      if (!nh_.getParam("min_radius", min_radius_))
+      {
+        ROS_ERROR_STREAM("path_intake_actionlib_server : could not find min_radius");
+        return;
+      }
       as_.start();
     }
 
@@ -107,6 +107,10 @@ class PathIntakeAction{
     void executeCB(const behavior_actions::PathIntakeGoalConstPtr &goal){
       if (!game_piece_path_gen_client.waitForExistence(ros::Duration(30.0))) { // TODO make 30s configurable?
         ROS_ERROR_STREAM("path_intake_actionlib_server : game_piece_path_gen *does not exist*. Aborting.");
+        result_.timed_out = true;
+        result_.success = false;
+        as_.setAborted(result_);
+        return;
       }
 
       bool success = true;
@@ -138,12 +142,13 @@ class PathIntakeAction{
       // TODO have path follower subscribe to the filtered cargo data
       game_piece_path_gen_srv.request.object_id = "friendly_cargo";
       game_piece_path_gen_srv.request.max_objects = 2; // TODO this needs to be 2 - <however many cargo are in the indexer>
-      // game_piece_path_gen_srv.request.primary_frame_id = primary_frame_id_;
-      // game_piece_path_gen_srv.request.secondary_object_id = "opponent_cargo";
-      // game_piece_path_gen_srv.request.secondary_max_objects = secondary_max_objects_;
-      // game_piece_path_gen_srv.request.secondary_max_distance = secondary_max_distance_;
-      // game_piece_path_gen_srv.request.secondary_frame_id = secondary_frame_id_;
-      // game_piece_path_gen_srv.request.min_radius = min_radius_;
+      game_piece_path_gen_srv.request.primary_frame_id = primary_frame_id_;
+      game_piece_path_gen_srv.request.secondary_object_id = "opponent_cargo";
+      game_piece_path_gen_srv.request.secondary_max_objects = secondary_max_objects_;
+      game_piece_path_gen_srv.request.secondary_max_distance = secondary_max_distance_;
+      game_piece_path_gen_srv.request.secondary_frame_id = secondary_frame_id_;
+      game_piece_path_gen_srv.request.min_radius = min_radius_;
+      ROS_INFO_STREAM("path_intake_actionlib_server : generating path with object_id=friendly_cargo, max_objects=2, primary_frame_id=" << primary_frame_id_ << ", secondary_object_id=opponent_cargo, secondary_max_objects=" << secondary_max_objects_ << ", secondary_max_distance=" << secondary_max_distance_ << ", secondary_frame_id=" << secondary_frame_id_ << ", min_radius=" << min_radius_);
       geometry_msgs::Pose endpoint;
       endpoint.position.x = endpoints_[0].first[0];
       endpoint.position.y = endpoints_[0].first[1];
@@ -175,7 +180,9 @@ class PathIntakeAction{
       path_follower_msgs::PathGoal pathGoal;
       pathGoal.path = path;
       path_ac_.sendGoal(pathGoal);
-      waitForActionlibServer(path_ac_, 100, "running path"); // iterate??
+      std::function<bool()> whenToStop = [&](){return as_.isPreemptRequested();};
+      ROS_INFO_STREAM("path_intake_actionlib_server : waiting for path driving to finish");
+      waitForActionlibServer(path_ac_, 100, "running path", whenToStop); // iterate??
 
       ROS_INFO_STREAM("path_intake_actionlib_server : stopping intake");
 
@@ -218,19 +225,20 @@ class PathIntakeAction{
 };
 
 template <typename T>
-void waitForActionlibServer(T &action_client, double timeout, const std::string &activity)
+void waitForActionlibServer(T &action_client, double timeout, const std::string &activity, std::function<bool()> stop)
 	//activity is a description of what we're waiting for, e.g. "waiting for mechanism to extend" - helps identify where in the server this was called (for error msgs)
 {
 	const double request_time = ros::Time::now().toSec();
 	ros::Rate r(10); //TODO config?
 
-  bool auto_stopped;
+  bool auto_stopped = false;
 
 	//wait for actionlib server to finish
 	std::string state;
-	while(!auto_stopped && ros::ok())
+	while(!auto_stopped && ros::ok() && !stop())
 	{
 		state = action_client.getState().toString();
+    ROS_INFO_STREAM_THROTTLE(2.0, state);
 
 		if(state == "PREEMPTED") {
 			ROS_ERROR_STREAM("Path intake - " << activity << " got preempted");

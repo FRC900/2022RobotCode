@@ -112,4 +112,11 @@
 			<remap from="terabee" to="terabee_y" />
 		</node>
 	</group>
+
+	<rosparam file="$(find behaviors)/config/path_intake_actionlib_config.yaml" command="load" if="$(eval arg('run_cargo_pickup'))"/>
+	<node name="path_intake_actionlib_server" pkg="behaviors" type="path_intake_actionlib_server" output="screen" if="$(eval arg('run_cargo_pickup'))">
+		<remap from="/game_piece_path_gen" to="/path_follower/game_piece_path_gen"/>
+	</node>
+
+	<include file="$(find tf_object_detection)/launch/detection.launch"/>
 </launch>
