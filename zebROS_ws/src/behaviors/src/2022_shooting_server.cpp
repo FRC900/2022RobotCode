@@ -23,6 +23,8 @@ protected:
   actionlib::SimpleActionClient<behavior_actions::Shooter2022Action> ac_shooter_;
   // actionlib::SimpleActionClient<behavior_actions::Indexer2022Action> ac_indexer_;
 
+  double shooting_timeout_;
+
 public:
 
   ShootingServer2022(std::string name) :
@@ -31,6 +33,11 @@ public:
     ac_shooter_("/shooter/shooter_server_2022", true)/*,
     ac_indexer_("/insert_indexer_action_path_here", true)*/
   {
+    if (!nh_.getParam("shooting_timeout", shooting_timeout_))
+    {
+      ROS_WARN_STREAM("2022_climb_server : Could not find shooting_timeout, defaulting to 10 seconds");
+      shooting_timeout_ = 10.0;
+    }
     as_.start();
   }
 
@@ -38,7 +45,7 @@ public:
   {
   }
 
-  bool spinUpShooter() { // returns false if ros is not ok, true otherwise
+  bool spinUpShooter(bool &timedOut) { // returns false if ros is not ok, true otherwise
     feedback_.state = feedback_.WAITING_FOR_SHOOTER;
     as_.publishFeedback(feedback_);
     ROS_INFO_STREAM("2022_shooting_server : spinning up shooter");
@@ -50,9 +57,21 @@ public:
                          actionlib::SimpleActionClient<behavior_actions::Shooter2022Action>::SimpleActiveCallback(),
                          [&isSpinningFast](const behavior_actions::Shooter2022FeedbackConstPtr &feedback){ isSpinningFast = feedback->close_enough; });
     ros::Rate r(100);
+    double multipliedTimeout = shooting_timeout_ * 100; // 100 because that's what the rate is
+    uint64_t counter = 0;
     while (ros::ok() && !isSpinningFast) {
+      if (counter >= multipliedTimeout) {
+        ROS_INFO_STREAM("2022_shooting_server : shooter timed out :(");
+        timedOut = true;
+        return false;
+      }
+      if (as_.isPreemptRequested()) {
+        ROS_INFO_STREAM("2022_shooting_server : preempted");
+        return false;
+      }
       ros::spinOnce();
       r.sleep();
+      counter++;
     }
     ROS_INFO_STREAM("2022_shooting_server : spun up shooter");
     return ros::ok();
@@ -74,13 +93,18 @@ public:
 
   void executeCB(const behavior_actions::Shooting2022GoalConstPtr &goal)
   {
+    result_.timed_out = false;
+    // NOTE: verify !(goal->num_cargo > cargo_in_indexer)
     if (goal->num_cargo > 2 || goal->num_cargo == 0) {
       ROS_ERROR_STREAM("2022_shooting_server : invalid number of cargo");
       as_.setAborted(result_); // set the action state to aborted
       return;
     }
-    bool success = true;
-    for (uint8_t i = 0; i < goal->num_cargo; i++)
+    bool shooterTimedOut = false;
+    bool success = spinUpShooter(shooterTimedOut);
+    result_.timed_out = shooterTimedOut;
+    uint8_t i = 0;
+    for (uint8_t i = 0; (i < goal->num_cargo) && success; i++)
     {
       // check that preempt has not been requested by the client
       if (as_.isPreemptRequested() || !ros::ok())
@@ -88,12 +112,6 @@ public:
         ROS_INFO_STREAM("2022_shooting_server : preempted");
         // set the action state to preempted
         as_.setPreempted();
-        success = false;
-        break;
-      }
-      if (spinUpShooter()) {
-        success = success && true;
-      } else {
         success = false;
         break;
       }
@@ -114,6 +132,12 @@ public:
       as_.publishFeedback(feedback_);
       // set the action state to succeeded
       as_.setSucceeded(result_);
+    }
+    else
+    {
+      ROS_INFO_STREAM("2022_shooting_server : failed :(");
+      // set the action state to aborted
+      as_.setAborted(result_);
     }
 
     feedback_ = behavior_actions::Shooting2022Feedback();

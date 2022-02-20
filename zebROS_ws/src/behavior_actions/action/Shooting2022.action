@@ -2,6 +2,7 @@
 uint8 num_cargo # 1 or 2 (0 is pointless, 3+ is impossible)
 ---
 # result
+bool timed_out
 ---
 # feedback
 uint8 WAITING_FOR_SHOOTER=0
