@@ -71,7 +71,7 @@ shooter_controller:
 #Set up controllers for main robot mechanisms
 shooter_percent_out_controller:
   joint: shooter_leader
-  type: talon_controllers/TalonPercentOutController
+  type: talon_controllers/TalonPercentOutputController
   invert_output: false
   voltage_compensation_enable: true
   dynamic_reconfigure: True
