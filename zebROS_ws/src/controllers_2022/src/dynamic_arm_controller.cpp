@@ -98,31 +98,32 @@ void DynamicArmController::starting(const ros::Time &time) {
 
 void DynamicArmController::update(const ros::Time &time, const ros::Duration &/*duration*/)
 {
+  bool current_is_too_high = false;
 #ifdef SENSE_CURRENT
   if (dynamic_arm_joint_.getOutputCurrent() >= current_threshold_) {
     current_iterations_++;
     if (current_iterations_ >= max_current_iterations_) {
       ROS_WARN_STREAM_THROTTLE(0.5, "dynamic_arm_controller : motor is above current limit. stopping.");
-      zeroed_ = true;
-      if (dynamic_arm_joint_.getSpeed() < 0) {
-        dynamic_arm_joint_.setMode(hardware_interface::TalonMode_PercentOutput);
-        dynamic_arm_joint_.setCommand(0);
-        return;
-      }
+      current_is_too_high = true;
     }
   } else {
     current_iterations_ = 0;
   }
 #endif
+  DynamicArmCommand setpoint = *(command_buffer_.readFromRT());
+
   // If we hit the limit switch, (re)zero the position.
-  if (dynamic_arm_joint_.getReverseLimitSwitch()) // || currentIsAVeryHighValueForASustainedPeriodOfTime
+  if (dynamic_arm_joint_.getReverseLimitSwitch() || current_is_too_high)
   {
-    ROS_INFO_THROTTLE(2, "dynamic_arm_controller : hit bottom limit switch");
+    ROS_INFO_STREAM_THROTTLE(2, "dynamic_arm_controller : " << (!current_is_too_high ? "hit bottom limit switch" : "current too high"));
     if (!last_zeroed_)
     {
       zeroed_ = true;
       last_zeroed_ = true;
       dynamic_arm_joint_.setSelectedSensorPosition(0);
+      if (dynamic_arm_joint_.getMode() == hardware_interface::TalonMode_PercentOutput) {
+        setpoint.SetData(0.0); // stop motor
+      }
       // dynamic_arm_joint_.setDemand1Type(hardware_interface::DemandType_ArbitraryFeedForward);
       // dynamic_arm_joint_.setDemand1Value(config_.arb_feed_forward_up_low);
     }
@@ -134,7 +135,6 @@ void DynamicArmController::update(const ros::Time &time, const ros::Duration &/*
 
   if (zeroed_) // run normally, seeking to various positions
   {
-    const DynamicArmCommand setpoint = *(command_buffer_.readFromRT());
 
     if (setpoint.GetUsingPercentOutput()) {
       dynamic_arm_joint_.setMode(hardware_interface::TalonMode_PercentOutput);

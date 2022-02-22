@@ -41,6 +41,10 @@ namespace dynamic_arm_controller
     {
     return go_slow_;
     }
+    void SetData(double data)
+    {
+      data_ = data;
+    }
 
 
   private:
