@@ -1,4 +1,7 @@
 # goal
+# if go_to_hub is true, endpoint will be ignored and the robot will navigate to the best point on the hub.
+geometry_msgs/PoseStamped endpoint
+bool go_to_hub
 ---
 # result
 bool timed_out

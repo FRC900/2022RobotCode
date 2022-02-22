@@ -7,6 +7,8 @@
 #include <behavior_actions/PathIntakeAction.h>
 #include <path_follower_msgs/PathAction.h>
 #include <geometry_msgs/Pose.h>
+#include <tf2_ros/transform_listener.h>
+#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 // #include <behavior_actions/Intake2022Action.h>
 
 // This actionlib server will first generate a path with game_piece_path_gen, then run that path using PathAction, then intake a game piece using IntakeAction.
@@ -15,7 +17,6 @@ template <typename T>
 void waitForActionlibServer(T &action_client, double timeout, const std::string &activity, std::function<bool()> stop);
 
 using Point = std::array<double, 3>;
-using Pose = std::pair<Point, double>;
 
 class PathIntakeAction{
   private:
@@ -30,9 +31,12 @@ class PathIntakeAction{
     double secondary_max_distance_;
     std::string secondary_frame_id_;
     double min_radius_;
-    std::vector<Pose> endpoints_;
+    std::vector<geometry_msgs::Pose> hub_endpoints_;
 
-    ros::ServiceClient game_piece_path_gen_client;
+    ros::ServiceClient game_piece_path_gen_client_;
+
+    tf2_ros::Buffer tf_buffer_;
+    tf2_ros::TransformListener tf2_listener_;
 
     // actionlib::SimpleActionClient<behavior_actions::Intake2022Action> intake_ac_;
     actionlib::SimpleActionClient<path_follower_msgs::PathAction> path_ac_;
@@ -42,30 +46,35 @@ class PathIntakeAction{
       // boost bind is like a callback
       as_(nh_, name, boost::bind(&PathIntakeAction::executeCB, this, _1), false),
       action_name_(name),
+      tf2_listener_(tf_buffer_),
       path_ac_("/path_follower/path_follower_server", true)/*,
       intake_ac_("/intake/intake_server_2022", true)*/
     {
-      game_piece_path_gen_client = nh_.serviceClient<behavior_actions::GamePiecePickup>("game_piece_path_gen"); // TODO fix path once we know what it is
+      game_piece_path_gen_client_ = nh_.serviceClient<behavior_actions::GamePiecePickup>("game_piece_path_gen"); // TODO fix path once we know what it is
 
       XmlRpc::XmlRpcValue endpoints;
-      if (!nh_.getParam("endpoints", endpoints))
+      if (!nh_.getParam("hub_endpoints", endpoints))
       {
-        ROS_ERROR_STREAM("path_intake_actionlib_server : could not find endpoints.");
-        return;
-      }
-      if(endpoints.getType() == XmlRpc::XmlRpcValue::Type::TypeArray && endpoints.size() > 0){
-        for (int i = 0; i < endpoints.size(); i++) {
-          if (endpoints[i].getType() == XmlRpc::XmlRpcValue::Type::TypeStruct && endpoints[i].hasMember("x") && endpoints[i].hasMember("y") && endpoints[i].hasMember("rot")) {
-            double x = endpoints[i]["x"];
-            double y = endpoints[i]["y"];
-            double rot = endpoints[i]["rot"];
-            endpoints_.push_back({{x, y, 0}, rot});
+        ROS_WARN_STREAM("path_intake_actionlib_server : could not find hub_endpoints. will not be able to navigate to hub.");
+      } else {
+        if(endpoints.getType() == XmlRpc::XmlRpcValue::Type::TypeArray && endpoints.size() > 0){
+          for (int i = 0; i < endpoints.size(); i++) {
+            if (endpoints[i].getType() == XmlRpc::XmlRpcValue::Type::TypeStruct && endpoints[i].hasMember("x") && endpoints[i].hasMember("y") && endpoints[i].hasMember("rot")) {
+              geometry_msgs::Pose pose;
+              pose.position.x = endpoints[i]["x"];
+              pose.position.y = endpoints[i]["y"];
+              pose.orientation.z = endpoints[i]["rot"];
+              // Do map relative (this) to robot relative (base_link, what the server expects) transform
+              geometry_msgs::TransformStamped map_to_base_link = tf_buffer_.lookupTransform("base_link", "map", ros::Time(0), ros::Duration(1.0));
+              tf2::doTransform(pose, pose, map_to_base_link);
+              // Add endpoint
+              hub_endpoints_.push_back(pose);
+            }
           }
         }
-      }
-      if (endpoints_.size() == 0) {
-        ROS_ERROR_STREAM("path_intake_actionlib_server : no endpoints configured. aborting.");
-        return;
+        if (hub_endpoints_.size() == 0) {
+          ROS_WARN_STREAM("path_intake_actionlib_server : no endpoints configured. will not be able to navigate to hub.");
+        }
       }
 
       if (!nh_.getParam("intake_frame_id", primary_frame_id_))
@@ -104,8 +113,29 @@ class PathIntakeAction{
     ~PathIntakeAction(void){
     }
 
+    std::optional<nav_msgs::Path> generatePath(const geometry_msgs::Pose &endpoint) {
+      behavior_actions::GamePiecePickup game_piece_path_gen_srv;
+      game_piece_path_gen_srv.request.object_id = "friendly_cargo";
+      game_piece_path_gen_srv.request.max_objects = 2; // TODO this needs to be 2 - <however many cargo are in the indexer>
+      game_piece_path_gen_srv.request.primary_frame_id = primary_frame_id_;
+      game_piece_path_gen_srv.request.secondary_object_id = "opponent_cargo";
+      game_piece_path_gen_srv.request.secondary_max_objects = secondary_max_objects_;
+      game_piece_path_gen_srv.request.secondary_max_distance = secondary_max_distance_;
+      game_piece_path_gen_srv.request.secondary_frame_id = secondary_frame_id_;
+      game_piece_path_gen_srv.request.min_radius = min_radius_;
+      ROS_INFO_STREAM("path_intake_actionlib_server : generating path with object_id=friendly_cargo, max_objects=2, primary_frame_id=" << primary_frame_id_ << ", secondary_object_id=opponent_cargo, secondary_max_objects=" << secondary_max_objects_ << ", secondary_max_distance=" << secondary_max_distance_ << ", secondary_frame_id=" << secondary_frame_id_ << ", min_radius=" << min_radius_ << ", endpoint=(" << endpoint.position.x << "," << endpoint.position.y << ")");
+      game_piece_path_gen_srv.request.endpoint = endpoint;
+
+      if(game_piece_path_gen_client_.call(game_piece_path_gen_srv)){
+        return std::optional<nav_msgs::Path>{game_piece_path_gen_srv.response.path};
+      } else {
+        ROS_ERROR_STREAM("path_intake_actionlib_server : path generation failed!");
+        return std::nullopt;
+      }
+    }
+
     void executeCB(const behavior_actions::PathIntakeGoalConstPtr &goal){
-      if (!game_piece_path_gen_client.waitForExistence(ros::Duration(30.0))) { // TODO make 30s configurable?
+      if (!game_piece_path_gen_client_.waitForExistence(ros::Duration(30.0))) { // TODO make 30s configurable?
         ROS_ERROR_STREAM("path_intake_actionlib_server : game_piece_path_gen *does not exist*. Aborting.");
         result_.timed_out = true;
         result_.success = false;
@@ -134,35 +164,38 @@ class PathIntakeAction{
 
       // call path generation server which returns path
 
+      uint64_t min_path_points = std::numeric_limits<uint64_t>::max(); // TODO add better check (distance? simulate time?)
       nav_msgs::Path path;
-
-      // TODO eventually find which endpoint is the fastest to drive to, currently only using the first
-
-      behavior_actions::GamePiecePickup game_piece_path_gen_srv;
-      // TODO have path follower subscribe to the filtered cargo data
-      game_piece_path_gen_srv.request.object_id = "friendly_cargo";
-      game_piece_path_gen_srv.request.max_objects = 2; // TODO this needs to be 2 - <however many cargo are in the indexer>
-      game_piece_path_gen_srv.request.primary_frame_id = primary_frame_id_;
-      game_piece_path_gen_srv.request.secondary_object_id = "opponent_cargo";
-      game_piece_path_gen_srv.request.secondary_max_objects = secondary_max_objects_;
-      game_piece_path_gen_srv.request.secondary_max_distance = secondary_max_distance_;
-      game_piece_path_gen_srv.request.secondary_frame_id = secondary_frame_id_;
-      game_piece_path_gen_srv.request.min_radius = min_radius_;
-      ROS_INFO_STREAM("path_intake_actionlib_server : generating path with object_id=friendly_cargo, max_objects=2, primary_frame_id=" << primary_frame_id_ << ", secondary_object_id=opponent_cargo, secondary_max_objects=" << secondary_max_objects_ << ", secondary_max_distance=" << secondary_max_distance_ << ", secondary_frame_id=" << secondary_frame_id_ << ", min_radius=" << min_radius_);
-      geometry_msgs::Pose endpoint;
-      endpoint.position.x = endpoints_[0].first[0];
-      endpoint.position.y = endpoints_[0].first[1];
-      endpoint.position.z = 0;
-      endpoint.orientation.z = endpoints_[0].second;
-      game_piece_path_gen_srv.request.endpoint = endpoint;
-
-      if(game_piece_path_gen_client.call(game_piece_path_gen_srv)){
-        path = game_piece_path_gen_srv.response.path;
+      if (goal->go_to_hub) {
+        if (hub_endpoints_.size() == 0) {
+          ROS_ERROR_STREAM("path_intake_actionlib_server : unable to navigate to hub (check messages from initialization to see why)");
+          as_.setAborted(result_);
+          success = false;
+          // TODO jump to cleanup
+        } else {
+          for (auto &endpoint : hub_endpoints_) {
+            auto temp_path = generatePath(endpoint);
+            if (temp_path.has_value()) {
+              if (temp_path.value().poses.size() < min_path_points) {
+                path = temp_path.value();
+                min_path_points = temp_path.value().poses.size();
+              }
+            }
+          }
+        }
       } else {
-        ROS_ERROR_STREAM("path_intake_actionlib_server : path generation failed! aborting");
-        as_.setAborted(result_);
-        success = false;
-        // TODO jump to cleanup
+        geometry_msgs::Pose endpoint = goal->endpoint.pose;
+        geometry_msgs::TransformStamped map_to_base_link = tf_buffer_.lookupTransform("base_link", goal->endpoint.header.frame_id, ros::Time(0), ros::Duration(1.0));
+        tf2::doTransform(endpoint, endpoint, map_to_base_link);
+        auto temp_path = generatePath(endpoint);
+        if (temp_path.has_value()) {
+          path = temp_path.value();
+        } else {
+          ROS_ERROR_STREAM("path_intake_actionlib_server : path generation failed! aborting");
+          as_.setAborted(result_);
+          success = false;
+          // TODO jump to cleanup
+        }
       }
 
       ROS_INFO_STREAM("path_intake_actionlib_server : following path");
