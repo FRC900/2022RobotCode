@@ -1,5 +1,7 @@
 #include "controllers_2022/dynamic_arm_controller.h"
 
+#define SENSE_CURRENT // comment out to disable current sensing
+
 namespace dynamic_arm_controller
 {
 bool DynamicArmController::init(hardware_interface::RobotHW *hw,
@@ -91,20 +93,27 @@ void DynamicArmController::starting(const ros::Time &time) {
   last_zeroed_  = false;
   last_time_down_ = ros::Time::now();
   command_buffer_.writeFromNonRT(DynamicArmCommand());
+  current_iterations_ = 0;
 }
 
 void DynamicArmController::update(const ros::Time &time, const ros::Duration &/*duration*/)
 {
+#ifdef SENSE_CURRENT
   if (dynamic_arm_joint_.getOutputCurrent() >= current_threshold_) {
     current_iterations_++;
     if (current_iterations_ >= max_current_iterations_) {
+      ROS_WARN_STREAM_THROTTLE(0.5, "dynamic_arm_controller : motor is above current limit. stopping.");
       zeroed_ = true;
-      dynamic_arm_joint_.setCommand(0);
+      if (dynamic_arm_joint_.getSpeed() < 0) {
+        dynamic_arm_joint_.setMode(hardware_interface::TalonMode_PercentOutput);
+        dynamic_arm_joint_.setCommand(0);
+        return;
+      }
     }
   } else {
     current_iterations_ = 0;
   }
-
+#endif
   // If we hit the limit switch, (re)zero the position.
   if (dynamic_arm_joint_.getReverseLimitSwitch()) // || currentIsAVeryHighValueForASustainedPeriodOfTime
   {

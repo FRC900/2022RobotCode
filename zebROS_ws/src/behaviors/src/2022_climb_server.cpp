@@ -7,6 +7,8 @@
 #include <map>
 #include "talon_state_msgs/TalonState.h"
 
+#define SENSE_CURRENT
+
 // How to simulate this:
 /*
 --ENTER DOCKER--
@@ -251,6 +253,8 @@ public:
     // TODO make sure the arms are going at about even speeds
     // (e.g. if switch 1 is hit, shut off motor 1. if switch 2 is hit, shut off motor 2. and so on)
 
+    // TODO add current sensing? (maybe)
+
     // Turn on motors
     controllers_2022_msgs::DynamicArmSrv srv;
     srv.request.use_percent_output = true; // percent output
@@ -392,7 +396,7 @@ public:
       bool currentIsHigh = false;
       int currentIterations = 0;
       ros::Rate r(100);
-      while(!(talon_states_.reverse_limit_switch[leaderIndex]) && !currentIsHigh)
+      while(!talon_states_.reverse_limit_switch[leaderIndex] && !currentIsHigh)
       {
         r.sleep();
         ros::spinOnce();
@@ -404,7 +408,7 @@ public:
           srv.request.go_slow = true;
           dynamic_arm_.call(srv);
         }
-
+#ifdef SENSE_CURRENT
         if (talon_states_.output_current[leaderIndex] >= current_threshold_) {
           currentIterations++;
           if (currentIterations >= max_current_iterations_) {
@@ -413,7 +417,7 @@ public:
         } else {
           currentIterations = 0;
         }
-
+#endif
         if (as_.isPreemptRequested() || !ros::ok()) {
           exited = true;
           return;
