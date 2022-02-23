@@ -1,7 +1,6 @@
 #include <ros/ros.h>
 #include <actionlib/server/simple_action_server.h>
 #include "behavior_actions/Index2022Action.h"
-//#include "controllers_2022_msgs/DynamicArmSrv.h"
 #include <functional>
 #include <std_msgs/Float64.h>
 #include "sensor_msgs/JointState.h"
@@ -12,17 +11,27 @@
 class IndexStateMachine
 {
 protected:
+  double straight_motor_percent_output_config = 0.5; //TODO Setup config, set to 50%
+  double arc_motor_percent_output_config = 0.5; //TODO Setup config, set to 50%
   ros::Subscriber joint_states_sub_;
-  //TODO Setup ROS service clients for the intake, straight motors, and arc motors
+  ros::Publisher straight_motor_publisher_;
+  ros::Publisher arc_motor_publisher_;
+  ros::NodeHandle nh_;
+  ros::Publisher
+  //TODO Set up a publisher for ball states
+  //TODO Setup ROS service clients for the straight motors, and arc motors
   //ros::ServiceClient
 public:
   uint8_t state = 0;
   bool exited = false;
   bool success = false; // whether it exited without errors
   uint8_t num_of_balls = 0;
+  uint8_t goal;
   IndexStateMachine(actionlib::SimpleActionServer<behavior_actions::Index2022Action> &as_): as_(as_)
   {
     joint_states_sub_ = nh_.subscribe("/frcrobot_jetson/joint_states", 1, &ClimbStateMachine::jointStateCallback, this);
+    straight_motor_publisher_ = nh_.advertise<std_msgs::Float64>("/frcrobot_jetson/indexer_straight_motor_controller/command", 1);
+    arc_motor_publisher_ = nh_.advertise<std_msgs::Float64>("/frcrobot_jetson/indexer_arc_motor_controller/command", 1);
   }
   void reset(bool singleStep) {
     if (!singleStep) {
@@ -55,26 +64,37 @@ public:
   void state0() //decides which state to go to based on sensor readings
   {
     state = 0;
-
+    if(goal == behavior_actions::Intake2022Goal::EJECT){
+      nextFunction_ = boost::bind(&IndexStateMachine::state3, this); //call eject state
+      return;
+    }
+    if(goal == behavior_actions::Intake2022Goal::MOVE_TO_SHOOTER){
+      nextFunction_ = boost::bind(&IndexStateMachine::state4, this); //call move to shooter state
+      return;
+    }
     if(arc_sensor_pressed && straight_sensor_pressed){
       num_of_balls = 2;
       exited = true;
+      return;
     }
-    else if(arc_sensor_pressed){
+    if(arc_sensor_pressed){
       nextFunction_ = boost::bind(&IndexStateMachine::state10, this);
       num_of_balls = 1;
       return;
     }
-    else{
+    if{
       num_of_balls = 0;
       nextFunction_ = boost::bind(&IndexStateMachine::state1, this);
+      return;
     }
   }
   void state1() //indexer is empty
   {
     state = 1;
-    //run the intake wheels
     //run the straight motors
+    std_msgs::Float64 straight_motor_percent_output;
+    straight_motor_percent_output.data = straight_motor_percent_output_config;
+    straight_motor_publisher_.publish(straight_motor_percent_output);
     while(!arc_sensor_pressed){ //TODO set up timeout
       balls = 0;
       continue;
@@ -87,11 +107,71 @@ public:
   {
     exited = true;
   }
+  void state3() //eject state
+  {
+    state = 3;
+    if(arc_sensor_pressed && straight_sensor_pressed){
+      balls = 2;
+    } else if(arc_sensor_pressed || straight_sensor_pressed){
+      balls = 1;
+    } else{
+      balls = 0;
+    }
+    // run straight motor backwards
+    std_msgs::Float64 straight_motor_percent_output;
+    straight_motor_percent_output.data = -1 *straight_motor_percent_output_config;
+    straight_motor_publisher_.publish(straight_motor_percent_output);
+    // run arc motor backwards
+    std_msgs::Float64 arc_motor_percent_output;
+    arc_motor_percent_output.data = -1 * arc_motor_percent_output_config;
+    arc_motor_publisher_.publish(arc_motor_percent_output);
+    while(arc_sensor_pressed || straight_sensor_pressed){
+      continue;
+    }
+    nextFunction_ = boost::bind(&IndexStateMachine::state2, this);
+  }
+  void state4() //move to shooter state
+  {
+    state = 4;
+    if(arc_sensor_pressed && straight_sensor_pressed){
+      balls = 2;
+    } else if(arc_sensor_pressed || straight_sensor_pressed){
+      balls = 1;
+    } else{
+      balls = 0;
+    }
+    // run straight motor backwards
+    std_msgs::Float64 straight_motor_percent_output;
+    straight_motor_percent_output.data = -1 * straight_motor_percent_output_config;
+    straight_motor_publisher_.publish(straight_motor_percent_output);
+    // run arc motor backwards
+    std_msgs::Float64 arc_motor_percent_output;
+    arc_motor_percent_output.data = -1 * arc_motor_percent_output_config;
+    arc_motor_publisher_.publish(arc_motor_percent_output);
+    if(straight_sensor_pressed && arc_sensor_pressed){
+      while(straight_sensor_pressed){
+        continue;
+      }
+    }
+    else{
+      while(arc_sensor_pressed){
+        continue;
+      }
+      // TODO wait one second
+    }
+
+    // stop straight motor
+    // stop arc motor
+
+    nextFunction_ = boost::bind(&IndexStateMachine::state2, this);
+  }
   void state10() //one existing ball
   {
     state = 10;
-    //run the intake
     //run the straight motors
+    std_msgs::Float64 straight_motor_percent_output;
+    straight_motor_percent_output.data = straight_motor_percent_output_config;
+    straight_motor_publisher_.publish(straight_motor_percent_output);
     while(arc_sensor_pressed && !straight_sensor_pressed){
       continue;
     }
@@ -128,7 +208,7 @@ public:
     controllers_2022_msgs::IntakeArmSrv srv;
     //also stop straight and arc motors
     srv.request.percent_out = 0; // percent output
-
+    // TODO - tell intake to stop, or tell it to stop in the client file
     // Call service
     if (/*service_client.call(srv)*/)
     {
@@ -166,8 +246,9 @@ public:
   {
   }
 
-  void executeCB()
+  void executeCB(const behavior_actions::Index2022GoalConstPtr &goal)
   {
+    sm.goal = goal->goal;
     // start executing the action
     while (!sm.exited)
     {
