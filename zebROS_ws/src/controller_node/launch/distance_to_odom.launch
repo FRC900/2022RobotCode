@@ -16,7 +16,9 @@
        			<param name="angle_threshold" value="0.036"/>
 
 			</group>
-            <node name="hold_position_server" pkg="path_follower" type="hold_position_server" output="screen">
+
+      <node name="hold_position_server" pkg="path_follower" type="hold_position_server" output="screen">
+				<remap from="" to="" />
 			</node>
 
             <node name="hold_position_publish_pid_cmd_vel_node" pkg="behaviors" type="publish_pid_cmd_vel_node" output="screen">
@@ -81,5 +83,9 @@
                 <remap from="pid_enable" to="orient_pid/pid_enable"/>
             </node>
         </group>
+
+				<node name="convert_distance_to_odom" pkg="path_follower" type="convert_distance_to_odom">
+					<remap from=""
+				</node>
 
 </launch>

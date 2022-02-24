@@ -91,4 +91,16 @@
 
 		<node pkg="rqt_driver_station_sim" type="rqt_driver_station_sim" name="rqt_driver_station_sim" />
 	</group>
+
+	<group ns="terabee">
+		<node name="x_fake_terabee" pkg="fake_sensors" type="fake_terabee_node">
+			<remap from="fake_terabee_input" to="base_scan_0" />
+			<remap from="terabee" to="terabee_x" />
+		</node>
+
+		<node name="y_fake_terabee" pkg="fake_sensors" type="fake_terabee_node">
+			<remap from="fake_terabee_input" to="base_scan_1" />
+			<remap from="terabee" to="terabee_y" />
+		</node>
+	</group>
 </launch>
