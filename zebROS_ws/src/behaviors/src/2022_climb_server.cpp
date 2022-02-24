@@ -21,10 +21,10 @@ rosrun behaviors 2022_climb_server_node
 */
 
 // piston config
-#define DYNAMIC_ARM_UPRIGHT -1.0
-#define DYNAMIC_ARM_TILTED   1.0
-#define STATIC_HOOK_OPEN    -1.0
-#define STATIC_HOOK_CLOSED   1.0
+constexpr double DYNAMIC_ARM_UPRIGHT = -1.0;
+constexpr double DYNAMIC_ARM_TILTED  =  1.0;
+constexpr double STATIC_HOOK_OPEN    = -1.0;
+constexpr double STATIC_HOOK_CLOSED  =  1.0;
 
 class ClimbStateMachine
 {
