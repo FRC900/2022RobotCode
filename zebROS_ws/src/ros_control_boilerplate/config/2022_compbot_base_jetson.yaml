@@ -49,6 +49,8 @@ hardware_interface:
        - {name: indexer_straight_linebreak, type: digital_input, local: false}
        - {name: indexer_arc_linebreak, type: digital_input, local: false}
 
+       - {name: intake_solenoid_joint, type: double_solenoid, module_type: ctrepcm, local_hardware: false, local_update: true}
+       
        - {name: fl_drive, type: can_talon_fx, can_id: 21, local: true}
        - {name: fl_angle, type: can_talon_fx, can_id: 11, local: true}
        - {name: fr_drive, type: can_talon_fx, can_id: 22, local: true}
