@@ -13,16 +13,4 @@
           </description>
   </class>
 
-  <class name="straight_motor_controller/StraightMotorController" type="straight_motor_controller::StraightMotorController" base_class_type="controller_interface::ControllerBase">
-          <description>
-                  2022 Climber: Straight Motor
-          </description>
-  </class>
-
-  <class name="arc_motor_controller/ArcMotorController" type="arc_motor_controller::ArcMotorController" base_class_type="controller_interface::ControllerBase">
-          <description>
-                  2022 Climber: Arc Motor
-          </description>
-  </class>
-
 </library>

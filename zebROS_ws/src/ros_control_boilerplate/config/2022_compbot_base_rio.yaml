@@ -41,6 +41,10 @@ hardware_interface:
        - {name: climber_static1_limit_switch, type: digital_input, dio_channel: 2, invert: true, local: true}
        - {name: climber_static2_limit_switch, type: digital_input, dio_channel: 3, invert: true, local: true}
 
+       # Indexer
+       - {name: indexer_straight_linebreak, type: digital_input, local: false}
+       - {name: indexer_arc_linebreak, type: digital_input, local: false}
+
        # Solenoids which are updated from controllers on the Jetson need
        # to be configured here so they can write to hardware attached
        # to the Rio

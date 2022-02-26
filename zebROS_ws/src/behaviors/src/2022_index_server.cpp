@@ -5,33 +5,54 @@
 #include <std_msgs/Float64.h>
 #include "sensor_msgs/JointState.h"
 #include <map>
-#include "actionlib_msgs/GoalID.h" //not sure if this is needed
+#include "actionlib_msgs/GoalID.h"
 
 
 class IndexStateMachine
 {
 protected:
-  double straight_motor_percent_output_config = 0.5; //TODO Setup config, set to 50%
-  double arc_motor_percent_output_config = 0.5; //TODO Setup config, set to 50%
+  double straight_motor_percent_output_config_;
+  double arc_motor_percent_output_config_;
   ros::Subscriber joint_states_sub_;
   ros::Publisher straight_motor_publisher_;
   ros::Publisher arc_motor_publisher_;
   ros::NodeHandle nh_;
-  ros::Publisher
-  //TODO Set up a publisher for ball states
-  //TODO Setup ROS service clients for the straight motors, and arc motors
-  //ros::ServiceClient
+  ros::Publisher ball_state_publisher_;
+
 public:
   uint8_t state = 0;
   bool exited = false;
   bool success = false; // whether it exited without errors
   uint8_t num_of_balls = 0;
   uint8_t goal;
+  bool straight_sensor_pressed;
+  bool arc_sensor_pressed;
+  double straight_sensor_pressed_double;
+  double arc_sensor_pressed_double;
+
   IndexStateMachine(actionlib::SimpleActionServer<behavior_actions::Index2022Action> &as_): as_(as_)
   {
     joint_states_sub_ = nh_.subscribe("/frcrobot_jetson/joint_states", 1, &ClimbStateMachine::jointStateCallback, this);
     straight_motor_publisher_ = nh_.advertise<std_msgs::Float64>("/frcrobot_jetson/indexer_straight_motor_controller/command", 1);
     arc_motor_publisher_ = nh_.advertise<std_msgs::Float64>("/frcrobot_jetson/indexer_arc_motor_controller/command", 1);
+    ball_state_publisher_ = nh_.advertise<std_msgs::UInt8>("/2022_index_server/ball_state", 1);
+    ros::NodeHandle indexer_params_nh(nh_, "indexer_actionlib_params");
+
+  	if (!indexer_params_nh.getParam("straight_motor_percent_output", straight_motor_percent_output_config_))
+  	{
+  		ROS_ERROR("could not read straight_motor_percent_output");
+  		straight_motor_percent_output_config_ = 0.5;
+  	}
+    if (!indexer_params_nh.getParam("arc_motor_percent_output", arc_motor_percent_output_config_))
+  	{
+  		ROS_ERROR("could not read arc_motor_percent_output");
+  		arc_motor_percent_output_config_ = 0.5;
+  	}
+  }
+  void publish_ball_count(int num_of_balls){
+    std_msgs::UInt8 num_of_balls_msg;
+    num_of_balls_msg.data = num_of_balls;
+    ball_state_publisher_.publish(num_of_balls_msg);
   }
   void reset(bool singleStep) {
     if (!singleStep) {
@@ -74,16 +95,19 @@ public:
     }
     if(arc_sensor_pressed && straight_sensor_pressed){
       num_of_balls = 2;
+      publish_ball_count(num_of_balls);
       exited = true;
       return;
     }
     if(arc_sensor_pressed){
       nextFunction_ = boost::bind(&IndexStateMachine::state10, this);
       num_of_balls = 1;
+      publish_ball_count(num_of_balls);
       return;
     }
     if{
       num_of_balls = 0;
+      publish_ball_count(num_of_balls);
       nextFunction_ = boost::bind(&IndexStateMachine::state1, this);
       return;
     }
@@ -93,14 +117,15 @@ public:
     state = 1;
     //run the straight motors
     std_msgs::Float64 straight_motor_percent_output;
-    straight_motor_percent_output.data = straight_motor_percent_output_config;
+    straight_motor_percent_output.data = straight_motor_percent_output_config_;
     straight_motor_publisher_.publish(straight_motor_percent_output);
-    while(!arc_sensor_pressed){ //TODO set up timeout
+    while(!arc_sensor_pressed){ //TODO set up timeout or do it in higher level code
       balls = 0;
       continue;
     }
     //if timeout was reached, set num_of_balls to 0
     num_of_balls = 1;
+    publish_ball_count(num_of_balls);
     nextFunction_ = boost::bind(&IndexStateMachine::state10, this);
   }
   void state2() //state to exit
@@ -119,11 +144,11 @@ public:
     }
     // run straight motor backwards
     std_msgs::Float64 straight_motor_percent_output;
-    straight_motor_percent_output.data = -1 *straight_motor_percent_output_config;
+    straight_motor_percent_output.data = -1 *straight_motor_percent_output_config_;
     straight_motor_publisher_.publish(straight_motor_percent_output);
     // run arc motor backwards
     std_msgs::Float64 arc_motor_percent_output;
-    arc_motor_percent_output.data = -1 * arc_motor_percent_output_config;
+    arc_motor_percent_output.data = -1 * arc_motor_percent_output_config_;
     arc_motor_publisher_.publish(arc_motor_percent_output);
     while(arc_sensor_pressed || straight_sensor_pressed){
       continue;
@@ -142,11 +167,11 @@ public:
     }
     // run straight motor backwards
     std_msgs::Float64 straight_motor_percent_output;
-    straight_motor_percent_output.data = -1 * straight_motor_percent_output_config;
+    straight_motor_percent_output.data = -1 * straight_motor_percent_output_config_;
     straight_motor_publisher_.publish(straight_motor_percent_output);
     // run arc motor backwards
     std_msgs::Float64 arc_motor_percent_output;
-    arc_motor_percent_output.data = -1 * arc_motor_percent_output_config;
+    arc_motor_percent_output.data = -1 * arc_motor_percent_output_config_;
     arc_motor_publisher_.publish(arc_motor_percent_output);
     if(straight_sensor_pressed && arc_sensor_pressed){
       while(straight_sensor_pressed){
@@ -157,11 +182,9 @@ public:
       while(arc_sensor_pressed){
         continue;
       }
-      // TODO wait one second
+      // wait one second
+      ros::Duration(1.0).sleep()
     }
-
-    // stop straight motor
-    // stop arc motor
 
     nextFunction_ = boost::bind(&IndexStateMachine::state2, this);
   }
@@ -170,18 +193,20 @@ public:
     state = 10;
     //run the straight motors
     std_msgs::Float64 straight_motor_percent_output;
-    straight_motor_percent_output.data = straight_motor_percent_output_config;
+    straight_motor_percent_output.data = straight_motor_percent_output_config_;
     straight_motor_publisher_.publish(straight_motor_percent_output);
     while(arc_sensor_pressed && !straight_sensor_pressed){
       continue;
     }
     num_of_balls = 2;
+    publish_ball_count(num_of_balls);
     nextFunction_ = boost::bind(&IndexStateMachine::state2, this);
   }
 
   void jointStateCallback(const sensor_msgs::JointState joint_state)
-  { //TODO replace state names to whatever they are actually named and reflect these changes to where these variables are used in the entire file
-    std::map<std::string, double*> stateNamesToVariables = {{"straight_sensor", &straight_sensor_pressed}, {"arc_sensor", &arc_sensor_pressed}};
+  { //TODO replace state names to whatever they are actually named
+    std::map<std::string, double*> stateNamesToVariables = {{"indexer_straight_linebreak", &straight_sensor_pressed_double}, {"indexer_arc_linebreak", &arc_sensor_pressed_double}};
+
     for (auto const &nameVar : stateNamesToVariables)
     {
       // get index of sensor
@@ -202,22 +227,29 @@ public:
         ROS_WARN_STREAM_THROTTLE(2.0, "2022_index_server : " << nameVar.first << " sensor not found in joint_states");
       }
     }
+
+    if(straight_sensor_pressed_double == 1.0){
+      straight_sensor_pressed = true; //assuming 1 means that it is pressed
+    } else{
+      straight_sensor_pressed = false;
+    }
+
+    if(arc_sensor_pressed_double == 1.0){
+      arc_sensor_pressed = true; //assuming 1 means that it is pressed
+    } else{
+      arc_sensor_pressed = false;
+    }
   }
-  void stopMotors() { //TODO Finish this
-    // Construct service call
-    controllers_2022_msgs::IntakeArmSrv srv;
-    //also stop straight and arc motors
-    srv.request.percent_out = 0; // percent output
-    // TODO - tell intake to stop, or tell it to stop in the client file
-    // Call service
-    if (/*service_client.call(srv)*/)
-    {
-      ROS_INFO_STREAM("2022_intake_server : called intake arm service to stop motors.");
-    }
-    else
-    {
-      ROS_ERROR_STREAM("2022_intake_server : failed to call intake arm service.");
-    }
+  void stopMotors() {
+    //Stop straight motor
+    std_msgs::Float64 straight_motor_percent_output;
+    straight_motor_percent_output.data = 0;
+    straight_motor_publisher_.publish(straight_motor_percent_output);
+
+    //Stop arc motor
+    std_msgs::Float64 arc_motor_percent_output;
+    arc_motor_percent_output.data = 0;
+    arc_motor_publisher_.publish(arc_motor_percent_output);
 };
 
 class IndexAction2022
