@@ -136,8 +136,6 @@ include_directories(
 add_library(controllers_2022
   src/intake_controller.cpp
   src/dynamic_arm_controller.cpp
-  src/straight_motor_controller.cpp
-  src/arc_motor_controller.cpp
 )
 
 ## Add cmake target dependencies of the library
