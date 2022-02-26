@@ -52,7 +52,12 @@ hardware_interface:
        - {name: climber_dynamic_arm_follower, type: can_talon_fx, can_id: 31, local: true} # TODO FIX CAN ID
        - {name: shooter_leader, type: can_talon_fx, can_id: 40, local: true} # TODO Fix CAN id
        - {name: shooter_follower, type: can_talon_fx, can_id: 41, local: true} # TODO Fix CAN id
+       
+       - {name: intake_leader, type: can_talon_fx, can_id: 60, local: true} # TODO Fix CAN id
+       - {name: intake_follower, type: can_talon_fx, can_id: 61, local: true}
 
+       - {name: intake_solenoid_joint, type: double_solenoid, module_type: ctrepcm, local_hardware: false, local_update: true}
+       
        - {name: fl_drive, type: can_talon_fx, can_id: 21, local: true}
        - {name: fl_angle, type: can_talon_fx, can_id: 11, local: true}
        - {name: fr_drive, type: can_talon_fx, can_id: 22, local: true}
