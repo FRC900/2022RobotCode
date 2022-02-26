@@ -101,7 +101,6 @@ private:
 	realtime_tools::RealtimeBuffer<intake_cmd_> intake_cmd_buffer_;
 
 	ros::ServiceServer intake_service_;
-
 	bool cmdIntake(controllers_2022_msgs::Intake::Request &req, controllers_2022_msgs::Intake::Response &/*response*/) {
 		if(isRunning())
           {
