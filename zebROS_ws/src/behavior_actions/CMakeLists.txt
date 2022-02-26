@@ -77,6 +77,7 @@ add_action_files(
 	AlignToShoot.action
 	Shooter.action
 	Indexer.action
+  Index2022.action
 	Eject.action
 	#GoToColor.action
 	#RotatePanel.action
