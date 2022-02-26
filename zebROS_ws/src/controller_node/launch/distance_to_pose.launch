@@ -4,10 +4,10 @@
 		<arg name="odom_topic" default="/frcrobot_jetson/swerve_drive_controller/odom"/>
 		<arg name="use_pose_for_odom" default="true"/>
 
-		<group ns="hold_position">
+		<group ns="hold_distance">
             <rosparam file="$(find path_follower)/config/hold_position_config.yaml" command="load"/>
 
-			<group ns="hold_position">
+			<group ns="hold_distance">
 				<param name="odom_topic" value="$(arg odom_topic)"/>
 				<param name="use_pose_for_odom" value="$(arg use_pose_for_odom)"/>
 
@@ -18,7 +18,6 @@
 			</group>
 
       <node name="hold_position_server" pkg="path_follower" type="hold_position_server" output="screen">
-				<remap from="" to="" />
 			</node>
 
             <node name="hold_position_publish_pid_cmd_vel_node" pkg="behaviors" type="publish_pid_cmd_vel_node" output="screen">
@@ -84,8 +83,9 @@
             </node>
         </group>
 
-				<node name="convert_distance_to_odom" pkg="path_follower" type="convert_distance_to_odom">
-					<remap from=""
+				<node name="convert_distance_to_pose" pkg="path_follower" type="convert_distance_to_pose">
+					<remap from="x_distance_input" to="/terabee/terabee_x" />
+					<remap from="y_distance_input" to="/terabee/terabee_y" />
 				</node>
 
 </launch>
