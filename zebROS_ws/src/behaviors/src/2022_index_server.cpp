@@ -18,6 +18,8 @@ protected:
   ros::Publisher arc_motor_publisher_;
   ros::NodeHandle nh_;
   ros::Publisher ball_state_publisher_;
+  boost::function<void()> nextFunction_;
+  actionlib::SimpleActionServer<behavior_actions::Index2022Action> &as_;
 
 public:
   uint8_t state = 0;
@@ -32,10 +34,10 @@ public:
 
   IndexStateMachine(actionlib::SimpleActionServer<behavior_actions::Index2022Action> &as_): as_(as_)
   {
-    joint_states_sub_ = nh_.subscribe("/frcrobot_jetson/joint_states", 1, &ClimbStateMachine::jointStateCallback, this);
+    joint_states_sub_ = nh_.subscribe("/frcrobot_jetson/joint_states", 1, &IndexStateMachine::jointStateCallback, this);
     straight_motor_publisher_ = nh_.advertise<std_msgs::Float64>("/frcrobot_jetson/indexer_straight_motor_controller/command", 1);
     arc_motor_publisher_ = nh_.advertise<std_msgs::Float64>("/frcrobot_jetson/indexer_arc_motor_controller/command", 1);
-    ball_state_publisher_ = nh_.advertise<std_msgs::UInt8>("/2022_index_server/ball_state", 1);
+    ball_state_publisher_ = nh_.advertise<std_msgs::Float64>("/2022_index_server/ball_state", 1);
     ros::NodeHandle indexer_params_nh(nh_, "indexer_actionlib_params");
 
   	if (!indexer_params_nh.getParam("straight_motor_percent_output", straight_motor_percent_output_config_))
@@ -50,16 +52,12 @@ public:
   	}
   }
   void publish_ball_count(int num_of_balls){
-    std_msgs::UInt8 num_of_balls_msg;
-    num_of_balls_msg.data = num_of_balls;
+    std_msgs::Float64 num_of_balls_msg;
+    num_of_balls_msg.data = num_of_balls * 1.0;
     ball_state_publisher_.publish(num_of_balls_msg);
   }
-  void reset(bool singleStep) {
-    if (!singleStep) {
-      state = 0;
-      nextFunction_ = boost::bind(&IndexStateMachine::state1, this);
-      rung = 0;
-    }
+  void reset() {
+    nextFunction_ = boost::bind(&IndexStateMachine::state0, this);
     exited = false;
     success = false;
   }
@@ -85,11 +83,11 @@ public:
   void state0() //decides which state to go to based on sensor readings
   {
     state = 0;
-    if(goal == behavior_actions::Intake2022Goal::EJECT){
+    if(goal == behavior_actions::Index2022Goal::EJECT){
       nextFunction_ = boost::bind(&IndexStateMachine::state3, this); //call eject state
       return;
     }
-    if(goal == behavior_actions::Intake2022Goal::MOVE_TO_SHOOTER){
+    if(goal == behavior_actions::Index2022Goal::MOVE_TO_SHOOTER){
       nextFunction_ = boost::bind(&IndexStateMachine::state4, this); //call move to shooter state
       return;
     }
@@ -105,7 +103,7 @@ public:
       publish_ball_count(num_of_balls);
       return;
     }
-    if{
+    else{
       num_of_balls = 0;
       publish_ball_count(num_of_balls);
       nextFunction_ = boost::bind(&IndexStateMachine::state1, this);
@@ -120,7 +118,8 @@ public:
     straight_motor_percent_output.data = straight_motor_percent_output_config_;
     straight_motor_publisher_.publish(straight_motor_percent_output);
     while(!arc_sensor_pressed){ //TODO set up timeout or do it in higher level code
-      balls = 0;
+      num_of_balls = 0;
+      publish_ball_count(num_of_balls);
       continue;
     }
     //if timeout was reached, set num_of_balls to 0
@@ -136,11 +135,14 @@ public:
   {
     state = 3;
     if(arc_sensor_pressed && straight_sensor_pressed){
-      balls = 2;
+      num_of_balls = 2;
+      publish_ball_count(num_of_balls);
     } else if(arc_sensor_pressed || straight_sensor_pressed){
-      balls = 1;
+      num_of_balls = 1;
+      publish_ball_count(num_of_balls);
     } else{
-      balls = 0;
+      num_of_balls = 0;
+      publish_ball_count(num_of_balls);
     }
     // run straight motor backwards
     std_msgs::Float64 straight_motor_percent_output;
@@ -159,11 +161,14 @@ public:
   {
     state = 4;
     if(arc_sensor_pressed && straight_sensor_pressed){
-      balls = 2;
+      num_of_balls = 2;
+      publish_ball_count(num_of_balls);
     } else if(arc_sensor_pressed || straight_sensor_pressed){
-      balls = 1;
+      num_of_balls = 1;
+      publish_ball_count(num_of_balls);
     } else{
-      balls = 0;
+      num_of_balls = 0;
+      publish_ball_count(num_of_balls);
     }
     // run straight motor backwards
     std_msgs::Float64 straight_motor_percent_output;
@@ -183,7 +188,7 @@ public:
         continue;
       }
       // wait one second
-      ros::Duration(1.0).sleep()
+      ros::Duration(1.0).sleep();
     }
 
     nextFunction_ = boost::bind(&IndexStateMachine::state2, this);
@@ -250,6 +255,7 @@ public:
     std_msgs::Float64 arc_motor_percent_output;
     arc_motor_percent_output.data = 0;
     arc_motor_publisher_.publish(arc_motor_percent_output);
+}
 };
 
 class IndexAction2022
@@ -318,7 +324,7 @@ public:
       ROS_INFO("%s: Succeeded", action_name_.c_str());
     } else
     {
-      sm.reset(false);
+      sm.reset();
       ROS_INFO("%s: Failed", action_name_.c_str());
     }
     // set the action state to success or not
