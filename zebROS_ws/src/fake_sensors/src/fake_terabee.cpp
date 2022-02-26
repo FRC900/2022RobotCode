@@ -14,6 +14,7 @@ class FakeTerabeeDist
       , gen_{rd_()}           //generating a random digit
       , sub_(n.subscribe("fake_terabee_input", 2, &FakeTerabeeDist::cmdVelCallback, this))
       , pub_(n.advertise<sensor_msgs::Range>("terabee", 2))
+      , normalDistribution_(std::normal_distribution<double>{0, .02}) // .02 is covariance value
 
     {
 
