@@ -6,7 +6,7 @@
 #include <hardware_interface/joint_command_interface.h>
 #include <talon_controllers/talon_controller_interface.h>
 
-
+#include <controllers_2022_msgs/Intake.h>
 #include <controllers_2022_msgs/IntakeArmSrv.h>
 #include <controllers_2022_msgs/IntakeRollerSrv.h>
 #include <std_srvs/SetBool.h>
