@@ -61,7 +61,7 @@ enum FeedbackDevice
 	FeedbackDevice_SoftwareEmulatedSensor,
 	FeedbackDevice_CTRE_MagEncoder_Relative = FeedbackDevice_QuadEncoder,
 	FeedbackDevice_CTRE_MagEncoder_Absolute = FeedbackDevice_PulseWidthEncodedPosition,
-	FeedbackDevice_Last
+	FeedbackDevice_Last = FeedbackDevice_SoftwareEmulatedSensor + 1
 };
 
 enum RemoteFeedbackDevice
