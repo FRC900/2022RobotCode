@@ -195,6 +195,7 @@ bool FRCRobotInterface::initDevices(ros::NodeHandle root_nh)
 			// them, though, so the local flags should be set to false
 			// which means both reads and writes will be skipped
 			// TODO - remove me after testing LoadPhoenix() call works
+#if 0
 			if (run_hal_robot_)
 			{
 				ROS_INFO_STREAM("Fake talon created at can ID " << can_ctre_mc_can_ids_[i]);
@@ -212,6 +213,7 @@ bool FRCRobotInterface::initDevices(ros::NodeHandle root_nh)
 				}
 			}
 			else
+#endif
 			{
 				// Add a null pointer as the can ctre_mc for this index - no
 				// actual local hardware identified for it so nothing to create.
