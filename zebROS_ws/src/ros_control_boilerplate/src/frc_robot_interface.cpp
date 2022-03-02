@@ -2291,8 +2291,10 @@ bool FRCRobotInterface::initDevices(ros::NodeHandle root_nh)
 			// by -1 from firmware version read - somehow tag
 			// the entry in ctre_mcs_[] as uninitialized.
 			// This probably should be a fatal error
+#if 0
 			ROS_INFO_STREAM_NAMED("frc_robot_interface",
 								  "\tMotor controller firmware version " << ctre_mcs_[i]->GetFirmwareVersion());
+#endif
 
 			ctre_mc_read_state_mutexes_.push_back(std::make_shared<std::mutex>());
 			ctre_mc_read_thread_states_.push_back(std::make_shared<hardware_interface::TalonHWState>(can_ctre_mc_can_ids_[i]));
