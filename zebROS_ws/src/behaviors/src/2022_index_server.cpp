@@ -20,8 +20,8 @@ protected:
   ros::Publisher ball_state_publisher_;
   boost::function<void()> nextFunction_;
   actionlib::SimpleActionServer<behavior_actions::Index2022Action> &as_;
-  bool straight_sensor_pressed_;
   bool arc_sensor_pressed_;
+  bool straight_sensor_pressed_;
   double straight_sensor_pressed_double_;
   double arc_sensor_pressed_double_;
   ros::Timer publish_ball_count_caller_ = nh_.createTimer(ros::Rate(5),&IndexStateMachine::publish_ball_count, this);
@@ -54,9 +54,16 @@ public:
   	}
   }
   void publish_ball_count(const ros::TimerEvent&){
-    std_msgs::Float64 num_of_balls__msg;
-    num_of_balls__msg.data = num_of_balls_;
-    ball_state_publisher_.publish(num_of_balls__msg);
+    if(straight_sensor_pressed_ && arc_sensor_pressed_){
+      num_of_balls_= 2;
+    } else if(straight_sensor_pressed_ || arc_sensor_pressed_){
+      num_of_balls_ = 1;
+    } else{
+      num_of_balls_ = 0;
+    }
+    std_msgs::Float64 num_of_balls_msg;
+    num_of_balls_msg.data = num_of_balls_;
+    ball_state_publisher_.publish(num_of_balls_msg);
   }
   void run_straight_motor(double percent_output){
     std_msgs::Float64 straight_motor_percent_output;
@@ -104,17 +111,14 @@ public:
       return;
     }
     if(arc_sensor_pressed_ && straight_sensor_pressed_){
-      num_of_balls_ = 2;
       exited_ = true;
       return;
     }
     if(arc_sensor_pressed_){
       nextFunction_ = boost::bind(&IndexStateMachine::state10, this);
-      num_of_balls_ = 1;
       return;
     }
     else{
-      num_of_balls_ = 0;
       nextFunction_ = boost::bind(&IndexStateMachine::state1, this);
       return;
     }
@@ -123,12 +127,12 @@ public:
   {
     state_ = 1;
     run_straight_motor(straight_motor_percent_output_config_);
+    ros::Rate r(20);
     while(!arc_sensor_pressed_){ //TODO set up timeout or do it in higher level code
-      num_of_balls_ = 0;
-      continue;
+      r.sleep();
+      ros::spinOnce();
     }
     //if timeout was reached, set num_of_balls to 0
-    num_of_balls_ = 1;
     nextFunction_ = boost::bind(&IndexStateMachine::state10, this);
   }
   void state2() //state to exit
@@ -138,44 +142,36 @@ public:
   void state3() //eject state
   {
     state_ = 3;
-    if(arc_sensor_pressed_ && straight_sensor_pressed_){
-      num_of_balls_ = 2;
-    } else if(arc_sensor_pressed_ || straight_sensor_pressed_){
-      num_of_balls_ = 1;
-    } else{
-      num_of_balls_ = 0;
-    }
     // run straight motor backwards
     run_straight_motor(-straight_motor_percent_output_config_);
     // run arc motor backwards
     run_arc_motor(-arc_motor_percent_output_config_);
+    ros::Rate r(20);
     while(arc_sensor_pressed_ || straight_sensor_pressed_){
-      continue;
+      r.sleep();
+      ros::spinOnce();
     }
     nextFunction_ = boost::bind(&IndexStateMachine::state2, this);
   }
   void state4() //move to shooter state
   {
     state_ = 4;
-    if(arc_sensor_pressed_ && straight_sensor_pressed_){
-      num_of_balls_ = 2;
-    } else if(arc_sensor_pressed_ || straight_sensor_pressed_){
-      num_of_balls_ = 1;
-    } else{
-      num_of_balls_ = 0;
-    }
     // run straight motor backwards
     run_straight_motor(-straight_motor_percent_output_config_);
-    // run arc motor backwards
     run_arc_motor(-arc_motor_percent_output_config_);
+    // run arc motor backwards
     if(straight_sensor_pressed_ && arc_sensor_pressed_){
+      ros::Rate r(20);
       while(straight_sensor_pressed_){
-        continue;
+        r.sleep();
+        ros::spinOnce();
       }
     }
     else{
+      ros::Rate r(20);
       while(arc_sensor_pressed_){
-        continue;
+        r.sleep();
+        ros::spinOnce();
       }
       // wait one second
       ros::Duration(1.0).sleep();
@@ -187,10 +183,11 @@ public:
   {
     state_ = 10;
     run_straight_motor(straight_motor_percent_output_config_);
+    ros::Rate r(20);
     while(arc_sensor_pressed_ && !straight_sensor_pressed_){
-      continue;
+      r.sleep();
+      ros::spinOnce();
     }
-    num_of_balls_ = 2;
     nextFunction_ = boost::bind(&IndexStateMachine::state2, this);
   }
 
@@ -268,7 +265,7 @@ public:
 
   void executeCB(const behavior_actions::Index2022GoalConstPtr &goal)
   {
-    sm.goal_ = goal->goal_;
+    sm.goal_ = goal->goal;
     // start executing the action
     while (!sm.exited_)
     {
@@ -291,7 +288,7 @@ public:
         sm.success_ = false;
         break;
       }
-      feedback_.num_of_balls_ = sm.num_of_balls_;
+      feedback_.num_of_balls = sm.num_of_balls_;
       as_.publishFeedback(feedback_);
     }
 
@@ -300,8 +297,8 @@ public:
     {
       sm.stopMotors();
     }
-    result_.success_ = sm.success_;
-    if (result_.success_)
+    result_.success = sm.success_;
+    if (result_.success)
     {
       ROS_INFO("%s: Succeeded", action_name_.c_str());
     } else
