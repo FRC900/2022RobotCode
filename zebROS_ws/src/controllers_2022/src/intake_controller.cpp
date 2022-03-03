@@ -7,9 +7,6 @@
 #include <talon_controllers/talon_controller_interface.h>
 
 #include <controllers_2022_msgs/Intake.h>
-#include <controllers_2022_msgs/IntakeArmSrv.h>
-#include <controllers_2022_msgs/IntakeRollerSrv.h>
-#include <std_srvs/SetBool.h>
 #include <pluginlib/class_list_macros.h> //to compile as a controller
 
 namespace intake_controller
@@ -30,7 +27,7 @@ public:
         hardware_interface::PositionJointInterface *const pos_joint_iface = hw->get<hardware_interface::PositionJointInterface>();
 
 		//Initialize intake piston joint
-        intake_arm_joint_ = pos_joint_iface->getHandle("intake_arm_joint"); //read from ros_control_boilerplate/config/[insert_year]_compbot_base_jetson.yaml
+        intake_arm_joint_ = pos_joint_iface->getHandle("intake_solenoid"); //read from ros_control_boilerplate/config/[insert_year]_compbot_base_jetson.yaml
 
         //Initialize motor joints
         //get params from config file
@@ -59,9 +56,7 @@ public:
 
     void starting(const ros::Time &/*time*/) {
         //give command buffer(s) an initial value
-        intake_cmd_buffer_.writeFromNonRT({true, 0.0});
-		// Looks unused?
-        forward_disabled_.writeFromNonRT(false);
+        intake_cmd_buffer_.writeFromNonRT({});
     }
 
     void update(const ros::Time &/*time*/, const ros::Duration &/*period*/) {
@@ -70,17 +65,11 @@ public:
         const intake_cmd_ intake_data = *(intake_cmd_buffer_.readFromRT());
         double arm_extend_double;
         if(intake_data.arm_extend == true) {
-            arm_extend_double = 0.0;
-        }
-        else {
             arm_extend_double = 1.0;
         }
-
-        //if moving forwards was disabled by the indexer server, don't allow forward movement
-        /*if(*forward_disabled_.readFromRT() && percent_out_cmd > 0)
-          {
-               percent_out_cmd = 0.0;
-             }*/
+        else {
+            arm_extend_double = 0.0;
+        }
 
         intake_joint_.setCommand(intake_data.percent_out);
         intake_arm_joint_.setCommand(arm_extend_double);
@@ -102,15 +91,16 @@ private:
 	struct intake_cmd_ {
          bool arm_extend;
          double percent_out;
+		 intake_cmd_()
+			 : arm_extend{false}
+			 , percent_out(0.0)
+		 {
+		 }
       };
 	intake_cmd_ intake_cmd_struct_;
 	realtime_tools::RealtimeBuffer<intake_cmd_> intake_cmd_buffer_;
 
 	ros::ServiceServer intake_service_;
-
-	// Unused?
-    realtime_tools::RealtimeBuffer<bool> forward_disabled_; //set to true by the indexer server when it's finishing up properly storing a ball, to ensure the proper gap
-
 
 	bool cmdIntake(controllers_2022_msgs::Intake::Request &req, controllers_2022_msgs::Intake::Response &/*response*/) {
 		if(isRunning())
@@ -127,36 +117,6 @@ private:
           }
           return true;
       }
-
-
-    bool cmdServiceArm(controllers_2022_msgs::IntakeArmSrv::Request &req, controllers_2022_msgs::IntakeArmSrv::Response &/*response*/) {
-        if(isRunning())
-        {
-            //assign request value to command buffer(s)
-            arm_extend_cmd_buffer_.writeFromNonRT(req.intake_arm_extend);
-        }
-        else
-        {
-            ROS_ERROR_STREAM("Can't accept new commands. IntakeController is not running.");
-            return false;
-        }
-        return true;
-    }
-
-    bool cmdServiceRoller(controllers_2022_msgs::IntakeRollerSrv::Request &req, controllers_2022_msgs::IntakeRollerSrv::Response &/*response*/) {
-        if(isRunning())
-        {
-            //assign request value to command buffer(s)
-            percent_out_cmd_buffer_.writeFromNonRT(req.percent_out);
-        }
-        else
-        {
-            ROS_ERROR_STREAM("Can't accept new commands. IntakeController is not running.");
-            return false;
-        }
-        return true;
-    }
-
 
 }; //class
 }//namespace
