@@ -2,6 +2,8 @@
 #include <geometry_msgs/PoseStamped.h>
 #include <message_filters/time_synchronizer.h>
 #include <message_filters/subscriber.h>
+#include <message_filters/synchronizer.h>
+#include <message_filters/sync_policies/approximate_time.h>
 #include <sensor_msgs/Range.h>
 
 ros::Publisher fake_pose_pub;
@@ -23,7 +25,8 @@ int main(int argc, char ** argv)
 
   message_filters::Subscriber<sensor_msgs::Range> x_distance_subscriber(nh, "x_distance_input", 2);
   message_filters::Subscriber<sensor_msgs::Range> y_distance_subscriber(nh, "y_distance_input", 2);
-  message_filters::TimeSynchronizer<sensor_msgs::Range, sensor_msgs::Range> sync(x_distance_subscriber, y_distance_subscriber, 2);
+  typedef message_filters::sync_policies::ApproximateTime<sensor_msgs::Range, sensor_msgs::Range> MySyncPolicy;
+  message_filters::Synchronizer<MySyncPolicy> sync(MySyncPolicy(10), x_distance_subscriber, y_distance_subscriber);
   sync.registerCallback(boost::bind(&conversionCB, _1, _2));
 
   ros::spin();
