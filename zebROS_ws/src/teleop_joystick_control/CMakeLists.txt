@@ -36,7 +36,9 @@ generate_messages (
 ## Generate dynamic reconfigure parameters in the 'cfg' folder
 generate_dynamic_reconfigure_options(
 	cfg/TeleopJoystickComp.cfg
+	cfg/TeleopJoystickComp2022.cfg
 	cfg/TeleopJoystickCompDiagnostics.cfg
+	cfg/TeleopJoystickCompDiagnostics2022.cfg
 	)
 
 ## System dependencies are found with CMake's conventions
@@ -81,17 +83,18 @@ if (0) # 2019 code, left for reference if needed
 		${${PROJECT_NAME}_EXPORTED_TARGETS}
 		${catkin_EXPORTED_TARGETS}
 		)
+endif()
 
-	add_executable(snap_to_nearest_goal src/snap_to_nearest_goal.cpp)
-	set_target_properties(snap_to_nearest_goal PROPERTIES OUTPUT_NAME
-		snap_to_nearest_goal PREFIX "")
-	target_link_libraries(snap_to_nearest_goal
-		${catkin_LIBRARIES}
-		)
-	add_dependencies(snap_to_nearest_goal
-		${${PROJECT_NAME}_EXPORTED_TARGETS}
-		${catkin_EXPORTED_TARGETS}
-		)
+add_executable(snap_to_nearest_goal src/snap_to_nearest_goal.cpp)
+set_target_properties(snap_to_nearest_goal PROPERTIES OUTPUT_NAME
+	snap_to_nearest_goal PREFIX "")
+target_link_libraries(snap_to_nearest_goal
+	${catkin_LIBRARIES}
+	)
+add_dependencies(snap_to_nearest_goal
+	${${PROJECT_NAME}_EXPORTED_TARGETS}
+	${catkin_EXPORTED_TARGETS}
+	)
 
 add_executable(teleop_joystick_comp_2020 src/teleop_joystick_comp_2020.cpp)
 target_link_libraries(teleop_joystick_comp_2020
@@ -107,7 +110,6 @@ add_dependencies(teleop_joystick_comp_2020
 	${catkin_EXPORTED_TARGETS}
 	)
 
-endif()
 
 add_executable(orient_strafing_node src/orient_strafing.cpp)
 target_link_libraries(orient_strafing_node

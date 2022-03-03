@@ -23,12 +23,12 @@
 #include "actionlib/client/simple_action_client.h"
 
 #include "dynamic_reconfigure_wrapper/dynamic_reconfigure_wrapper.h"
-#include "teleop_joystick_control/TeleopJoystickCompConfig.h"
-#include "teleop_joystick_control/TeleopJoystickCompDiagnosticsConfig.h"
+#include "teleop_joystick_control/TeleopJoystickComp2022Config.h"
+#include "teleop_joystick_control/TeleopJoystickCompDiagnostics2022Config.h"
 
 #include "teleop_joystick_control/TeleopCmdVel.h"
 
-std::unique_ptr<TeleopCmdVel> teleop_cmd_vel;
+std::unique_ptr<TeleopCmdVel<teleop_joystick_control::TeleopJoystickComp2022Config>> teleop_cmd_vel;
 
 bool diagnostics_mode = false;
 
@@ -46,8 +46,8 @@ ros::Publisher orient_strafing_state_pub;
 
 ros::Publisher shooter_offset_pub;
 
-teleop_joystick_control::TeleopJoystickCompConfig config;
-teleop_joystick_control::TeleopJoystickCompDiagnosticsConfig diagnostics_config;
+teleop_joystick_control::TeleopJoystickComp2022Config config;
+teleop_joystick_control::TeleopJoystickCompDiagnostics2022Config diagnostics_config;
 
 ros::Publisher JoystickRobotVel;
 
@@ -829,7 +829,7 @@ int main(int argc, char **argv)
 
 	orient_strafing_angle = config.climber_align_angle;
 
-	teleop_cmd_vel = std::make_unique<TeleopCmdVel>(config);
+	teleop_cmd_vel = std::make_unique<TeleopCmdVel<teleop_joystick_control::TeleopJoystickComp2022Config>>(config);
 
 	imu_angle = M_PI / 2.;
 
@@ -854,8 +854,8 @@ int main(int argc, char **argv)
 
 	ros::ServiceServer orient_strafing_angle_service = n.advertiseService("orient_strafing_angle", orientStrafingAngleCallback);
 
-	DynamicReconfigureWrapper<teleop_joystick_control::TeleopJoystickCompConfig> drw(n_params, config);
-	DynamicReconfigureWrapper<teleop_joystick_control::TeleopJoystickCompDiagnosticsConfig> diagnostics_drw(n_diagnostics_params, diagnostics_config);
+	DynamicReconfigureWrapper<teleop_joystick_control::TeleopJoystickComp2022Config> drw(n_params, config);
+	DynamicReconfigureWrapper<teleop_joystick_control::TeleopJoystickCompDiagnostics2022Config> diagnostics_drw(n_diagnostics_params, diagnostics_config);
 
 	//Read from _num_joysticks joysticks
 	// Set up this callback last, since it might use all of the various stuff
