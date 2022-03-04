@@ -1125,3 +1125,4 @@ uint16_t rev::CANSparkMax::GetStickyFaults()
 	return 0xFFFF;
 }
 #endif
+

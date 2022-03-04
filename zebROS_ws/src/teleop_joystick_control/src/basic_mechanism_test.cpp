@@ -1,10 +1,8 @@
 #include "ros/ros.h"
-#include <cmath>
 #include <string>
 
 #include "frc_msgs/ButtonBoxState.h"
 #include "frc_msgs/JoystickState.h"
-#include "std_msgs/Bool.h"
 #include "std_msgs/Float64.h"
 
 #include <vector>
@@ -17,15 +15,32 @@ frc_msgs::ButtonBoxState button_box;
 std::vector <frc_msgs::JoystickState> joystick_states_array;
 std::vector <std::string> topic_array;
 
-std_msgs::Float64 intake_arc_cmd;
-std_msgs::Float64 intake_straight_cmd;
+std_msgs::Float64 indexer_arc_cmd;
+std_msgs::Float64 indexer_straight_cmd;
 std_msgs::Float64 shooter_cmd;
-ros::Publisher intake_straight_pub;
-ros::Publisher intake_arc_pub;
+std_msgs::Float64 climber_cmd;
+std_msgs::Float64 intake_cmd;
+ros::Publisher indexer_straight_pub;
+ros::Publisher indexer_arc_pub;
 ros::Publisher shooter_pub;
+ros::Publisher climber_pub;
+ros::Publisher intake_pub;
 
 ros::Time last_header_stamp;
 double trigger_threshold = 0.5;
+
+//#define SHOOTER_VELOCITY_MODE
+#ifdef SHOOTER_VELOCITY_MODE
+const std::string shooter_topic_name = "/frcrobot_jetson/shooter_controller/command";
+constexpr double shooter_increment = 1.0;
+constexpr double shooter_max_value = std::numeric_limits<double>::max(); // kinda optimistic
+constexpr double shooter_min_value = 0.0
+#else // Shooter running in % out mode
+const std::string shooter_topic_name = "/frcrobot_jetson/shooter_percent_out_controller/command";
+constexpr double shooter_increment = 0.1;
+constexpr double shooter_max_value = 1.0;
+constexpr double shooter_min_value = -1.0;
+#endif
 
 void buttonBoxCallback(const ros::MessageEvent<frc_msgs::ButtonBoxState const>& event)
 {
@@ -219,17 +234,22 @@ void buttonBoxCallback(const ros::MessageEvent<frc_msgs::ButtonBoxState const>& 
 	last_header_stamp = button_box.header.stamp;
 }
 
+void zero_all_commands(void)
+{
+	indexer_arc_cmd.data = 0.0;
+	indexer_straight_cmd.data = 0.0;
+	shooter_cmd.data = 0.0;
+	climber_cmd.data = 0.0;
+	intake_cmd.data = 0.0;
+	ROS_INFO_STREAM("Set indexer_arc_cmd.data to " << indexer_arc_cmd.data);
+	ROS_INFO_STREAM("Set indexer_straight_cmd.data to " << indexer_straight_cmd.data);
+	ROS_INFO_STREAM("Set shooter_cmd.data to " << shooter_cmd.data);
+	ROS_INFO_STREAM("Set climber_cmd.data to " << climber_cmd.data);
+	ROS_INFO_STREAM("Set intake_cmd.data to " << intake_cmd.data);
+}
+
 void evaluateCommands(const ros::MessageEvent<frc_msgs::JoystickState const>& event)
 {
-	const auto zero_all_commands = [](void)
-	{
-		intake_arc_cmd.data = 0.0;
-		intake_straight_cmd.data = 0.0;
-		shooter_cmd.data = 0.0;
-		ROS_INFO_STREAM("Set intake_arc_cmd.data to " << intake_arc_cmd.data);
-		ROS_INFO_STREAM("Set intake_straight_cmd.data to " << intake_straight_cmd.data);
-		ROS_INFO_STREAM("Set shooter_cmd.data to " << shooter_cmd.data);
-	};
 	//So the code can use specific joysticks
 	int joystick_id = -1;
 
@@ -263,8 +283,8 @@ void evaluateCommands(const ros::MessageEvent<frc_msgs::JoystickState const>& ev
 			//Joystick1: buttonA
 			if(joystick_states_array[0].buttonAPress)
 			{
-				intake_arc_cmd.data = std::max(0.0, intake_arc_cmd.data - 0.1);
-				ROS_INFO_STREAM("Set intake_arc_cmd.data to " << intake_arc_cmd.data);
+				indexer_arc_cmd.data = std::max(-1.0, indexer_arc_cmd.data - 0.1);
+				ROS_INFO_STREAM("Set indexer_arc_cmd.data to " << indexer_arc_cmd.data);
 			}
 			if(joystick_states_array[0].buttonAButton)
 			{
@@ -276,8 +296,8 @@ void evaluateCommands(const ros::MessageEvent<frc_msgs::JoystickState const>& ev
 			//Joystick1: buttonB
 			if(joystick_states_array[0].buttonBPress)
 			{
-				intake_straight_cmd.data = std::min(1.0, intake_straight_cmd.data + 0.1);
-				ROS_INFO_STREAM("Set intake_straight_cmd.data to " << intake_straight_cmd.data);
+				indexer_straight_cmd.data = std::min(1.0, indexer_straight_cmd.data + 0.1);
+				ROS_INFO_STREAM("Set indexer_straight_cmd.data to " << indexer_straight_cmd.data);
 			}
 			if(joystick_states_array[0].buttonBButton)
 			{
@@ -289,8 +309,8 @@ void evaluateCommands(const ros::MessageEvent<frc_msgs::JoystickState const>& ev
 			//Joystick1: buttonX
 			if(joystick_states_array[0].buttonXPress)
 			{
-				intake_straight_cmd.data = std::max(0.0, intake_straight_cmd.data - 0.1);
-				ROS_INFO_STREAM("Set intake_straight_cmd.data to " << intake_straight_cmd.data);
+				indexer_straight_cmd.data = std::max(-1.0, indexer_straight_cmd.data - 0.1);
+				ROS_INFO_STREAM("Set indexer_straight_cmd.data to " << indexer_straight_cmd.data);
 			}
 			if(joystick_states_array[0].buttonXButton)
 			{
@@ -302,8 +322,8 @@ void evaluateCommands(const ros::MessageEvent<frc_msgs::JoystickState const>& ev
 			//Joystick1: buttonY
 			if(joystick_states_array[0].buttonYPress)
 			{
-				intake_arc_cmd.data = std::min(1.0, intake_arc_cmd.data + 0.1);
-				ROS_INFO_STREAM("Set intake_arc_cmd.data to " << intake_arc_cmd.data);
+				indexer_arc_cmd.data = std::min(1.0, indexer_arc_cmd.data + 0.1);
+				ROS_INFO_STREAM("Set indexer_arc_cmd.data to " << indexer_arc_cmd.data);
 			}
 			if(joystick_states_array[0].buttonYButton)
 			{
@@ -364,7 +384,7 @@ void evaluateCommands(const ros::MessageEvent<frc_msgs::JoystickState const>& ev
 			//Joystick1: directionUp
 			if(joystick_states_array[0].directionUpPress)
 			{
-				shooter_cmd.data = shooter_cmd.data + 1;
+				shooter_cmd.data = std::min(shooter_max_value, shooter_cmd.data + shooter_increment);
 				ROS_INFO_STREAM("Set shooter_cmd.data to " << shooter_cmd.data);
 			}
 			if(joystick_states_array[0].directionUpButton)
@@ -377,7 +397,7 @@ void evaluateCommands(const ros::MessageEvent<frc_msgs::JoystickState const>& ev
 			//Joystick1: directionDown
 			if(joystick_states_array[0].directionDownPress)
 			{
-				shooter_cmd.data = std::max(0.0, shooter_cmd.data - 1);
+				shooter_cmd.data = std::max(shooter_min_value, shooter_cmd.data - shooter_increment);
 				ROS_INFO_STREAM("Set shooter_cmd.data to " << shooter_cmd.data);
 			}
 			if(joystick_states_array[0].directionDownButton)
@@ -413,6 +433,56 @@ void evaluateCommands(const ros::MessageEvent<frc_msgs::JoystickState const>& ev
 			{
 			}
 
+			static bool rightStickCentered{true};
+			const auto rightStickY = joystick_states_array[0].rightStickY;
+			if(rightStickY < -0.5)
+			{
+				if (rightStickCentered)
+				{
+					climber_cmd.data = std::min(1.0, climber_cmd.data + 0.1);
+					ROS_INFO_STREAM("Set climber_cmd.data to " << climber_cmd.data);
+					rightStickCentered = false;
+				}
+			}
+			else if(rightStickY > 0.5)
+			{
+				if (rightStickCentered)
+				{
+					climber_cmd.data = std::max(-1.0, climber_cmd.data - 0.1);
+					ROS_INFO_STREAM("Set climber_cmd.data to " << climber_cmd.data);
+					rightStickCentered = false;
+				}
+			}
+			else if((rightStickY > -0.05) && (rightStickY < 0.05))
+			{
+				rightStickCentered = true;
+			}
+
+			static bool leftStickCentered{true};
+			const auto leftStickY = joystick_states_array[0].leftStickY;
+			if(leftStickY < -0.5)
+			{
+				if (leftStickCentered)
+				{
+					intake_cmd.data = std::min(1.0, intake_cmd.data + 0.1);
+					ROS_INFO_STREAM("Set intake_cmd.data to " << intake_cmd.data);
+					leftStickCentered = false;
+				}
+			}
+			else if(leftStickY > 0.5)
+			{
+				if (leftStickCentered)
+				{
+					intake_cmd.data = std::max(-1.0, intake_cmd.data - 0.1);
+					ROS_INFO_STREAM("Set intake_cmd.data to " << intake_cmd.data);
+					leftStickCentered = false;
+				}
+			}
+			else if((leftStickY > -0.05) && (leftStickY < 0.05))
+			{
+				leftStickCentered = true;
+			}
+
 			if(joystick_states_array[0].leftTrigger > trigger_threshold)
 			{
 				zero_all_commands();
@@ -431,9 +501,11 @@ void evaluateCommands(const ros::MessageEvent<frc_msgs::JoystickState const>& ev
 			}
 		}
 	}
-	intake_straight_pub.publish(intake_straight_cmd);
-	intake_arc_pub.publish(intake_arc_cmd);
+	indexer_straight_pub.publish(indexer_straight_cmd);
+	indexer_arc_pub.publish(indexer_arc_cmd);
 	shooter_pub.publish(shooter_cmd);
+	climber_pub.publish(climber_cmd);
+	intake_pub.publish(intake_cmd);
 }
 
 int main(int argc, char **argv)
@@ -446,13 +518,13 @@ int main(int argc, char **argv)
 	std::map<std::string, std::string> service_connection_header;
 	service_connection_header["tcp_nodelay"] = "1";
 
-	intake_straight_pub = n.advertise<std_msgs::Float64>("/frcrobot_jetson/intake_straight_controller/command", 1, true);
-	intake_arc_pub = n.advertise<std_msgs::Float64>("/frcrobot_jetson/intake_arc_controller/command", 1, true);
-	shooter_pub = n.advertise<std_msgs::Float64>("/frcrobot_jetson/shooter_controller/command", 1, true);
+	indexer_straight_pub = n.advertise<std_msgs::Float64>("/frcrobot_jetson/indexer_straight_controller/command", 1, true);
+	indexer_arc_pub = n.advertise<std_msgs::Float64>("/frcrobot_jetson/indexer_arc_controller/command", 1, true);
+	shooter_pub = n.advertise<std_msgs::Float64>(shooter_topic_name, 1, true);
+	climber_pub = n.advertise<std_msgs::Float64>("/frcrobot_jetson/climber_percent_out_controller/command", 1, true);
+	intake_pub = n.advertise<std_msgs::Float64>("/frcrobot_jetson/intake_motor_controller/command", 1, true);
 
-	intake_arc_cmd.data = 0.0;
-	intake_straight_cmd.data = 0.0;
-	shooter_cmd.data = 0.0;
+	zero_all_commands();
 
 	//Read from _num_joysticks joysticks
 	// Set up this callback last, since it might use all of the various stuff

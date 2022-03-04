@@ -49,18 +49,18 @@ enum FeedbackDevice
 {
 	FeedbackDevice_Uninitialized,
 	FeedbackDevice_QuadEncoder,
+	FeedbackDevice_CTRE_MagEncoder_Relative = FeedbackDevice_QuadEncoder,
 	FeedbackDevice_IntegratedSensor,
 	FeedbackDevice_Analog,
 	FeedbackDevice_Tachometer,
 	FeedbackDevice_PulseWidthEncodedPosition,
+	FeedbackDevice_CTRE_MagEncoder_Absolute = FeedbackDevice_PulseWidthEncodedPosition,
 	FeedbackDevice_SensorSum,
 	FeedbackDevice_SensorDifference,
 	FeedbackDevice_RemoteSensor0,
 	FeedbackDevice_RemoteSensor1,
 	FeedbackDevice_None,
 	FeedbackDevice_SoftwareEmulatedSensor,
-	FeedbackDevice_CTRE_MagEncoder_Relative = FeedbackDevice_QuadEncoder,
-	FeedbackDevice_CTRE_MagEncoder_Absolute = FeedbackDevice_PulseWidthEncodedPosition,
 	FeedbackDevice_Last
 };
 
@@ -170,15 +170,15 @@ constexpr uint8_t status_4_aintempvbat_default = 160;
 constexpr uint8_t status_6_misc_default = 0;
 constexpr uint8_t status_7_commstatus_default = 0;
 constexpr uint8_t status_8_pulsewidth_default = 160;
-constexpr uint8_t status_9_motprofbuffer_default = 50;
+constexpr uint8_t status_9_motprofbuffer_default = 250;
 constexpr uint8_t status_10_motionmagic_default = 160;
 constexpr uint8_t status_11_uartgadgeteer_default = 250;
 constexpr uint8_t status_12_feedback1_default = 250;
 constexpr uint8_t status_13_base_pidf0_default = 160;
 constexpr uint8_t status_14_turn_pidf1_default = 250;
 constexpr uint8_t status_15_firmwareapistatus_default = 160;
-constexpr uint8_t status_17_targets1_default = 0;
-constexpr uint8_t status_brushless_current_default = 0;
+constexpr uint8_t status_17_targets1_default = 250;
+constexpr uint8_t status_brushless_current_default = 50;
 
 enum ControlFrame
 {
@@ -474,6 +474,11 @@ class TalonHWState
 		void setStickyFaults(unsigned int sticky_faults);
 		void setConversionFactor(double conversion_factor);
 
+		void setClearPositionOnLimitF(bool clear_position_on_limit_f);
+		bool getClearPositionOnLimitF(void) const;
+		void setClearPositionOnLimitR(bool clear_position_on_limit_r);
+		bool getClearPositionOnLimitR(void) const;
+
 		//TalonFX only
 		void setMotorCommutation(hardware_interface::MotorCommutation motor_commutation);
 		hardware_interface::MotorCommutation getMotorCommutation(void) const;
@@ -621,6 +626,9 @@ class TalonHWState
 		unsigned int sticky_faults_;
 
 		double conversion_factor_;
+
+		bool clear_position_on_limit_f_{false};
+		bool clear_position_on_limit_r_{false};
 
 		// TalonFX / Falcon500 specific
 		hardware_interface::MotorCommutation motor_commutation_;

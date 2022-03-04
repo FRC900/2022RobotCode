@@ -32,8 +32,21 @@ hardware_interface:
    joints:
        - {name: shooter_leader, type: can_talon_fx, can_id: 40, local: true} # TODO Fix CAN id
        - {name: shooter_follower, type: can_talon_fx, can_id: 41, local: true} # TODO Fix CAN id
-       - {name: intake_straight, type: can_talon_fx, can_id: 50, local: true} # TODO Fix CAN id
-       - {name: intake_arc, type: can_talon_fx, can_id: 51, local: true} # TODO Fix CAN id
+       - {name: indexer_straight, type: can_talon_fx, can_id: 50, local: true} # TODO Fix CAN id
+       - {name: indexer_arc, type: can_talon_fx, can_id: 51, local: true} # TODO Fix CAN id
+
+       - {name: intake_motor, type: can_talon_fx, can_id: 60, local: true} # TODO Fix CAN id
+       - {name: intake_solenoid_joint, type: solenoid, local_hardware: false, local_update: true}
+
+       - {name: climber_dynamic_arm_solenoid_joint, type: double_solenoid, local_hardware: false, local_update: true}
+       - {name: climber_static_hook_solenoid_joint, type: double_solenoid, local_hardware: false, local_update: true}
+      #- {name: climber_dynamic1_limit_switch, type: digital_input, local: false}
+      #- {name: climber_dynamic2_limit_switch, type: digital_input, local: false}
+       - {name: climber_static1_limit_switch, type: digital_input, local: false}
+       - {name: climber_static2_limit_switch, type: digital_input, local: false}
+       - {name: climber_dynamic_arm_leader, type: can_talon_fx, can_id: 30, local: true} # TODO FIX CAN ID
+       - {name: climber_dynamic_arm_follower, type: can_talon_fx, can_id: 31, local: true} # TODO FIX CAN ID
+       - {name: joystick0, type: joystick, id: 0, local: true}
 
        - {name: robot_code_ready_jetson, local: true, type: ready}
        - {name: robot_code_ready_rio, local: false, type: ready} # Probably not really needed?
@@ -51,41 +64,203 @@ hardware_interface:
 # /frcrobot/talon_states
 
 #Set up controllers for main robot mechanisms
+# Once PID is tuned, switch to this, change #define
+# in teleop basic_mechanism_test.cpp to allow larger
+# velocity values to be sent vs. 0-1.0 % output values
 shooter_controller:
   joint: shooter_leader
   type: talon_controllers/TalonVelocityCloseLoopController
   feedback_type: IntegratedSensor
-  # TODO FIX ALL BELOW VALUES (these are from 2020)
   close_loop_values:
-      - {p: 0.00, i: 0.000, d: 0.0, f: 0, i_zone: 0}
-  invert_output: false
+      - {p: 0.20, i: 0.000, d: 0.0, f: 0.046, i_zone: 0}
+  invert_output: true
   sensor_phase: false
   peak_output_forward: 1.0
-  peak_output_reverse: -1.0
+  peak_output_reverse: 0.0
   nominal_output_forward: 0.0
   nominal_output_reverse: 0.0
   voltage_compensation_enable: true
   dynamic_reconfigure: True
   neutral_mode: Coast
+  velocity_measurement_period: Period_20Ms
+  velocity_measurement_window: 4
 
+shooter_percent_out_controller:
+  joint: shooter_leader
+  type: talon_controllers/TalonPercentOutputController
+  invert_output: true
+  feedback_type: IntegratedSensor
+  voltage_compensation_enable: true
+  dynamic_reconfigure: False
+  neutral_mode: Coast
+  #status_1_general_period: 10
+  #status_2_feedback0_period: 20
+  status_3_quadrature_period: 250
+  #status_4_aintempvbat_period: 160
+  #status_6_misc_period: 0
+  #status_7_commstatus_period: 0
+  status_8_pulsewidth_period: 250
+  status_9_motprofbuffer_period: 250
+  status_10_motionmagic_period: 250
+  #status_11_uartgadgeteer_period: 250
+  #status_12_feedback1_period: 250
+  #status_13_base_pidf0_period: 160
+  #status_14_turn_pidf1_period: 250
+  status_15_firmwareapistatus_period: 250
+  #status_17_brushless_current_period: 50
+  
 shooter_follower_controller:
     type: talon_controllers/TalonFollowerController
     joint: shooter_follower
     invert_output: False
     follow_joint: shooter_leader
     voltage_compensation_enable: true
+    dynamic_reconfigure: False
+    status_1_general_period: 250
+    status_2_feedback0_period: 250
+    status_3_quadrature_period: 250
+    #status_4_aintempvbat_period: 160
+    #status_6_misc_period: 0
+    #status_7_commstatus_period: 0
+    status_8_pulsewidth_period: 250
+    status_9_motprofbuffer_period: 250
+    status_10_motionmagic_period: 250
+    #status_11_uartgadgeteer_period: 250
+    #status_12_feedback1_period: 250
+    #status_13_base_pidf0_period: 160
+    #status_14_turn_pidf1_period: 250
+    status_15_firmwareapistatus_period: 250
+    #status_17_brushless_current_period: 50
 
-intake_straight_controller:
+indexer_straight_controller:
     type: talon_controllers/TalonPercentOutputController
-    joint: intake_straight
+    joint: indexer_straight
     invert_output: false
+    feedback_type: IntegratedSensor
+    dynamic_reconfigure: False
     voltage_compensation_enable: true
+    #status_1_general_period: 10
+    #status_2_feedback0_period: 20
+    status_3_quadrature_period: 250
+    #status_4_aintempvbat_period: 160
+    #status_6_misc_period: 0
+    #status_7_commstatus_period: 0
+    status_8_pulsewidth_period: 250
+    status_9_motprofbuffer_period: 250
+    status_10_motionmagic_period: 250
+    #status_11_uartgadgeteer_period: 250
+    #status_12_feedback1_period: 250
+    #status_13_base_pidf0_period: 160
+    #status_14_turn_pidf1_period: 250
+    status_15_firmwareapistatus_period: 250
+    #status_17_brushless_current_period: 50
     
-intake_arc_controller:
+indexer_arc_controller:
     type: talon_controllers/TalonPercentOutputController
-    joint: intake_arc
+    joint: indexer_arc
     invert_output: false
+    feedback_type: IntegratedSensor
     voltage_compensation_enable: true
+    dynamic_reconfigure: False
+    #status_1_general_period: 10
+    #status_2_feedback0_period: 20
+    status_3_quadrature_period: 250
+    #status_4_aintempvbat_period: 160
+    #status_6_misc_period: 0
+    #status_7_commstatus_period: 0
+    status_8_pulsewidth_period: 250
+    status_9_motprofbuffer_period: 250
+    status_10_motionmagic_period: 250
+    #status_11_uartgadgeteer_period: 250
+    #status_12_feedback1_period: 250
+    #status_13_base_pidf0_period: 160
+    #status_14_turn_pidf1_period: 250
+    status_15_firmwareapistatus_period: 250
+    #status_17_brushless_current_period: 50
+
+intake_solenoid_controller:
+  type: position_controllers/JointPositionController
+  joint: intake_solenoid_joint
+
+intake_motor_controller:
+    type: talon_controllers/TalonPercentOutputController
+    joint: intake_motor
+    invert_output: false
+    dynamic_reconfigure: False
+    feedback_type: IntegratedSensor
+    voltage_compensation_enable: true
+    #status_1_general_period: 10
+    #status_2_feedback0_period: 20
+    status_3_quadrature_period: 250
+    #status_4_aintempvbat_period: 160
+    #status_6_misc_period: 0
+    #status_7_commstatus_period: 0
+    status_8_pulsewidth_period: 250
+    status_9_motprofbuffer_period: 250
+    status_10_motionmagic_period: 250
+    #status_11_uartgadgeteer_period: 250
+    #status_12_feedback1_period: 250
+    #status_13_base_pidf0_period: 160
+    #status_14_turn_pidf1_period: 250
+    status_15_firmwareapistatus_period: 250
+    #status_17_brushless_current_period: 50
+
+dynamic_arm_solenoid_controller:
+    type: position_controllers/JointPositionController
+    joint: climber_dynamic_arm_solenoid_joint
+
+static_hook_solenoid_controller:
+    type: position_controllers/JointPositionController
+    joint: climber_static_hook_solenoid_joint
+
+climber_percent_out_controller:
+    joint: climber_dynamic_arm_leader
+    type: talon_controllers/TalonPercentOutputController
+    invert_output: False
+    feedback_type: IntegratedSensor
+    conversion_factor: 0.00108
+    voltage_compensation_enable: true
+    dynamic_reconfigure: False
+    neutral_mode: Brake
+    status_1_general_period: 10
+    status_2_feedback0_period: 20
+    status_3_quadrature_period: 250
+    #status_4_aintempvbat_period: 160
+    #status_6_misc_period: 0
+    #status_7_commstatus_period: 0
+    status_8_pulsewidth_period: 250
+    status_9_motprofbuffer_period: 250
+    status_10_motionmagic_period: 250
+    #status_11_uartgadgeteer_period: 250
+    #status_12_feedback1_period: 250
+    #status_13_base_pidf0_period: 160
+    #status_14_turn_pidf1_period: 250
+    status_15_firmwareapistatus_period: 250
+    #status_17_brushless_current_period: 50
+  
+climber_follower_controller:
+    type: talon_controllers/TalonFollowerController
+    joint: climber_dynamic_arm_follower
+    invert_output: True
+    follow_joint: climber_dynamic_arm_leader
+    neutral_mode: Brake
+    voltage_compensation_enable: true
+    dynamic_reconfigure: False
+    status_1_general_period: 250
+    status_2_feedback0_period: 250
+    status_3_quadrature_period: 250
+    #status_4_aintempvbat_period: 160
+    #status_6_misc_period: 0
+    #status_7_commstatus_period: 0
+    status_8_pulsewidth_period: 250
+    status_9_motprofbuffer_period: 250
+    status_10_motionmagic_period: 250
+    #status_11_uartgadgeteer_period: 250
+    #status_12_feedback1_period: 250
+    #status_13_base_pidf0_period: 160
+    #status_14_turn_pidf1_period: 250
+    status_15_firmwareapistatus_period: 250
+    #status_17_brushless_current_period: 50
 
 # This one creates the /talon_states topic necessary in ROS
 # It doesn't actually control anything, just takes the internal
@@ -116,9 +291,6 @@ joint_state_listener_controller:
 match_state_listener_controller:
     type:      state_listener_controller/MatchStateListenerController
     topic:     /frcrobot_rio/match_data
-
-orchestra_controller:
-    type:      orchestra_controller/OrchestraController
 
 # These controllers are defined for testing indivudal motors
 # but are not actually used for normal swerve drive control

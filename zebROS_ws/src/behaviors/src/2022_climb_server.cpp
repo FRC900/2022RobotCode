@@ -7,6 +7,8 @@
 #include <map>
 #include "talon_state_msgs/TalonState.h"
 
+#define SENSE_CURRENT
+
 // How to simulate this:
 /*
 --ENTER DOCKER--
@@ -19,6 +21,12 @@ rosparam set / 'arm_height: 1.0
 distance_above_rung: 0.2'
 rosrun behaviors 2022_climb_server_node
 */
+
+// piston config
+constexpr double DYNAMIC_ARM_UPRIGHT = -1.0;
+constexpr double DYNAMIC_ARM_TILTED  =  1.0;
+constexpr double STATIC_HOOK_OPEN    = -1.0;
+constexpr double STATIC_HOOK_CLOSED  =  1.0;
 
 class ClimbStateMachine
 {
@@ -42,6 +50,8 @@ protected:
   double lowering_hook_speed_;
   double distance_above_rung_;
   double imbalance_timeout_; // seconds
+  int max_current_iterations_;
+  double current_threshold_;
 
   actionlib::SimpleActionServer<behavior_actions::Climb2022Action> &as_;
   ros::ServiceClient dynamic_arm_;
@@ -82,6 +92,20 @@ public:
     {
       ROS_WARN_STREAM("2022_climb_server : Could not find imbalance_timeout, defaulting to 2.0");
       imbalance_timeout_ = 2.0;
+    }
+    if (!nh_.getParam("max_current_iterations", max_current_iterations_))
+    {
+      ROS_ERROR_STREAM("2022_climb_server : Could not find max_current_iterations");
+      success = false;
+      exited = true;
+      return;
+    }
+    if (!nh_.getParam("current_threshold", current_threshold_))
+    {
+      ROS_ERROR_STREAM("2022_climb_server : Could not find current_threshold");
+      success = false;
+      exited = true;
+      return;
     }
     dynamic_arm_.waitForExistence();
   }
@@ -142,7 +166,7 @@ public:
       return;
     }
     std_msgs::Float64 dpMsg;
-    dpMsg.data = 1.0;
+    dpMsg.data = DYNAMIC_ARM_UPRIGHT;
     dynamic_arm_piston_.publish(dpMsg);
     if (sleepCheckingForPreempt(0.8)) return;
     ROS_INFO_STREAM("2022_climb_server : Extended dynamic arm pistons");
@@ -213,7 +237,7 @@ public:
         return;
       }
       std_msgs::Float64 dpMsg;
-      dpMsg.data = 1.0;
+      dpMsg.data = DYNAMIC_ARM_UPRIGHT;
       dynamic_arm_piston_.publish(dpMsg);
       if (sleepCheckingForPreempt(0.8)) return;
       ROS_INFO_STREAM("2022_climb_server : Extended dynamic arm pistons");
@@ -234,6 +258,8 @@ public:
     int counter = 0;
     // TODO make sure the arms are going at about even speeds
     // (e.g. if switch 1 is hit, shut off motor 1. if switch 2 is hit, shut off motor 2. and so on)
+
+    // TODO add current sensing? (maybe)
 
     // Turn on motors
     controllers_2022_msgs::DynamicArmSrv srv;
@@ -316,7 +342,7 @@ public:
       return;
     }
     std_msgs::Float64 spMsg;
-    spMsg.data = 0.0;
+    spMsg.data = STATIC_HOOK_OPEN;
     static_hook_piston_.publish(spMsg);
     ros::Rate r(100); // 100 Hz loop
     int counter = 0;
@@ -373,11 +399,31 @@ public:
         ROS_ERROR_STREAM("2022_climb_server : Couldn't find talon in /frcrobot_jetson/talon_states. Aborting climb.");
         return;
       }
+      bool currentIsHigh = false;
+      int currentIterations = 0;
       ros::Rate r(100);
-      while(talon_states_.reverse_limit_switch[leaderIndex] /*Limit switch is not pressed*/)
+      while(!talon_states_.reverse_limit_switch[leaderIndex] && !currentIsHigh)
       {
         r.sleep();
         ros::spinOnce();
+
+        if (talon_states_.motor_output_percent[leaderIndex] < 1) {
+          // if we have not hit the limit switch yet and we have stopped, keep going down slowly
+          srv.request.use_percent_output = true;
+          srv.request.data = -0.2;
+          srv.request.go_slow = true;
+          dynamic_arm_.call(srv);
+        }
+#ifdef SENSE_CURRENT
+        if (talon_states_.output_current[leaderIndex] >= current_threshold_) {
+          currentIterations++;
+          if (currentIterations >= max_current_iterations_) {
+            currentIsHigh = true;
+          }
+        } else {
+          currentIterations = 0;
+        }
+#endif
         if (as_.isPreemptRequested() || !ros::ok()) {
           exited = true;
           return;
@@ -414,7 +460,7 @@ public:
       return;
     }
     std_msgs::Float64 spMsg;
-    spMsg.data = 1.0;
+    spMsg.data = STATIC_HOOK_CLOSED;
     static_hook_piston_.publish(spMsg);
     ros::Rate r(100); // 100 Hz loop
     int counter = 0;
@@ -500,7 +546,7 @@ public:
       return;
     }
     std_msgs::Float64 dpMsg;
-    dpMsg.data = 0.0;
+    dpMsg.data = DYNAMIC_ARM_TILTED;
     dynamic_arm_piston_.publish(dpMsg);
     if (sleepCheckingForPreempt(1)) return;
     ROS_INFO_STREAM("2022_climb_server : Retracted dynamic arm pistons");

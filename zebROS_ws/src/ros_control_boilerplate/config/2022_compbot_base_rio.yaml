@@ -24,36 +24,31 @@ generic_hw_control_loop:
 # of several types of HW interface : CAN_id, PWM_id, DIO_id, AIO_id, etc.
 hardware_interface:
    joints:
-       # Need a single CTRE hardware device defined so the Rio
-       # broadcasts keepalive / enable signals.  Without this, talons
-       # controlled by the Jetson won't run. Use an unused CAN Id so that
-       # the Rio sending 0'd control frames to it won't interfere with
-       # operation of real Talons
-       - {name: dummy_talon, type: can_talon_srx, local: false}
-
        # 2022 joints
-
-       # Climber
-       - {name: climber_dynamic_arm_solenoid_joint, type: solenoid, module_type: ctrepcm, module_id: 0, channel: 1, local_hardware: true, local_update: false}
-       - {name: climber_static_hook_solenoid_joint, type: solenoid, module_type: ctrepcm, module_id: 0, channel: 2, local_hardware: true, local_update: false}
-       - {name: climber_dynamic1_limit_switch, type: digital_input, dio_channel: 0, invert: true, local: true}
-       - {name: climber_dynamic2_limit_switch, type: digital_input, dio_channel: 1, invert: true, local: true}
-       - {name: climber_static1_limit_switch, type: digital_input, dio_channel: 2, invert: true, local: true}
-       - {name: climber_static2_limit_switch, type: digital_input, dio_channel: 3, invert: true, local: true}
-
+       #
        # Solenoids which are updated from controllers on the Jetson need
        # to be configured here so they can write to hardware attached
        # to the Rio
-       #- {name: climber_deploy_joint, type: double_solenoid, module_type: ctrepcm, module_id: 0, forward_channel: 2, reverse_channel: 4, local_hardware: true, local_update: false}
-       #- {name: climber_elevator_brake_joint, type: solenoid, module_type: ctrepcm, module_id: 0, channel: 1, local_hardware: true, local_update: false}
 
-         #- {name: shooter_hood_joint, type: solenoid, module_type: ctrepcm, module_id: 0, channel: 3, local_hardware: true, local_update: false}
+       # Climber
+       - {name: climber_dynamic_arm_solenoid_joint, type: double_solenoid, module_type: ctrepcm, module_id: 0, forward_channel: 1, reverse_channel: 2, local_hardware: true, local_update: false}
+       - {name: climber_static_hook_solenoid_joint, type: double_solenoid, module_type: ctrepcm, module_id: 0, forward_channel: 3, reverse_channel: 4, local_hardware: true, local_update: false}
+         #- {name: climber_dynamic1_limit_switch, type: digital_input, dio_channel: 0, invert: true, local: true}
+         #- {name: climber_dynamic2_limit_switch, type: digital_input, dio_channel: 1, invert: true, local: true}
+       - {name: climber_static1_limit_switch, type: digital_input, dio_channel: 2, invert: true, local: true}
+       - {name: climber_static2_limit_switch, type: digital_input, dio_channel: 3, invert: true, local: true}
+       
+       - {name: intake_solenoid, type: solenoid, module_type: ctrepcm, module_id: 0, channel: 0, local_hardware: true, local_update: false}
+
+       # Indexer - TODO, set DIO channels once robot is wired
+       - {name: indexer_straight_linebreak, type: digital_input, dio_channel: 8, invert: true, local: true}
+       - {name: indexer_arc_linebreak, type: digital_input, dio_channel: 9, invert: true, local: true}
 
        - {name: joystick0, type: joystick, id: 0, local: true}
-       - {name: button_box, type: joystick, id: 1, local: true}
-       - {name: joystick2, type: joystick, id: 2, local: true}
-       - {name: joystick_rumble0, type: rumble, rumble_port: 0}
-       - {name: joystick_rumble2, type: rumble, rumble_port: 2}
+         #- {name: button_box, type: joystick, id: 1, local: true}
+         #- {name: joystick2, type: joystick, id: 2, local: true}
+         #- {name: joystick_rumble0, type: rumble, rumble_port: 0}
+         #- {name: joystick_rumble2, type: rumble, rumble_port: 2}
        - {name: robot_code_ready_jetson, local: false, type: ready}
        - {name: robot_code_ready_rio, local: true, type: ready}
 
