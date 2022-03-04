@@ -277,32 +277,58 @@ public:
       return;
     }
 
-    while (!(d1_ls && d2_ls)) {
-      ros::spinOnce();
-      if ((d1_ls == 1) ^ (d2_ls == 1)) { // if one hook has touched but the other has not,
-        if (counter >= imbalance_timeout_ * 100) { // and it has been two seconds since the robot was imbalanced,
-          exited = true;
-          ROS_ERROR_STREAM("2022_climb_server : The robot is imbalanced. Aborting climb.");
-          // Turn off motors
-          srv.request.use_percent_output = true; // percent output
-          srv.request.data = 0;
-          srv.request.go_slow = false;
-          if (dynamic_arm_.call(srv))
-          {
-            ROS_INFO_STREAM("2022_climb_server : called dynamic arm service to stop motors.");
-          }
-          else
-          {
-            ROS_ERROR_STREAM("2022_climb_server : failed to call dynamic arm service to stop motors. Aborting.");
-            exited = true;
-            return;
-          }
-          exited = true;
-          return;
-        } else {
-          counter++;
-        }
+    auto nameArray = talon_states_.name;
+    int leaderIndex = -1;
+    for(size_t i = 0; i < size(nameArray); i++){
+      if(nameArray[i] == "climber_dynamic_arm_leader"){
+        leaderIndex = i;
       }
+    }
+    if (leaderIndex == -1) {
+      exited = true;
+      ROS_ERROR_STREAM("2022_climb_server : Couldn't find talon in /frcrobot_jetson/talon_states. Aborting climb.");
+      return;
+    }
+
+    bool currentIsHigh = false;
+    int currentIterations = 0;
+    while (!currentIsHigh) {
+      ros::spinOnce();
+#ifdef SENSE_CURRENT
+      if (talon_states_.output_current[leaderIndex] >= current_threshold_) {
+        currentIterations++;
+        if (currentIterations >= max_current_iterations_) {
+          currentIsHigh = true;
+        }
+      } else {
+        currentIterations = 0;
+      }
+#endif
+      // TODO Replace imbanace checking with IMU data because we do not have hook limit switches.
+      // if ((d1_ls == 1) ^ (d2_ls == 1)) { // if one hook has touched but the other has not,
+      //   if (counter >= imbalance_timeout_ * 100) { // and it has been two seconds since the robot was imbalanced,
+      //     exited = true;
+      //     ROS_ERROR_STREAM("2022_climb_server : The robot is imbalanced. Aborting climb.");
+      //     // Turn off motors
+      //     srv.request.use_percent_output = true; // percent output
+      //     srv.request.data = 0;
+      //     srv.request.go_slow = false;
+      //     if (dynamic_arm_.call(srv))
+      //     {
+      //       ROS_INFO_STREAM("2022_climb_server : called dynamic arm service to stop motors.");
+      //     }
+      //     else
+      //     {
+      //       ROS_ERROR_STREAM("2022_climb_server : failed to call dynamic arm service to stop motors. Aborting.");
+      //       exited = true;
+      //       return;
+      //     }
+      //     exited = true;
+      //     return;
+      //   } else {
+      //     counter++;
+      //   }
+      // }
       if (as_.isPreemptRequested() || !ros::ok()) {
         exited = true;
         return;
@@ -399,10 +425,8 @@ public:
         ROS_ERROR_STREAM("2022_climb_server : Couldn't find talon in /frcrobot_jetson/talon_states. Aborting climb.");
         return;
       }
-      bool currentIsHigh = false;
-      int currentIterations = 0;
       ros::Rate r(100);
-      while(!talon_states_.reverse_limit_switch[leaderIndex] && !currentIsHigh)
+      while(!talon_states_.reverse_limit_switch[leaderIndex])
       {
         r.sleep();
         ros::spinOnce();
@@ -414,16 +438,6 @@ public:
           srv.request.go_slow = true;
           dynamic_arm_.call(srv);
         }
-#ifdef SENSE_CURRENT
-        if (talon_states_.output_current[leaderIndex] >= current_threshold_) {
-          currentIterations++;
-          if (currentIterations >= max_current_iterations_) {
-            currentIsHigh = true;
-          }
-        } else {
-          currentIterations = 0;
-        }
-#endif
         if (as_.isPreemptRequested() || !ros::ok()) {
           exited = true;
           return;
