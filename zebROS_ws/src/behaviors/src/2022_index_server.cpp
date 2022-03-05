@@ -52,6 +52,7 @@ public:
   		ROS_ERROR("could not read arc_motor_percent_output");
   		arc_motor_percent_output_config_ = 0.5;
   	}
+    nextFunction_ = boost::bind(&IndexStateMachine::state0, this);
   }
   void publish_ball_count(const ros::TimerEvent&){
     if(straight_sensor_pressed_ && arc_sensor_pressed_){
@@ -111,7 +112,7 @@ public:
       return;
     }
     if(arc_sensor_pressed_ && straight_sensor_pressed_){
-      exited_ = true;
+      nextFunction_ = boost::bind(&IndexStateMachine::state2, this);
       return;
     }
     if(arc_sensor_pressed_){
@@ -127,16 +128,18 @@ public:
   {
     state_ = 1;
     run_straight_motor(straight_motor_percent_output_config_);
-    ros::Rate r(20);
     while(!arc_sensor_pressed_){ //TODO set up timeout or do it in higher level code
-      r.sleep();
-      ros::spinOnce();
+      if(sleepCheckingForPreempt(1.0 / 20.0)){
+          exited_ = true;
+          return;
+      }
     }
     //if timeout was reached, set num_of_balls to 0
     nextFunction_ = boost::bind(&IndexStateMachine::state10, this);
   }
   void state2() //state to exit
   {
+    success_ = true;
     exited_ = true;
   }
   void state3() //eject state
@@ -146,10 +149,11 @@ public:
     run_straight_motor(-straight_motor_percent_output_config_);
     // run arc motor backwards
     run_arc_motor(-arc_motor_percent_output_config_);
-    ros::Rate r(20);
     while(arc_sensor_pressed_ || straight_sensor_pressed_){
-      r.sleep();
-      ros::spinOnce();
+      if(sleepCheckingForPreempt(1.0 / 20.0)){
+          exited_ = true;
+          return;
+      }
     }
     nextFunction_ = boost::bind(&IndexStateMachine::state2, this);
   }
@@ -161,17 +165,19 @@ public:
     run_arc_motor(-arc_motor_percent_output_config_);
     // run arc motor backwards
     if(straight_sensor_pressed_ && arc_sensor_pressed_){
-      ros::Rate r(20);
       while(straight_sensor_pressed_){
-        r.sleep();
-        ros::spinOnce();
+        if(sleepCheckingForPreempt(1.0 / 20.0)){
+            exited_ = true;
+            return;
+        }
       }
     }
     else{
-      ros::Rate r(20);
       while(arc_sensor_pressed_){
-        r.sleep();
-        ros::spinOnce();
+        if(sleepCheckingForPreempt(1.0 / 20.0)){
+            exited_ = true;
+            return;
+        }
       }
       // wait one second
       ros::Duration(1.0).sleep();
@@ -183,10 +189,11 @@ public:
   {
     state_ = 10;
     run_straight_motor(straight_motor_percent_output_config_);
-    ros::Rate r(20);
     while(arc_sensor_pressed_ && !straight_sensor_pressed_){
-      r.sleep();
-      ros::spinOnce();
+      if(sleepCheckingForPreempt(1.0 / 20.0)){
+          exited_ = true;
+          return;
+      }
     }
     nextFunction_ = boost::bind(&IndexStateMachine::state2, this);
   }
@@ -269,6 +276,7 @@ public:
     // start executing the action
     while (!sm.exited_)
     {
+      ros::spinOnce();
       // check that preempt has not been requested by the client
       if (as_.isPreemptRequested() || !ros::ok())
       {
