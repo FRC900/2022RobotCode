@@ -1,8 +1,6 @@
 # goal
-uint8 num_cargo # the number of cargo to intake. this can only be 2 if the indexer is empty.
 ---
 # result
-bool correct_cargo # true = indexer sees <num_of_cargo_before> + <num_cargo> cargo. false = wrong # of cargo
 ---
 # feedback
 uint8 cargo_in_indexer # the number of cargo in the indexer

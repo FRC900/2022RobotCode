@@ -52,16 +52,14 @@ public:
 	void executeCB(const behavior_actions::Intaking2022GoalConstPtr &goal)
 	{
 		ros::spinOnce();
-		if (goal->num_cargo + cargo_num_ > 2) {
+		if (cargo_num_ > 2) {
 			ROS_ERROR_STREAM("2022_intaking_server : can't intake that many cargo! aborting!");
-			result_.correct_cargo = false;
 			as_.setAborted(result_);
 		}
 
 		if(!intake_ac_.waitForServer(ros::Duration(server_timeout_)))
 		{
 			ROS_ERROR_STREAM("2022_intaking_server : intake actionlib server does not exist. exiting.");
-			result_.correct_cargo = false;
 			as_.setAborted(result_);
 			return;
 		}
@@ -69,7 +67,6 @@ public:
 		if(!indexer_ac_.waitForServer(ros::Duration(server_timeout_)))
 		{
 			ROS_ERROR_STREAM("2022_intaking_server : indexer actionlib server does not exist. exiting.");
-			result_.correct_cargo = false;
 			as_.setAborted(result_);
 			return;
 		}
@@ -80,27 +77,30 @@ public:
 		intake_goal.reverse = false;
 		intake_ac_.sendGoal(intake_goal);
 
-		while (cargo_num_ < goal->num_cargo) {
+		while (cargo_num_ < 2 && ros::ok()) {
 			ros::spinOnce();
 			behavior_actions::Index2022Goal index_goal;
 			index_goal.goal = index_goal.INTAKE;
 			indexer_ac_.sendGoal(index_goal);
 			bool finished_before_timeout = indexer_ac_.waitForResult(ros::Duration(server_timeout_));
 			ros::spinOnce();
-			result_.correct_cargo = cargo_num_ == goal->num_cargo;
 			feedback_.cargo_in_indexer = cargo_num_;
 			if (!finished_before_timeout) {
 				as_.setAborted(result_);
 			}
+			if (as_.isPreemptRequested() || !ros::ok()) {
+				as_.setPreempted(result_);
+				intake_ac_.cancelGoal();
+				indexer_ac_.cancelGoal();
+			}
 			ros::spinOnce();
 		}
 
-		ROS_INFO_STREAM("2022_intaking_server : deactivating intake");
+		ROS_INFO_STREAM("2022_intaking_server : deactivating intake and indexer");
 		intake_ac_.cancelGoal();
+		indexer_ac_.cancelGoal();
 
 		ROS_INFO_STREAM("2022_intaking_server : succeeded");
-		// TODO set result_.correct_cargo based on indexer data
-		// set the action state to succeeded
 		as_.setSucceeded(result_);
 	}
 
