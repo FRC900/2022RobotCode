@@ -48,6 +48,8 @@ protected:
   double semi_extend_height_;
   double get_to_zero_percent_output_;
 
+  std::vector<boost::function<void()>> state_functions_;
+
   actionlib::SimpleActionServer<behavior_actions::Climb2022Action> &as_;
   ros::ServiceClient dynamic_arm_;
   // other state data we have
@@ -59,6 +61,7 @@ public:
   ClimbStateMachine(actionlib::SimpleActionServer<behavior_actions::Climb2022Action> &as_): as_(as_)
   {
     nextFunction_ = boost::bind(&ClimbStateMachine::state1, this);
+    state_functions_ = {boost::bind(&ClimbStateMachine::state1, this), boost::bind(&ClimbStateMachine::state2, this), boost::bind(&ClimbStateMachine::state3, this), boost::bind(&ClimbStateMachine::state4, this), boost::bind(&ClimbStateMachine::state5, this), boost::bind(&ClimbStateMachine::state6, this), boost::bind(&ClimbStateMachine::state7, this), boost::bind(&ClimbStateMachine::state8, this), boost::bind(&ClimbStateMachine::state9, this), boost::bind(&ClimbStateMachine::state10, this)};
     dynamic_arm_piston_ = nh_.advertise<std_msgs::Float64>("/frcrobot_jetson/dynamic_arm_solenoid_controller/command", 2);
     static_hook_piston_ = nh_.advertise<std_msgs::Float64>("/frcrobot_jetson/static_hook_solenoid_controller/command", 2);
     joint_states_sub_ = nh_.subscribe("/frcrobot_jetson/joint_states", 1, &ClimbStateMachine::jointStateCallback, this);
@@ -107,11 +110,14 @@ public:
     }
     dynamic_arm_.waitForExistence();
   }
-  void reset(bool singleStep) {
+  void reset(bool singleStep, uint8_t start_state) {
     if (!singleStep) {
       state = 0;
       nextFunction_ = boost::bind(&ClimbStateMachine::state1, this);
       rung = 0;
+    } else if (start_state != 0 && start_state <= 10) {
+      state = start_state;
+      nextFunction_ = state_functions_[start_state - 1];
     }
     exited = false;
     success = false;
@@ -578,7 +584,7 @@ public:
 
   void executeCB(const behavior_actions::Climb2022GoalConstPtr &goal)
   {
-    sm.reset(goal->single_step);
+    sm.reset(goal->single_step, goal->start_state);
     // start executing the action
     while (!sm.exited)
     {
@@ -621,7 +627,7 @@ public:
       ROS_INFO("%s: Succeeded", action_name_.c_str());
     } else
     {
-      sm.reset(false);
+      sm.reset(false, 0);
       ROS_INFO("%s: Failed", action_name_.c_str());
     }
     // set the action state to success or not
