@@ -7,19 +7,16 @@
 #include <map>
 #include "talon_state_msgs/TalonState.h"
 
-#define SENSE_CURRENT
-
 // How to simulate this:
 /*
+First, make sure the `dynamic_arm_controller` is spawned
 --ENTER DOCKER--
 roslaunch controller_node 2022_compbot_combined.launch hw_or_sim:=sim
 --in a separate terminal--
 rosrun rqt_driver_station_sim rqt_driver_station_sim & # Enable reverse limit switch on the climber leader talon, disable it once the climb server node is running and good
 rosrun actionlib axclient.py /climb_server_2022 &
 --in a separate terminal--
-rosparam set / 'arm_height: 1.0
-distance_above_rung: 0.2'
-rosrun behaviors 2022_climb_server_node
+roslaunch behaviors 2022_climb.launch
 */
 
 // piston config
@@ -46,12 +43,12 @@ protected:
 
   talon_state_msgs::TalonState talon_states_;
 
-  double arm_height_;
-  double lowering_hook_speed_;
-  double distance_above_rung_;
+  double full_extend_height_ground_;
+  double full_extend_height_air_;
+  double static_hook_distance_above_rung_;
   double imbalance_timeout_; // seconds
-  int max_current_iterations_;
-  double current_threshold_;
+  double semi_extend_height_;
+  double get_to_zero_percent_output_;
 
   actionlib::SimpleActionServer<behavior_actions::Climb2022Action> &as_;
   ros::ServiceClient dynamic_arm_;
@@ -69,21 +66,38 @@ public:
     joint_states_sub_ = nh_.subscribe("/frcrobot_jetson/joint_states", 1, &ClimbStateMachine::jointStateCallback, this);
     talon_states_sub_ = nh_.subscribe("/frcrobot_jetson/talon_states", 1, &ClimbStateMachine::talonStateCallback, this);
     dynamic_arm_ = nh_.serviceClient<controllers_2022_msgs::DynamicArmSrv>("/frcrobot_jetson/dynamic_arm_controller/command");
-    if (!nh_.getParam("arm_height", arm_height_))
+    if (!nh_.getParam("full_extend_height_ground", full_extend_height_ground_))
     {
-      ROS_ERROR_STREAM("2022_climb_server : Could not find arm_height");
+      ROS_ERROR_STREAM("2022_climb_server : Could not find full_extend_height_ground");
       success = false;
       exited = true;
       return;
     }
-    if (!nh_.getParam("lowering_hook_speed", lowering_hook_speed_))
+    if (!nh_.getParam("full_extend_height_air", full_extend_height_air_))
     {
-      ROS_WARN_STREAM("2022_climb_server : Could not find lowering_hook_speed, defaulting to -0.3");
-      lowering_hook_speed_ = -0.3;
+      ROS_ERROR_STREAM("2022_climb_server : Could not find full_extend_height_air");
+      success = false;
+      exited = true;
+      return;
     }
-    if (!nh_.getParam("distance_above_rung", distance_above_rung_))
+    if (!nh_.getParam("semi_extend_height", semi_extend_height_)) {
+      ROS_ERROR_STREAM("2022_climb_server : Could not find semi_extend_height");
+      success = false;
+      exited = true;
+      return;
+    }
+    if (!nh_.getParam("static_hook_distance_above_rung", static_hook_distance_above_rung_))
     {
-      ROS_ERROR_STREAM("2022_climb_server : Could not find distance_above_rung");
+      ROS_ERROR_STREAM("2022_climb_server : Could not find static_hook_distance_above_rung");
+      success = false;
+      exited = true;
+      return;
+    }
+    if (!nh_.getParam("get_to_zero_percent_output", get_to_zero_percent_output_))
+    {
+      // Used if we tell motion magic to go to 0 and we haven't hit the limit switch yet -- we keep going down at this speed until we hit the limit switch.
+      // **Must be negative.**
+      ROS_ERROR_STREAM("2022_climb_server : Could not find get_to_zero_percent_output");
       success = false;
       exited = true;
       return;
@@ -92,20 +106,6 @@ public:
     {
       ROS_WARN_STREAM("2022_climb_server : Could not find imbalance_timeout, defaulting to 2.0");
       imbalance_timeout_ = 2.0;
-    }
-    if (!nh_.getParam("max_current_iterations", max_current_iterations_))
-    {
-      ROS_ERROR_STREAM("2022_climb_server : Could not find max_current_iterations");
-      success = false;
-      exited = true;
-      return;
-    }
-    if (!nh_.getParam("current_threshold", current_threshold_))
-    {
-      ROS_ERROR_STREAM("2022_climb_server : Could not find current_threshold");
-      success = false;
-      exited = true;
-      return;
     }
     dynamic_arm_.waitForExistence();
   }
@@ -181,7 +181,7 @@ public:
     ROS_INFO_STREAM("2022_climb_server : Raising dynamic arms fully");
     controllers_2022_msgs::DynamicArmSrv srv;
     srv.request.use_percent_output = false; // motion magic
-    srv.request.data = arm_height_;
+    srv.request.data = rung == 0 ? full_extend_height_ground_ : full_extend_height_air_;
     srv.request.go_slow = false;
     if (dynamic_arm_.call(srv))
     {
@@ -206,7 +206,7 @@ public:
       return;
     }
     ros::Rate r(100);
-    while(talon_states_.position[leaderIndex] < arm_height_-0.05) // wait
+    while(fabs(talon_states_.position[leaderIndex] - srv.request.data) > 0.05) // wait
     {
       r.sleep();
       ros::spinOnce();
@@ -250,22 +250,11 @@ public:
     state = 5;
     ROS_INFO_STREAM("2022_climb_server : State 5");
     ROS_INFO_STREAM("2022_climb_server : ---");
-    ROS_INFO_STREAM("2022_climb_server : Lowering dynamic arms a bit to touch rung");
-    // Use motor (eventually)
-    ros::Rate r(100); // 100 Hz loop.
-    // NOTE **don't use full speed**. Motion profiling/motion magic? Or just 20-30%
-    // Define max acceleration & velocity -- trapezoidal graph
-    int counter = 0;
-    // TODO make sure the arms are going at about even speeds
-    // (e.g. if switch 1 is hit, shut off motor 1. if switch 2 is hit, shut off motor 2. and so on)
-
-    // TODO add current sensing? (maybe)
-
-    // Turn on motors
+    ROS_INFO_STREAM("2022_climb_server : Lowering dynamic arms enough to be fully supported by the rung");
     controllers_2022_msgs::DynamicArmSrv srv;
-    srv.request.use_percent_output = true; // percent output
-    srv.request.data = lowering_hook_speed_;
-    srv.request.go_slow = false;
+    srv.request.use_percent_output = false; // motion magic
+    srv.request.data = semi_extend_height_;
+    srv.request.go_slow = true;
     if (dynamic_arm_.call(srv))
     {
       ROS_INFO_STREAM("2022_climb_server : called dynamic arm service.");
@@ -276,10 +265,9 @@ public:
       exited = true;
       return;
     }
-
     auto nameArray = talon_states_.name;
     int leaderIndex = -1;
-    for(size_t i = 0; i < size(nameArray); i++){
+    for(size_t i = 0; i < nameArray.size(); i++){
       if(nameArray[i] == "climber_dynamic_arm_leader"){
         leaderIndex = i;
       }
@@ -289,71 +277,21 @@ public:
       ROS_ERROR_STREAM("2022_climb_server : Couldn't find talon in /frcrobot_jetson/talon_states. Aborting climb.");
       return;
     }
-
-    bool currentIsHigh = false;
-    int currentIterations = 0;
-    while (!currentIsHigh) {
+    ros::Rate r(100);
+    while(fabs(talon_states_.position[leaderIndex] - semi_extend_height_) > 0.05) // wait
+    {
+      r.sleep();
       ros::spinOnce();
-#ifdef SENSE_CURRENT
-      if (talon_states_.output_current[leaderIndex] >= current_threshold_) {
-        currentIterations++;
-        if (currentIterations >= max_current_iterations_) {
-          currentIsHigh = true;
-        }
-      } else {
-        currentIterations = 0;
-      }
-#endif
-      // TODO Replace imbanace checking with IMU data because we do not have hook limit switches.
-      // if ((d1_ls == 1) ^ (d2_ls == 1)) { // if one hook has touched but the other has not,
-      //   if (counter >= imbalance_timeout_ * 100) { // and it has been two seconds since the robot was imbalanced,
-      //     exited = true;
-      //     ROS_ERROR_STREAM("2022_climb_server : The robot is imbalanced. Aborting climb.");
-      //     // Turn off motors
-      //     srv.request.use_percent_output = true; // percent output
-      //     srv.request.data = 0;
-      //     srv.request.go_slow = false;
-      //     if (dynamic_arm_.call(srv))
-      //     {
-      //       ROS_INFO_STREAM("2022_climb_server : called dynamic arm service to stop motors.");
-      //     }
-      //     else
-      //     {
-      //       ROS_ERROR_STREAM("2022_climb_server : failed to call dynamic arm service to stop motors. Aborting.");
-      //       exited = true;
-      //       return;
-      //     }
-      //     exited = true;
-      //     return;
-      //   } else {
-      //     counter++;
-      //   }
-      // }
       if (as_.isPreemptRequested() || !ros::ok()) {
         exited = true;
         return;
       }
-      r.sleep();
-    }
-
-    // Turn off motors
-    srv.request.use_percent_output = true; // percent output
-    srv.request.data = 0;
-    srv.request.go_slow = false;
-    if (dynamic_arm_.call(srv))
-    {
-      ROS_INFO_STREAM("2022_climb_server : called dynamic arm service.");
-    }
-    else
-    {
-      ROS_ERROR_STREAM("2022_climb_server : failed to call dynamic arm service. Aborting.");
-      exited = true;
-      return;
     }
 
     if (sleepCheckingForPreempt(1)) return; // stop swinging
-    ROS_INFO_STREAM("2022_climb_server : Lowered dynamic arms a bit to touch rung");
+    ROS_INFO_STREAM("2022_climb_server : Lowered dynamic arms enough to safely detach static hooks");
     ROS_INFO_STREAM("");
+    // TODO !! wait for human to confirm static hooks can be detached/robot is stable before exiting !!
     nextFunction_ = boost::bind(&ClimbStateMachine::state6, this);
   }
   void state6()
@@ -389,12 +327,11 @@ public:
       }
       r.sleep();
     }
-    ROS_INFO_STREAM("2022_climb_server : Detached static hooks");
-    if (rung != 0) {
-      ROS_INFO_STREAM("2022_climb_server : Waiting for robot to stop swinging");
-      if (sleepCheckingForPreempt(2)) return;
-      ROS_INFO_STREAM("2022_climb_server : Robot stopped swinging");
-    }
+    ROS_INFO_STREAM("2022_climb_server : Detached static hooks. Robot is fully supported by rung " << std::to_string(rung) << ".");
+    rung++;
+    ROS_INFO_STREAM("2022_climb_server : Waiting for robot to stop swinging");
+    if (sleepCheckingForPreempt(2)) return;
+    ROS_INFO_STREAM("2022_climb_server : Robot stopped swinging");
     ROS_INFO_STREAM("");
     nextFunction_ = boost::bind(&ClimbStateMachine::state7, this);
   }
@@ -425,16 +362,17 @@ public:
         ROS_ERROR_STREAM("2022_climb_server : Couldn't find talon in /frcrobot_jetson/talon_states. Aborting climb.");
         return;
       }
+      ros::Duration(0.5).sleep(); // wait to get up to speed so the check on <this line+7 lines> doesn't fail
       ros::Rate r(100);
       while(!talon_states_.reverse_limit_switch[leaderIndex])
       {
         r.sleep();
         ros::spinOnce();
 
-        if (talon_states_.motor_output_percent[leaderIndex] < 1) {
+        if (fabs(talon_states_.speed[leaderIndex]) < 0.1) {
           // if we have not hit the limit switch yet and we have stopped, keep going down slowly
           srv.request.use_percent_output = true;
-          srv.request.data = -0.2;
+          srv.request.data = -fabs(get_to_zero_percent_output_);
           srv.request.go_slow = true;
           dynamic_arm_.call(srv);
         }
@@ -443,11 +381,11 @@ public:
           return;
         }
       }
-      srv.request.use_percent_output = true; // motion magic
+      srv.request.use_percent_output = false;
       srv.request.data = 0;
       srv.request.go_slow = true;
       dynamic_arm_.call(srv);
-      ROS_INFO_STREAM("2022_climb_server : called dynamic arm service to stop dynamic arm movement.");
+      ROS_INFO_STREAM("2022_climb_server : called dynamic arm service to hold up in air.");
     }
     else
     {
@@ -457,8 +395,7 @@ public:
     }
 
     // Wait for this to finish.
-    rung++;
-    ROS_INFO_STREAM("2022_climb_server : Lowered dynamic arms fully. Robot is fully supported by rung " << std::to_string(rung) << ".");
+    ROS_INFO_STREAM("2022_climb_server : Lowered dynamic arms fully.");
     ROS_INFO_STREAM("");
     nextFunction_ = boost::bind(&ClimbStateMachine::state8, this);
   }
@@ -496,13 +433,6 @@ public:
       r.sleep();
     }
     ROS_INFO_STREAM("2022_climb_server : Attached static hooks");
-    if (rung == 3)
-    {
-      ROS_INFO_STREAM("2022_climb_server : Climb is done! Woohoo!!");
-      success = true;
-      exited = true;
-      return;
-    }
     ROS_INFO_STREAM("");
     nextFunction_ = boost::bind(&ClimbStateMachine::state9, this);
   }
@@ -511,7 +441,7 @@ public:
     state = 9;
     ROS_INFO_STREAM("2022_climb_server : State 9");
     ROS_INFO_STREAM("2022_climb_server : ---");
-    ROS_INFO_STREAM("2022_climb_server : Raising dynamic arms slightly");
+    ROS_INFO_STREAM("2022_climb_server : Raising dynamic arms slightly to hang by static hooks");
 
     // Find motor index
     int leaderIndex = -1;
@@ -529,7 +459,7 @@ public:
     // Construct service call
     controllers_2022_msgs::DynamicArmSrv srv;
     srv.request.use_percent_output = false; // motion magic
-    srv.request.data = talon_states_.position[leaderIndex] + distance_above_rung_;
+    srv.request.data = talon_states_.position[leaderIndex] + static_hook_distance_above_rung_;
     srv.request.go_slow = true;
 
     // Call service
@@ -544,7 +474,14 @@ public:
       return;
     }
 
-    ROS_INFO_STREAM("2022_climb_server : Raised dynamic arms slightly");
+    ROS_INFO_STREAM("2022_climb_server : Raised dynamic arms slightly to hang by static hooks");
+    if (rung == 3)
+    {
+      ROS_INFO_STREAM("2022_climb_server : Climb is done! Woohoo!!");
+      success = true;
+      exited = true;
+      return;
+    }
     ROS_INFO_STREAM("");
     nextFunction_ = boost::bind(&ClimbStateMachine::state10, this);
   }
