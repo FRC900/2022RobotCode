@@ -80,7 +80,7 @@
 	-->
 	<include file="$(find behaviors)/launch/2022_climb.launch"/>
 
-	<!-- Run ZED camera + tensorflow object detection 
+	<!-- Run ZED camera + tensorflow object detection
 	<include file="$(find tf_object_detection)/launch/detection.launch" if="$(eval arg('hw_or_sim')=='hw')">
 		<arg name="input_type" value="live_camera" />
 	</include>
