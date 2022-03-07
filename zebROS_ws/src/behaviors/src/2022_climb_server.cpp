@@ -35,9 +35,7 @@ protected:
 
   ros::Subscriber joint_states_sub_;
   ros::Subscriber talon_states_sub_;
-
-  double d1_ls; // d = dynamic, s = static, ls = limit switch
-  double d2_ls;
+  // s = static, ls = limit switch
   double s1_ls;
   double s2_ls;
 
@@ -506,7 +504,7 @@ public:
   }
   void jointStateCallback(const sensor_msgs::JointState joint_state)
   {
-    std::map<std::string, double*> stateNamesToVariables = {{"climber_dynamic1_limit_switch", &d1_ls}, {"climber_dynamic2_limit_switch", &d2_ls}, {"climber_static1_limit_switch", &s1_ls}, {"climber_static2_limit_switch", &s2_ls}};
+    std::map<std::string, double*> stateNamesToVariables = {{"climber_static1_limit_switch", &s1_ls}, {"climber_static2_limit_switch", &s2_ls}};
     for (auto const &nameVar : stateNamesToVariables)
     {
       // get index of sensor
