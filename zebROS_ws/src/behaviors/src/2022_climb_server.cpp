@@ -20,8 +20,8 @@ roslaunch behaviors 2022_climb.launch
 */
 
 // piston config
-constexpr double DYNAMIC_ARM_UPRIGHT = -1.0;
-constexpr double DYNAMIC_ARM_TILTED  =  1.0;
+constexpr double DYNAMIC_ARM_UPRIGHT =  1.0;
+constexpr double DYNAMIC_ARM_TILTED  = -1.0;
 constexpr double STATIC_HOOK_OPEN    = -1.0;
 constexpr double STATIC_HOOK_CLOSED  =  1.0;
 
@@ -186,7 +186,7 @@ public:
     controllers_2022_msgs::DynamicArmSrv srv;
     srv.request.use_percent_output = false; // motion magic
     srv.request.data = rung == 0 ? full_extend_height_ground_ : full_extend_height_air_;
-    srv.request.go_slow = false;
+    srv.request.go_slow = true;
     if (dynamic_arm_.call(srv))
     {
       ROS_INFO_STREAM("2022_climb_server : called dynamic arm service.");
