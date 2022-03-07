@@ -1,6 +1,6 @@
 #include "controllers_2022/dynamic_arm_controller.h"
 
-#define SENSE_CURRENT // comment out to disable current sensing
+// #define SENSE_CURRENT // comment out to disable current sensing
 
 namespace dynamic_arm_controller
 {
