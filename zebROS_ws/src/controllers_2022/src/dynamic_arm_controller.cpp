@@ -113,7 +113,7 @@ void DynamicArmController::update(const ros::Time &time, const ros::Duration &/*
   DynamicArmCommand setpoint = *(command_buffer_.readFromRT());
 
   // If we hit the limit switch, (re)zero the position.
-  if (dynamic_arm_joint_.getReverseLimitSwitch() || current_is_too_high)
+  if (dynamic_arm_joint_.getReverseLimitSwitch() || dynamic_arm_joint_.getFollowerReverseLimitSwitch(0) || current_is_too_high)
   {
     ROS_INFO_STREAM_THROTTLE(2, "dynamic_arm_controller : " << (!current_is_too_high ? "hit bottom limit switch" : "current too high"));
     if (!last_zeroed_)

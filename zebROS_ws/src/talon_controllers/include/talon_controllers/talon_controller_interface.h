@@ -1644,6 +1644,24 @@ class TalonControllerInterface
 		{
 			return talon_.state()->getReverseLimitSwitch();
 		}
+		bool getFollowerForwardLimitSwitch(size_t idx) const
+		{
+			if (idx >= follower_talons_.size()) {
+				ROS_ERROR_STREAM("getFollowerForwardLimitSwitch(): follower index out of range");
+				// invalid index. return false by default.
+				return false;
+			}
+			return follower_talons_[idx].state()->getForwardLimitSwitch();
+		}
+		bool getFollowerReverseLimitSwitch(size_t idx) const
+		{
+			if (idx >= follower_talons_.size()) {
+				ROS_ERROR_STREAM("getFollowerReverseLimitSwitch(): follower index out of range");
+				// invalid index. return false by default.
+				return false;
+			}
+			return follower_talons_[idx].state()->getReverseLimitSwitch();
+		}
 
 		void setPeakOutputForward(double peak)
 		{
