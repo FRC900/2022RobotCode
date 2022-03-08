@@ -159,8 +159,8 @@ dynamic_arm_controller:
     dynamic_reconfigure: False
     voltage_compensation_enable: True
     voltage_compensation_saturation: 12
-    status_1_general_period: 250 # default = 10
-    status_2_feedback0_period: 250 # Default = 20
+    #status_1_general_period: 250 # default = 10
+    #status_2_feedback0_period: 250 # Default = 20
     status_3_quadrature_period: 250
     #status_4_aintempvbat_period: 160
     #status_6_misc_period: 0

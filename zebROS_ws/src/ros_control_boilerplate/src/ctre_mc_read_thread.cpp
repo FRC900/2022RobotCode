@@ -73,11 +73,6 @@ void FRCRobotInterface::ctre_mc_read_thread(std::shared_ptr<ctre::phoenix::motor
 			conversion_factor = state->getConversionFactor();
 		}
 
-		// TODO : in main read() loop copy status from talon being followed
-		// into follower talon state?
-		if (talon_mode == hardware_interface::TalonMode_Follower)
-			return;
-
 		const double radians_scale = getConversionFactor(encoder_ticks_per_rotation, encoder_feedback, hardware_interface::TalonMode_Position) * conversion_factor;
 		const double radians_per_second_scale = getConversionFactor(encoder_ticks_per_rotation, encoder_feedback, hardware_interface::TalonMode_Velocity) * conversion_factor;
 

@@ -121,9 +121,7 @@ void DynamicArmController::update(const ros::Time &time, const ros::Duration &/*
       zeroed_ = true;
       last_zeroed_ = true;
       dynamic_arm_joint_.setSelectedSensorPosition(0);
-      if (dynamic_arm_joint_.getMode() == hardware_interface::TalonMode_PercentOutput) {
-        setpoint.SetData(0.0); // stop motor
-      }
+      setpoint.SetData(0.0); // stop motor
       // dynamic_arm_joint_.setDemand1Type(hardware_interface::DemandType_ArbitraryFeedForward);
       // dynamic_arm_joint_.setDemand1Value(config_.arb_feed_forward_up_low);
     }
