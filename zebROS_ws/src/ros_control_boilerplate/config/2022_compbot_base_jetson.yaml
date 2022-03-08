@@ -102,8 +102,8 @@ dynamic_arm_controller:
   dynamic_arm_current_threshold: 10.0
 
   # NOTE fast is untested as of now
-  # motion_magic_velocity_fast: 1.7
-  # motion_magic_acceleration_fast: 3.5
+  motion_magic_velocity_fast: 1.7
+  motion_magic_acceleration_fast: 3.5
 
   motion_magic_velocity_slow: 0.25
   motion_magic_acceleration_slow: 2
