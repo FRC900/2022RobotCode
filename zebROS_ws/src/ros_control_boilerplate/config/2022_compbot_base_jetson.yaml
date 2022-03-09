@@ -95,7 +95,7 @@ dynamic_arm_controller:
   # for this amount of time, assume the dynamic arm is stuck
   # or has hit bottom and the limit switch is broken.  Stop
   # trying to drive down to prevent killing the motor
-  dynamic_arm_zeroing_timeout: 2.0
+  dynamic_arm_zeroing_timeout: 60.0
 
   # TODO fix these
   dynamic_arm_max_current_iterations: 10
