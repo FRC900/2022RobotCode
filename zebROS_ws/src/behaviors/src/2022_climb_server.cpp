@@ -374,16 +374,12 @@ public:
     }
     auto nameArray = talon_states_.name;
     int leaderIndex = -1;
-    int followerIndex = -1;
     for(size_t i = 0; i < nameArray.size(); i++){
       if(nameArray[i] == "climber_dynamic_arm_leader"){
         leaderIndex = i;
       }
-      if(nameArray[i] == "climber_dynamic_arm_follower"){
-        followerIndex = i;
-      }
     }
-    if (leaderIndex == -1 || followerIndex == -1) {
+    if (leaderIndex == -1) {
       exited = true;
       ROS_ERROR_STREAM("2022_climb_server : Couldn't find talon in /frcrobot_jetson/talon_states. Aborting climb.");
       return;
@@ -395,7 +391,7 @@ public:
       ros::spinOnce();
       // wait for motors to go up to speed to not fail check in <this line + 6 lines>
     }
-    while(!talon_states_.reverse_limit_switch[leaderIndex] && !talon_states_.reverse_limit_switch[followerIndex]) // wait
+    while(!talon_states_.reverse_limit_switch[leaderIndex]) // wait
     {
       ROS_INFO_STREAM_THROTTLE(0.25, "2022_climb_server : waiting to hit dynamic arm limit switches");
       r.sleep();
