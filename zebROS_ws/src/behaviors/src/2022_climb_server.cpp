@@ -47,6 +47,8 @@ protected:
   double imbalance_timeout_; // seconds
   double semi_extend_height_;
   double get_to_zero_percent_output_;
+  double piston_wait_time_;
+  double swinging_wait_time_;
 
   std::vector<boost::function<void()>> state_functions_;
 
@@ -105,8 +107,18 @@ public:
     }
     if (!nh_.getParam("imbalance_timeout", imbalance_timeout_))
     {
-      ROS_WARN_STREAM("2022_climb_server : Could not find imbalance_timeout, defaulting to 2.0");
+      ROS_WARN_STREAM("2022_climb_server : Could not find imbalance_timeout, defaulting to 2.0 seconds");
       imbalance_timeout_ = 2.0;
+    }
+    if (!nh_.getParam("piston_wait_time", piston_wait_time_))
+    {
+      ROS_WARN_STREAM("2022_climb_server : Could not find piston_wait_time, defaulting to 0.8 seconds");
+      piston_wait_time_ = 0.8;
+    }
+    if (!nh_.getParam("swinging_wait_time", swinging_wait_time_))
+    {
+      ROS_WARN_STREAM("2022_climb_server : Could not find swinging_wait_time, defaulting to 1 second");
+      swinging_wait_time_ = 1.0;
     }
     dynamic_arm_.waitForExistence();
   }
@@ -115,7 +127,7 @@ public:
       state = 0;
       nextFunction_ = boost::bind(&ClimbStateMachine::state1, this);
       rung = 0;
-    } else if (start_state != 0 && start_state <= 10) {
+    } else if (start_state != 0 && start_state <= state_functions_.size()) {
       state = start_state;
       nextFunction_ = state_functions_[start_state - 1];
     }
@@ -157,7 +169,7 @@ public:
     std_msgs::Float64 spMsg;
     spMsg.data = STATIC_HOOK_OPEN;
     static_hook_piston_.publish(spMsg);
-    if (sleepCheckingForPreempt(0.8)) return; // wait for pistons
+    if (sleepCheckingForPreempt(piston_wait_time_)) return; // wait for pistons
     ROS_INFO_STREAM("2022_climb_server : Aligned and opened");
     ROS_INFO_STREAM("");
     nextFunction_ = boost::bind(&ClimbStateMachine::state2, this);
@@ -176,7 +188,7 @@ public:
     std_msgs::Float64 dpMsg;
     dpMsg.data = DYNAMIC_ARM_UPRIGHT;
     dynamic_arm_piston_.publish(dpMsg);
-    if (sleepCheckingForPreempt(0.8)) return;
+    if (sleepCheckingForPreempt(piston_wait_time_)) return;
     ROS_INFO_STREAM("2022_climb_server : Extended dynamic arm pistons");
     ROS_INFO_STREAM("");
     nextFunction_ = boost::bind(&ClimbStateMachine::state3, this);
@@ -247,7 +259,7 @@ public:
       std_msgs::Float64 dpMsg;
       dpMsg.data = DYNAMIC_ARM_UPRIGHT;
       dynamic_arm_piston_.publish(dpMsg);
-      if (sleepCheckingForPreempt(0.8)) return;
+      if (sleepCheckingForPreempt(piston_wait_time_)) return;
       ROS_INFO_STREAM("2022_climb_server : Extended dynamic arm pistons");
     }
     ROS_INFO_STREAM("");
@@ -296,8 +308,9 @@ public:
       }
     }
 
-    if (sleepCheckingForPreempt(1)) return; // stop swinging
-    ROS_INFO_STREAM("2022_climb_server : Lowered dynamic arms enough to safely detach static hooks");
+    if (sleepCheckingForPreempt(swinging_wait_time_)) return; // stop swinging
+    ROS_INFO_STREAM("2022_climb_server : Lowered dynamic arms enough to safely detach static hooks. Robot is fully supported by rung " << std::to_string(rung) << ".");
+    rung++;
     ROS_INFO_STREAM("");
     // TODO !! wait for human to confirm static hooks can be detached/robot is stable before exiting !!
     nextFunction_ = boost::bind(&ClimbStateMachine::state6, this);
@@ -335,11 +348,7 @@ public:
       }
       r.sleep();
     }
-    ROS_INFO_STREAM("2022_climb_server : Detached static hooks. Robot is fully supported by rung " << std::to_string(rung) << ".");
-    rung++;
-    ROS_INFO_STREAM("2022_climb_server : Waiting for robot to stop swinging");
-    if (sleepCheckingForPreempt(2)) return;
-    ROS_INFO_STREAM("2022_climb_server : Robot stopped swinging");
+    ROS_INFO_STREAM("2022_climb_server : Detached static hooks.");
     ROS_INFO_STREAM("");
     nextFunction_ = boost::bind(&ClimbStateMachine::state7, this);
   }
@@ -493,7 +502,7 @@ public:
     std_msgs::Float64 dpMsg;
     dpMsg.data = DYNAMIC_ARM_TILTED;
     dynamic_arm_piston_.publish(dpMsg);
-    if (sleepCheckingForPreempt(1)) return;
+    if (sleepCheckingForPreempt(piston_wait_time_)) return;
     ROS_INFO_STREAM("2022_climb_server : Retracted dynamic arm pistons");
     ROS_INFO_STREAM("");
     nextFunction_ = boost::bind(&ClimbStateMachine::state3, this);
