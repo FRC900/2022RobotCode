@@ -45,7 +45,7 @@ protected:
   double full_extend_height_air_;
   double static_hook_distance_above_rung_;
   double imbalance_timeout_; // seconds
-  double semi_extend_height_;
+  double static_hook_release_height_;
   double get_to_zero_percent_output_;
   double piston_wait_time_;
   double swinging_wait_time_;
@@ -83,8 +83,8 @@ public:
       exited = true;
       return;
     }
-    if (!nh_.getParam("semi_extend_height", semi_extend_height_)) {
-      ROS_ERROR_STREAM("2022_climb_server : Could not find semi_extend_height");
+    if (!nh_.getParam("static_hook_release_height", static_hook_release_height_)) {
+      ROS_ERROR_STREAM("2022_climb_server : Could not find static_hook_release_height");
       success = false;
       exited = true;
       return;
@@ -273,7 +273,7 @@ public:
   //   ROS_INFO_STREAM("2022_climb_server : Lowering dynamic arms enough to be fully supported by the rung");
   //   controllers_2022_msgs::DynamicArmSrv srv;
   //   srv.request.use_percent_output = false; // motion magic
-  //   srv.request.data = semi_extend_height_;
+  //   srv.request.data = static_hook_release_height_;
   //   srv.request.go_slow = true;
   //   if (dynamic_arm_.call(srv))
   //   {
@@ -298,7 +298,7 @@ public:
   //     return;
   //   }
   //   ros::Rate r(100);
-  //   while(fabs(talon_states_.position[leaderIndex] - semi_extend_height_) > 0.05) // wait
+  //   while(fabs(talon_states_.position[leaderIndex] - static_hook_release_height_) > 0.05) // wait
   //   {
   //     r.sleep();
   //     ros::spinOnce();
@@ -389,7 +389,7 @@ public:
     {
       r.sleep();
       ros::spinOnce();
-      if (!opened_hooks && (talon_states_.position[leaderIndex] <= semi_extend_height_) && !s1_ls && !s2_ls) { // if hooks haven't been opened, height < hook release height, and both hooks aren't touching anything,
+      if (!opened_hooks && (talon_states_.position[leaderIndex] <= static_hook_release_height_) && !s1_ls && !s2_ls) { // if hooks haven't been opened, height < hook release height, and both hooks aren't touching anything,
         // open hooks
         std_msgs::Float64 spMsg;
         spMsg.data = STATIC_HOOK_OPEN;
@@ -423,6 +423,7 @@ public:
     std_msgs::Float64 spMsg;
     spMsg.data = STATIC_HOOK_CLOSED;
     static_hook_piston_.publish(spMsg);
+    if (sleepCheckingForPreempt(piston_wait_time_)) return;
     ROS_INFO_STREAM("2022_climb_server : Attached static hooks");
     ROS_INFO_STREAM("");
     nextFunction_ = boost::bind(&ClimbStateMachine::state7, this);
@@ -499,7 +500,6 @@ public:
   }
   void state8()
   {
-    // finish updating to state 8, update state function list
     state = 8;
     ROS_INFO_STREAM("2022_climb_server : State 8");
     ROS_INFO_STREAM("2022_climb_server : ---");
