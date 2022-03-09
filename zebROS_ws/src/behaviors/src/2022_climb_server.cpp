@@ -152,9 +152,13 @@ public:
     state = 1;
     ROS_INFO_STREAM("2022_climb_server : State 1");
     ROS_INFO_STREAM("2022_climb_server : ---");
-    ROS_INFO_STREAM("2022_climb_server : Aligning...");
+    ROS_INFO_STREAM("2022_climb_server : Aligning and opening static hooks...");
     if (sleepCheckingForPreempt(2.0)) return; // simulate aligning
-    ROS_INFO_STREAM("2022_climb_server : Aligned");
+    std_msgs::Float64 spMsg;
+    spMsg.data = STATIC_HOOK_OPEN;
+    static_hook_piston_.publish(spMsg);
+    if (sleepCheckingForPreempt(0.8)) return; // wait for pistons
+    ROS_INFO_STREAM("2022_climb_server : Aligned and opened");
     ROS_INFO_STREAM("");
     nextFunction_ = boost::bind(&ClimbStateMachine::state2, this);
   }
@@ -347,55 +351,39 @@ public:
     ROS_INFO_STREAM("2022_climb_server : Lowering dynamic arms fully");
     controllers_2022_msgs::DynamicArmSrv srv;
     srv.request.use_percent_output = false; // motion magic
-    srv.request.data = 0;
+    srv.request.data = 0.01;
     srv.request.go_slow = true;
-    // Limit switch & encoder combination. Tell motor to go to the static hook vertical position and stop when it hits the position of the static hooks or limit switch, whichever comes first.
-    // Definitely want motion profiling.
     if (dynamic_arm_.call(srv))
     {
       ROS_INFO_STREAM("2022_climb_server : called dynamic arm service.");
-      auto nameArray = talon_states_.name;
-      int leaderIndex = -1;
-      for(size_t i = 0; i < size(nameArray); i++){
-        if(nameArray[i] == "climber_dynamic_arm_leader"){
-          leaderIndex = i;
-        }
-      }
-      if (leaderIndex == -1) {
-        exited = true;
-        ROS_ERROR_STREAM("2022_climb_server : Couldn't find talon in /frcrobot_jetson/talon_states. Aborting climb.");
-        return;
-      }
-      ros::Duration(0.5).sleep(); // wait to get up to speed so the check on <this line+7 lines> doesn't fail
-      ros::Rate r(100);
-      while(!talon_states_.reverse_limit_switch[leaderIndex])
-      {
-        r.sleep();
-        ros::spinOnce();
-
-        if (fabs(talon_states_.speed[leaderIndex]) < 0.1) {
-          // if we have not hit the limit switch yet and we have stopped, keep going down slowly
-          srv.request.use_percent_output = true;
-          srv.request.data = -fabs(get_to_zero_percent_output_);
-          srv.request.go_slow = true;
-          dynamic_arm_.call(srv);
-        }
-        if (as_.isPreemptRequested() || !ros::ok()) {
-          exited = true;
-          return;
-        }
-      }
-      srv.request.use_percent_output = false;
-      srv.request.data = 0;
-      srv.request.go_slow = true;
-      dynamic_arm_.call(srv);
-      ROS_INFO_STREAM("2022_climb_server : called dynamic arm service to hold up in air.");
     }
     else
     {
       ROS_ERROR_STREAM("2022_climb_server : failed to call dynamic arm service. Aborting.");
       exited = true;
       return;
+    }
+    auto nameArray = talon_states_.name;
+    int leaderIndex = -1;
+    for(size_t i = 0; i < nameArray.size(); i++){
+      if(nameArray[i] == "climber_dynamic_arm_leader"){
+        leaderIndex = i;
+      }
+    }
+    if (leaderIndex == -1) {
+      exited = true;
+      ROS_ERROR_STREAM("2022_climb_server : Couldn't find talon in /frcrobot_jetson/talon_states. Aborting climb.");
+      return;
+    }
+    ros::Rate r(100);
+    while(fabs(talon_states_.position[leaderIndex] - 0.01) > 0.01) // wait
+    {
+      r.sleep();
+      ros::spinOnce();
+      if (as_.isPreemptRequested() || !ros::ok()) {
+        exited = true;
+        return;
+      }
     }
 
     // Wait for this to finish.
@@ -417,25 +405,6 @@ public:
     std_msgs::Float64 spMsg;
     spMsg.data = STATIC_HOOK_CLOSED;
     static_hook_piston_.publish(spMsg);
-    ros::Rate r(100); // 100 Hz loop
-    int counter = 0;
-    while (!(s1_ls && s2_ls)) {
-      ros::spinOnce();
-      if ((s1_ls == 1) ^ (s2_ls == 1)) { // if one hook has touched but the other has not,
-        if (counter >= imbalance_timeout_ * 100) { // and it has been two seconds since the robot was imbalanced,
-          exited = true;
-          ROS_ERROR_STREAM("2022_climb_server : The robot is imbalanced. Aborting climb.");
-          return;
-        } else {
-          counter++;
-        }
-      }
-      if (as_.isPreemptRequested() || !ros::ok()) {
-        exited = true;
-        return;
-      }
-      r.sleep();
-    }
     ROS_INFO_STREAM("2022_climb_server : Attached static hooks");
     ROS_INFO_STREAM("");
     nextFunction_ = boost::bind(&ClimbStateMachine::state9, this);
@@ -476,6 +445,27 @@ public:
       ROS_ERROR_STREAM("2022_climb_server : failed to call dynamic arm service. Aborting.");
       exited = true;
       return;
+    }
+
+    ROS_INFO_STREAM("2022_climb_server : waiting for static hooks to be attached");
+    ros::Rate r(100); // 100 Hz loop
+    int counter = 0;
+    while (!(s1_ls && s2_ls)) {
+      ros::spinOnce();
+      if ((s1_ls == 1) ^ (s2_ls == 1)) { // if one hook has touched but the other has not,
+        if (counter >= imbalance_timeout_ * 100) { // and it has been two seconds since the robot was imbalanced,
+          exited = true;
+          ROS_ERROR_STREAM("2022_climb_server : The robot is imbalanced. Aborting climb.");
+          return;
+        } else {
+          counter++;
+        }
+      }
+      if (as_.isPreemptRequested() || !ros::ok()) {
+        exited = true;
+        return;
+      }
+      r.sleep();
     }
 
     ROS_INFO_STREAM("2022_climb_server : Raised dynamic arms slightly to hang by static hooks");

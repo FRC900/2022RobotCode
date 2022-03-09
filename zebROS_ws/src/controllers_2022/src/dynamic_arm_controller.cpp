@@ -185,7 +185,7 @@ void DynamicArmController::update(const ros::Time &time, const ros::Duration &/*
       // dynamic_arm_joint_.setDemand1Type(hardware_interface::DemandType_ArbitraryFeedForward);
       // dynamic_arm_joint_.setDemand1Value(config_.arb_feed_forward_down);
       //dynamic_arm_joint_.setPeakOutputForward(0.0);
-      dynamic_arm_joint_.setPIDFSlot(1);
+      dynamic_arm_joint_.setPIDFSlot(0);
     }
   }
   else
