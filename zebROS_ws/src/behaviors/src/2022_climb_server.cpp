@@ -192,6 +192,7 @@ public:
     ROS_INFO_STREAM("2022_climb_server : Extended dynamic arm pistons");
     ROS_INFO_STREAM("");
     nextFunction_ = boost::bind(&ClimbStateMachine::state3, this);
+    // TODO move zeroing to a service call and zero the arm here
   }
   void state3()
   {
@@ -359,7 +360,7 @@ public:
     ROS_INFO_STREAM("2022_climb_server : Lowering dynamic arms fully while releasing static hooks");
     controllers_2022_msgs::DynamicArmSrv srv;
     srv.request.use_percent_output = false; // motion magic
-    srv.request.data = 0.01;
+    srv.request.data = 0;
     srv.request.go_slow = true;
     if (dynamic_arm_.call(srv))
     {
@@ -373,22 +374,39 @@ public:
     }
     auto nameArray = talon_states_.name;
     int leaderIndex = -1;
+    int followerIndex = -1;
     for(size_t i = 0; i < nameArray.size(); i++){
       if(nameArray[i] == "climber_dynamic_arm_leader"){
         leaderIndex = i;
       }
+      if(nameArray[i] == "climber_dynamic_arm_follower"){
+        followerIndex = i;
+      }
     }
-    if (leaderIndex == -1) {
+    if (leaderIndex == -1 || followerIndex == -1) {
       exited = true;
       ROS_ERROR_STREAM("2022_climb_server : Couldn't find talon in /frcrobot_jetson/talon_states. Aborting climb.");
       return;
     }
     ros::Rate r(100);
     bool opened_hooks = false;
-    while(fabs(talon_states_.position[leaderIndex] - 0.01) > 0.01) // wait
-    {
+    while (fabs(talon_states_.speed[leaderIndex]) < fabs(get_to_zero_percent_output_)) {
       r.sleep();
       ros::spinOnce();
+      // wait for motors to go up to speed to not fail check in <this line + 6 lines>
+    }
+    while(!talon_states_.reverse_limit_switch[leaderIndex] && !talon_states_.reverse_limit_switch[followerIndex]) // wait
+    {
+      ROS_INFO_STREAM_THROTTLE(0.25, "2022_climb_server : waiting to hit dynamic arm limit switches");
+      r.sleep();
+      ros::spinOnce();
+      if (fabs(talon_states_.speed[leaderIndex]) < fabs(get_to_zero_percent_output_)) {
+        // if we have not hit the limit switch yet and we have stopped, keep going down slowly
+        srv.request.use_percent_output = true;
+        srv.request.data = -fabs(get_to_zero_percent_output_);
+        srv.request.go_slow = true;
+        dynamic_arm_.call(srv);
+      }
       if (!opened_hooks && (talon_states_.position[leaderIndex] <= static_hook_release_height_) && !s1_ls && !s2_ls) { // if hooks haven't been opened, height < hook release height, and both hooks aren't touching anything,
         // open hooks
         std_msgs::Float64 spMsg;
@@ -403,7 +421,11 @@ public:
         return;
       }
     }
-
+    srv.request.use_percent_output = false;
+    srv.request.data = 0;
+    srv.request.go_slow = true;
+    dynamic_arm_.call(srv);
+    ROS_INFO_STREAM("2022_climb_server : called dynamic arm service to hold up in air.");
     rung++;
     ROS_INFO_STREAM("2022_climb_server : Lowered dynamic arms fully and released static hooks. Robot is fully supported by rung " << std::to_string(rung) << ".");
     ROS_INFO_STREAM("");
@@ -470,6 +492,7 @@ public:
     ros::Rate r(100); // 100 Hz loop
     int counter = 0;
     while (!(s1_ls && s2_ls)) {
+      ROS_INFO_STREAM_THROTTLE(0.25, "2022_climb_server : waiting to hit static hook limit switches");
       ros::spinOnce();
       if ((s1_ls == 1) ^ (s2_ls == 1)) { // if one hook has touched but the other has not,
         if (counter >= imbalance_timeout_ * 100) { // and it has been two seconds since the robot was imbalanced,
