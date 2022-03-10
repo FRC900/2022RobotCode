@@ -149,7 +149,7 @@ public:
     }
 
     ac_shooter_.cancelGoal(); // stop shooter
-    ac_indexer_.cancelGoal(); // stop shooter
+    ac_indexer_.cancelGoal(); // stop indexer
 
     if (success)
     {
