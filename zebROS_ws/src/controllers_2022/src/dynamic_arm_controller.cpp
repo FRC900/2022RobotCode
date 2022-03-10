@@ -82,6 +82,7 @@ bool DynamicArmController::init(hardware_interface::RobotHW *hw,
   }
 
   dynamic_arm_service_ = controller_nh.advertiseService("command", &DynamicArmController::cmdService, this);
+  dynamic_arm_zeroing_service_ = controller_nh.advertiseService("zero", &DynamicArmController::zeroService, this);
 
   dynamic_reconfigure_server_.init(controller_nh, config_);
 
@@ -188,7 +189,7 @@ void DynamicArmController::update(const ros::Time &time, const ros::Duration &/*
       dynamic_arm_joint_.setPIDFSlot(0);
     }
   }
-  else
+  else if (do_zero_)
   {
     dynamic_arm_joint_.setMode(hardware_interface::TalonMode_PercentOutput);
     if ((ros::Time::now() - last_time_down_).toSec() < config_.dynamic_arm_zeroing_timeout)
@@ -225,6 +226,10 @@ bool DynamicArmController::cmdService(controllers_2022_msgs::DynamicArmSrv::Requ
 {
   if(isRunning())
   {
+    if (!zeroed_) {
+      ROS_ERROR_STREAM("dynamic_arm_controller : this command WILL NOT BE RUN until the arm is zeroed");
+      ROS_INFO_STREAM("dynamic_arm_controller : If you want to zero now, call the /frcrobot_jetson/dynamic_arm_controller/zero service");
+    }
     command_buffer_.writeFromNonRT(DynamicArmCommand(req.data, req.use_percent_output, req.go_slow));
   }
   else
@@ -232,6 +237,14 @@ bool DynamicArmController::cmdService(controllers_2022_msgs::DynamicArmSrv::Requ
     ROS_ERROR_STREAM("Can't accept new commands. DynamicArmController is not running.");
     return false;
   }
+  return true;
+}
+
+//Command Service Function
+bool DynamicArmController::zeroService(std_srvs::Trigger::Request  &req,
+                  std_srvs::Trigger::Response &/*response*/)
+{
+  do_zero_ = true;
   return true;
 }
 
