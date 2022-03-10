@@ -40,12 +40,12 @@ public:
   {
     if (!nh_.getParam("shooting_timeout", shooting_timeout_))
     {
-      ROS_WARN_STREAM("2022_climb_server : Could not find shooting_timeout, defaulting to 10 seconds");
+      ROS_WARN_STREAM("2022_shooting_server : Could not find shooting_timeout, defaulting to 10 seconds");
       shooting_timeout_ = 10.0;
     }
     if (!nh_.getParam("indexing_timeout", shooting_timeout_))
     {
-      ROS_WARN_STREAM("2022_climb_server : Could not find indexing_timeout, defaulting to 5 seconds");
+      ROS_WARN_STREAM("2022_shooting_server : Could not find indexing_timeout, defaulting to 5 seconds");
       indexing_timeout_ = 5.0;
     }
     cargo_state_sub_ = nh_.subscribe("/2022_index_server/ball_state", 2, &ShootingServer2022::cargoStateCallback, this);
@@ -73,10 +73,9 @@ public:
                          actionlib::SimpleActionClient<behavior_actions::Shooter2022Action>::SimpleActiveCallback(),
                          [&isSpinningFast](const behavior_actions::Shooter2022FeedbackConstPtr &feedback){ isSpinningFast = feedback->close_enough; });
     ros::Rate r(100);
-    double multipliedTimeout = shooting_timeout_ * 100; // 100 because that's what the rate is
-    uint64_t counter = 0;
+    ros::Time start = ros::Time::now();
     while (ros::ok() && !isSpinningFast) {
-      if (counter >= multipliedTimeout) {
+      if ((ros::Time::now() - start).toSec() >= shooting_timeout_) {
         ROS_INFO_STREAM("2022_shooting_server : shooter timed out :(");
         timedOut = true;
         return false;
@@ -87,7 +86,6 @@ public:
       }
       ros::spinOnce();
       r.sleep();
-      counter++;
     }
     ROS_INFO_STREAM("2022_shooting_server : spun up shooter");
     return ros::ok();
