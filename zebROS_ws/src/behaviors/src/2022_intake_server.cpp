@@ -10,8 +10,7 @@ protected:
 	ros::NodeHandle nh_;
 	actionlib::SimpleActionServer<behavior_actions::Intake2022Action> as_;
 	std::string action_name_;
-	// create messages that are used to published feedback/result
-	behavior_actions::Intake2022Feedback feedback_;
+	// create messages that are used to published result
 	behavior_actions::Intake2022Result result_;
 
 	double speed_;
