@@ -56,18 +56,48 @@ public:
   {
   }
 
+  template<class C, class S>
+	bool waitForResultAndCheckForPreempt(const ros::Duration & timeout, const actionlib::SimpleActionClient<C> & ac, actionlib::SimpleActionServer<S> & as)
+	{
+		if (timeout < ros::Duration(0, 0)) {
+			ROS_WARN_NAMED("actionlib", "Timeouts can't be negative. Timeout is [%.2fs]", timeout.toSec());
+		}
+
+		ros::Time timeout_time = ros::Time::now() + timeout;
+
+		ros::Rate r(100);
+
+		while (ros::ok() && !as.isPreemptRequested()) {
+			ros::spinOnce();
+			// Determine how long we should wait
+			ros::Duration time_left = timeout_time - ros::Time::now();
+
+			// Check if we're past the timeout time
+			if (timeout > ros::Duration(0, 0) && time_left <= ros::Duration(0, 0) ) {
+				break;
+			}
+
+			if (ac.getState().isDone()) {
+				break;
+			}
+			r.sleep();
+		}
+
+		return ac.getState().isDone();
+	}
+
   void cargoStateCallback(const std_msgs::Float64 &msg)
   {
     cargo_num_ = msg.data;
   }
 
-  bool spinUpShooter(bool &timedOut) { // returns false if ros is not ok or timed out, true otherwise
+  bool spinUpShooter(bool &timedOut, bool low_goal) { // returns false if ros is not ok or timed out, true otherwise
     feedback_.state = feedback_.WAITING_FOR_SHOOTER;
     as_.publishFeedback(feedback_);
     ROS_INFO_STREAM("2022_shooting_server : spinning up shooter");
     bool isSpinningFast = false;
     behavior_actions::Shooter2022Goal goal;
-    goal.mode = goal.HIGH_GOAL; // `goal.` might need to be replaced with `behavior_actions::Shooter2022Goal::`
+    goal.mode = low_goal ? goal.LOW_GOAL : goal.HIGH_GOAL;
     ac_shooter_.sendGoal(goal,
                          actionlib::SimpleActionClient<behavior_actions::Shooter2022Action>::SimpleDoneCallback(),
                          actionlib::SimpleActionClient<behavior_actions::Shooter2022Action>::SimpleActiveCallback(),
@@ -99,7 +129,7 @@ public:
     behavior_actions::Index2022Goal goal;
     goal.goal = goal.MOVE_TO_SHOOTER;
     ac_indexer_.sendGoal(goal);
-    bool finished_before_timeout = ac_indexer_.waitForResult(ros::Duration(indexing_timeout_));
+    bool finished_before_timeout = waitForResultAndCheckForPreempt(ros::Duration(indexing_timeout_), ac_indexer_, as_);
     if (finished_before_timeout) {
       ROS_INFO_STREAM("2022_shooting_server : cargo should have been launched");
     } else {
@@ -115,6 +145,12 @@ public:
 
   void executeCB(const behavior_actions::Shooting2022GoalConstPtr &goal)
   {
+    if (!ac_indexer_.isServerConnected()) {
+      ROS_ERROR_STREAM("2022_shooting_server : indexer server not running!!! this is unlikely to work");
+    }
+    if (!ac_shooter_.isServerConnected()) {
+      ROS_ERROR_STREAM("2022_shooting_server : shooter server not running!!! this is unlikely to work");
+    }
     result_.timed_out = false;
     if (goal->num_cargo > cargo_num_ || goal->num_cargo == 0) {
       ROS_ERROR_STREAM("2022_shooting_server : invalid number of cargo. Either you have told me to launch 0 cargo, or you have requested more cargo than are in the indexer.");
@@ -122,7 +158,7 @@ public:
       return;
     }
     bool shooterTimedOut = false;
-    bool success = spinUpShooter(shooterTimedOut);
+    bool success = spinUpShooter(shooterTimedOut, goal->low_goal);
     result_.timed_out = shooterTimedOut;
     uint8_t i = 0;
     for (uint8_t i = 0; (i < goal->num_cargo) && success; i++)
