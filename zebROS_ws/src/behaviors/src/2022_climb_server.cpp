@@ -226,7 +226,7 @@ public:
     controllers_2022_msgs::DynamicArmSrv srv;
     srv.request.use_percent_output = false; // motion magic
     srv.request.data = rung == 0 ? full_extend_height_ground_ : full_extend_height_air_;
-    srv.request.go_slow = false;
+    srv.request.profile = srv.request.EXTEND;
     if (dynamic_arm_.call(srv))
     {
       ROS_INFO_STREAM("2022_climb_server : called dynamic arm service.");
@@ -298,7 +298,7 @@ public:
     controllers_2022_msgs::DynamicArmSrv srv;
     srv.request.use_percent_output = false; // motion magic
     srv.request.data = 0;
-    srv.request.go_slow = false;
+    srv.request.profile = srv.request.RETRACT;
     if (dynamic_arm_.call(srv))
     {
       ROS_INFO_STREAM("2022_climb_server : called dynamic arm service.");
@@ -337,7 +337,7 @@ public:
         // if we have not hit the limit switch yet and we have stopped, keep going down slowly
         srv.request.use_percent_output = true;
         srv.request.data = -fabs(get_to_zero_percent_output_);
-        srv.request.go_slow = false;
+        srv.request.profile = srv.request.RETRACT;
         dynamic_arm_.call(srv);
       }
       if (!opened_hooks && (talon_states_.position[leaderIndex] <= static_hook_release_height_) && !s1_ls && !s2_ls) { // if hooks haven't been opened, height < hook release height, and both hooks aren't touching anything,
@@ -356,7 +356,7 @@ public:
     }
     srv.request.use_percent_output = false;
     srv.request.data = 0;
-    srv.request.go_slow = false;
+    srv.request.profile = srv.request.RETRACT;
     dynamic_arm_.call(srv);
     ROS_INFO_STREAM("2022_climb_server : called dynamic arm service to hold up in air.");
     rung++;
@@ -417,7 +417,7 @@ public:
     controllers_2022_msgs::DynamicArmSrv srv;
     srv.request.use_percent_output = false; // motion magic
     srv.request.data = static_hook_distance_above_rung_;
-    srv.request.go_slow = true;
+    srv.request.profile = srv.request.TRANSITION;
 
     // Call service
     if (dynamic_arm_.call(srv))
@@ -514,7 +514,7 @@ public:
     controllers_2022_msgs::DynamicArmSrv srv;
     srv.request.use_percent_output = true; // percent output
     srv.request.data = 0;
-    srv.request.go_slow = false; // irrelevant
+    srv.request.profile = srv.request.RETRACT; // irrelevant
 
     // Call service
     if (dynamic_arm_.call(srv))

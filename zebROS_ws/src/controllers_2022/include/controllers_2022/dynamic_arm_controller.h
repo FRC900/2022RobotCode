@@ -21,13 +21,13 @@ namespace dynamic_arm_controller
     DynamicArmCommand()
     {
       data_ = 0.0;
-      go_slow_ = false; // only for motion magic
+      profile_ = 0; // only for motion magic
       use_percent_output_ = true;
     }
-    DynamicArmCommand(double data, bool use_percent_output, bool go_slow)
+    DynamicArmCommand(double data, bool use_percent_output, uint8_t profile)
     {
       data_ = data;
-      go_slow_ = go_slow;
+      profile_ = profile;
       use_percent_output_ = use_percent_output;
     }
     double GetData() const
@@ -38,9 +38,9 @@ namespace dynamic_arm_controller
     {
     return use_percent_output_;
     }
-    bool GetGoSlow() const
+    uint8_t GetProfile() const
     {
-    return go_slow_;
+    return profile_;
     }
     void SetData(double data)
     {
@@ -51,7 +51,7 @@ namespace dynamic_arm_controller
   private:
     double data_;
     bool use_percent_output_;
-    bool go_slow_;
+    uint8_t profile_;
   };
 
   class DynamicArmController : public controller_interface::MultiInterfaceController<hardware_interface::TalonCommandInterface>

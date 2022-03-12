@@ -101,6 +101,9 @@ dynamic_arm_controller:
   dynamic_arm_max_current_iterations: 10
   dynamic_arm_current_threshold: 10.0
 
+  motion_magic_velocity_veryfast: 1.0
+  motion_magic_acceleration_veryfast: 2.0
+
   motion_magic_velocity_fast: 0.42
   motion_magic_acceleration_fast: 1.0
 
