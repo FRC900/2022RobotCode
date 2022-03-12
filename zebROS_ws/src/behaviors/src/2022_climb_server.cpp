@@ -7,6 +7,7 @@
 #include <map>
 #include "talon_state_msgs/TalonState.h"
 #include <std_srvs/Trigger.h>
+#include <std_msgs/Bool.h>
 
 // How to simulate this:
 /*
@@ -54,6 +55,9 @@ protected:
   std::vector<boost::function<void()>> state_functions_;
 
   ros::ServiceClient zero_dynamic_arm_client_;
+  ros::Subscriber dynamic_arm_zeroed_sub_;
+
+  bool arm_zeroed_ = false;
 
   actionlib::SimpleActionServer<behavior_actions::Climb2022Action> &as_;
   ros::ServiceClient dynamic_arm_;
@@ -74,6 +78,7 @@ public:
 	const std::map<std::string, std::string> service_connection_header{ {"tcp_nodelay", "1"} };
     dynamic_arm_ = nh_.serviceClient<controllers_2022_msgs::DynamicArmSrv>("/frcrobot_jetson/dynamic_arm_controller/command", false, service_connection_header);
     zero_dynamic_arm_client_ = nh_.serviceClient<std_srvs::Trigger>("/frcrobot_jetson/dynamic_arm_controller/zero", false, service_connection_header);
+    dynamic_arm_zeroed_sub_ = nh_.subscribe("/frcrobot_jetson/dynamic_arm_controller/is_zeroed", 2, &ClimbStateMachine::zeroStateCallback, this);
     if (!nh_.getParam("full_extend_height_ground", full_extend_height_ground_))
     {
       ROS_ERROR_STREAM("2022_climb_server : Could not find full_extend_height_ground");
@@ -200,21 +205,8 @@ public:
       return;
     }
     ros::Rate r(100);
-    auto nameArray = talon_states_.name;
-    int leaderIndex = -1;
-    for(size_t i = 0; i < nameArray.size(); i++){
-      if(nameArray[i] == "climber_dynamic_arm_leader"){
-        leaderIndex = i;
-      }
-    }
-    if (leaderIndex == -1) {
-      exited = true;
-      ROS_ERROR_STREAM("2022_climb_server : Couldn't find talon in /frcrobot_jetson/talon_states. Aborting climb.");
-      return;
-    }
-
-    while (!talon_states_.reverse_limit_switch[leaderIndex]) {
-      ROS_INFO_STREAM_THROTTLE(0.25, "2022_climb_server : waiting for reverse limit switch");
+    while (!arm_zeroed_) {
+      ROS_INFO_STREAM_THROTTLE(0.25, "2022_climb_server : waiting for arm zero");
       r.sleep();
       ros::spinOnce();
       if (as_.isPreemptRequested() || !ros::ok()) {
@@ -280,7 +272,7 @@ public:
     if (rung == 0)
     {
       ROS_INFO_STREAM("2022_climb_server : Driving Backwards");
-      if (sleepCheckingForPreempt(1)) return; // TODO replace with drivetrain stuff
+      if (sleepCheckingForPreempt(6)) return; // TODO replace with drivetrain stuff
     } else
     {
       ROS_INFO_STREAM("2022_climb_server : Extending dynamic arm pistons to hit next rung");
@@ -425,7 +417,7 @@ public:
     // Construct service call
     controllers_2022_msgs::DynamicArmSrv srv;
     srv.request.use_percent_output = false; // motion magic
-    srv.request.data = talon_states_.position[leaderIndex] + static_hook_distance_above_rung_;
+    srv.request.data = static_hook_distance_above_rung_;
     srv.request.go_slow = true;
 
     // Call service
@@ -512,6 +504,10 @@ public:
   void talonStateCallback(const talon_state_msgs::TalonState talon_state)
   {
     talon_states_ = talon_state;
+  }
+  void zeroStateCallback(const std_msgs::Bool msg)
+  {
+    arm_zeroed_ = msg.data;
   }
   void stopMotors() {
     // TODO may need to add stop condition to controller to make robot stay up
@@ -604,7 +600,7 @@ public:
       ROS_INFO("%s: Succeeded", action_name_.c_str());
     } else
     {
-      sm.reset(true);
+      sm.reset(goal->reset);
       ROS_INFO("%s: Failed", action_name_.c_str());
     }
     // set the action state to success or not

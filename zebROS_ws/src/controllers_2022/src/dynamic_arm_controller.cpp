@@ -83,6 +83,7 @@ bool DynamicArmController::init(hardware_interface::RobotHW *hw,
 
   dynamic_arm_service_ = controller_nh.advertiseService("command", &DynamicArmController::cmdService, this);
   dynamic_arm_zeroing_service_ = controller_nh.advertiseService("zero", &DynamicArmController::zeroService, this);
+  zeroed_publisher_ = controller_nh.advertise<std_msgs::Bool>("is_zeroed", 100);
 
   dynamic_reconfigure_server_.init(controller_nh, config_);
 
@@ -133,6 +134,10 @@ void DynamicArmController::update(const ros::Time &time, const ros::Duration &/*
   {
     last_zeroed_ = false;
   }
+
+  std_msgs::Bool zeroed;
+  zeroed.data = zeroed_;
+  zeroed_publisher_.publish(zeroed);
 
   if (zeroed_) // run normally, seeking to various positions
   {

@@ -44,7 +44,7 @@ public:
   {
     high_goal_speed_ = 325;
     ddr_.registerVariable<double>("high_goal_speed", &high_goal_speed_, "High Goal Shooting Speed", 0, 500);
-    low_goal_speed_ = 140;
+    low_goal_speed_ = 200; // 180 or 200
     ddr_.registerVariable<double>("low_goal_speed", &low_goal_speed_, "Low Goal Shooting Speed", 0, 500);
     eject_speed_ = 120;
     ddr_.registerVariable<double>("eject_speed", &eject_speed_, "Eject Cargo - Shooting Speed", 0, 500);

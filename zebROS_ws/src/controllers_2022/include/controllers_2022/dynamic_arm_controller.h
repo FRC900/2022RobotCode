@@ -10,6 +10,7 @@
 #include <std_srvs/Trigger.h>
 #include <dynamic_reconfigure_wrapper/dynamic_reconfigure_wrapper.h> // TODO change to use ddynamic_reconfigure
 #include <controllers_2022/DynamicArmConfig.h>
+#include <std_msgs/Bool.h>
 
 namespace dynamic_arm_controller
 {
@@ -81,6 +82,7 @@ namespace dynamic_arm_controller
     ros::ServiceServer dynamic_arm_service_; //service for receiving commands
     ros::ServiceServer dynamic_arm_zeroing_service_; //service for zeroing
 
+    ros::Publisher zeroed_publisher_;
   bool zeroed_;
   bool last_zeroed_;
   bool do_zero_ = false;
