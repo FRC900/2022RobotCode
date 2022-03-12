@@ -196,7 +196,6 @@ public:
     dpMsg.data = DYNAMIC_ARM_UPRIGHT;
     dynamic_arm_piston_.publish(dpMsg);
     if (sleepCheckingForPreempt(piston_wait_time_)) return;
-    if (sleepCheckingForPreempt(1.0)) return;
     ROS_INFO_STREAM("2022_climb_server : zeroing dynamic arms");
     std_srvs::Trigger srv;
     if (!zero_dynamic_arm_client_.call(srv)) {
