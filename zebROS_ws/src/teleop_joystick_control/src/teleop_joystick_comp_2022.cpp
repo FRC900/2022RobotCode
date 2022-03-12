@@ -27,6 +27,9 @@
 #include "teleop_joystick_control/TeleopJoystickCompDiagnostics2022Config.h"
 
 #include "teleop_joystick_control/TeleopCmdVel.h"
+#include "behavior_actions/Climb2022Action.h"
+#include "behavior_actions/Shooting2022Action.h"
+#include "behavior_actions/Intaking2022Action.h"
 
 std::unique_ptr<TeleopCmdVel<teleop_joystick_control::TeleopJoystickComp2022Config>> teleop_cmd_vel;
 
@@ -54,6 +57,11 @@ ros::Publisher JoystickRobotVel;
 ros::ServiceClient BrakeSrv;
 
 double imu_angle;
+
+actionlib::SimpleActionClient<behavior_actions::Climb2022Action> climb_ac("/climber/climb_server_2022", true);
+actionlib::SimpleActionClient<behavior_actions::Shooting2022Action> shooting_ac("/shooting/shooting_server_2022", true);
+actionlib::SimpleActionClient<behavior_actions::Intaking2022Action> intaking_ac("/intaking/intaking_server_2022", true);
+bool shoot_in_high_goal = true;
 
 void imuCallback(const sensor_msgs::Imu &imuState)
 {
@@ -374,13 +382,15 @@ void evaluateCommands(const ros::MessageEvent<frc_msgs::JoystickState const>& ev
 			//Joystick1: buttonA
 			if(joystick_states_array[0].buttonAPress)
 			{
-
+				behavior_actions::Intaking2022Goal goal;
+				intaking_ac.sendGoal(goal);
 			}
 			if(joystick_states_array[0].buttonAButton)
 			{
 			}
 			if(joystick_states_array[0].buttonARelease)
 			{
+				intaking_ac.cancelGoalsAtAndBeforeTime(ros::Time::now());
 			}
 
 			//Joystick1: buttonB
@@ -412,6 +422,13 @@ void evaluateCommands(const ros::MessageEvent<frc_msgs::JoystickState const>& ev
 			//Joystick1: buttonY
 			if(joystick_states_array[0].buttonYPress)
 			{
+				behavior_actions::Climb2022Goal goal;
+				goal.single_step = true;
+				goal.start_state = 0;
+				if (climb_ac.getState().isDone()) {
+					// Only trigger climber when the current state is done, otherwise it will preempt/abort
+					climb_ac.sendGoal(goal);
+				}
 			}
 			if(joystick_states_array[0].buttonYButton)
 			{
@@ -423,6 +440,7 @@ void evaluateCommands(const ros::MessageEvent<frc_msgs::JoystickState const>& ev
 			//Joystick1: bumperLeft
 			if(joystick_states_array[0].bumperLeftPress)
 			{
+				shoot_in_high_goal = false;
 			}
 			if(joystick_states_array[0].bumperLeftButton)
 			{
@@ -434,6 +452,7 @@ void evaluateCommands(const ros::MessageEvent<frc_msgs::JoystickState const>& ev
 			//Joystick1: bumperRight
 			if(joystick_states_array[0].bumperRightPress)
 			{
+				shoot_in_high_goal = true;
 			}
 			if(joystick_states_array[0].bumperRightButton)
 			{
@@ -487,7 +506,10 @@ void evaluateCommands(const ros::MessageEvent<frc_msgs::JoystickState const>& ev
 			//Joystick1: directionUp
 			if(joystick_states_array[0].directionUpPress)
 			{
-
+				behavior_actions::Shooting2022Goal goal;
+				goal.num_cargo = 2;
+				goal.low_goal = !shoot_in_high_goal;
+				shooting_ac.sendGoal(goal);
 			}
 			if(joystick_states_array[0].directionUpButton)
 			{
@@ -500,7 +522,10 @@ void evaluateCommands(const ros::MessageEvent<frc_msgs::JoystickState const>& ev
 			//Joystick1: directionDown
 			if(joystick_states_array[0].directionDownPress)
 			{
-
+				behavior_actions::Shooting2022Goal goal;
+				goal.num_cargo = 1;
+				goal.low_goal = !shoot_in_high_goal;
+				shooting_ac.sendGoal(goal);
 			}
 			if(joystick_states_array[0].directionDownButton)
 			{
@@ -528,17 +553,17 @@ void evaluateCommands(const ros::MessageEvent<frc_msgs::JoystickState const>& ev
 
 			if(joystick_states_array[0].leftTrigger > config.trigger_threshold)
 			{
-				//Call intake server, but only once
+				// Abort climb
 				if(!left_trigger_pressed)
 				{
-
+					climb_ac.cancelGoalsAtAndBeforeTime(ros::Time::now());
 				}
 
 				left_trigger_pressed = true;
 			}
 			else
 			{
-				//Preempt intake server, but only once
+				//
 				if(left_trigger_pressed)
 				{
 
@@ -837,6 +862,18 @@ int main(int argc, char **argv)
 	if(!BrakeSrv.waitForExistence(ros::Duration(15)))
 	{
 		ROS_ERROR("Wait (15 sec) timed out, for Brake Service in teleop_joystick_comp.cpp");
+	}
+
+	if (!climb_ac.waitForServer(ros::Duration(15))) {
+		ROS_ERROR("**CLIMB LIKELY WON'T WORK*** Wait (15 sec) timed out, for climb action in teleop_joystick_comp.cpp");
+	}
+
+	if (!shooting_ac.waitForServer(ros::Duration(15))) {
+		ROS_ERROR("**SHOOTING LIKELY WON'T WORK*** Wait (15 sec) timed out, for shooting action in teleop_joystick_comp.cpp");
+	}
+
+	if (!intaking_ac.waitForServer(ros::Duration(15))) {
+		ROS_ERROR("**INTAKING LIKELY WON'T WORK*** Wait (15 sec) timed out, for intaking action in teleop_joystick_comp.cpp");
 	}
 
 	orient_strafing_enable_pub = n.advertise<std_msgs::Bool>("orient_strafing/pid_enable", 1);
