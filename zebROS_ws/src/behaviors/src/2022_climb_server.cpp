@@ -6,6 +6,7 @@
 #include "sensor_msgs/JointState.h"
 #include <map>
 #include "talon_state_msgs/TalonState.h"
+#include <std_srvs/Trigger.h>
 
 // How to simulate this:
 /*
@@ -52,6 +53,8 @@ protected:
 
   std::vector<boost::function<void()>> state_functions_;
 
+  ros::ServiceClient zero_dynamic_arm_client_;
+
   actionlib::SimpleActionServer<behavior_actions::Climb2022Action> &as_;
   ros::ServiceClient dynamic_arm_;
   // other state data we have
@@ -70,6 +73,7 @@ public:
     talon_states_sub_ = nh_.subscribe("/frcrobot_jetson/talon_states", 1, &ClimbStateMachine::talonStateCallback, this);
 	const std::map<std::string, std::string> service_connection_header{ {"tcp_nodelay", "1"} };
     dynamic_arm_ = nh_.serviceClient<controllers_2022_msgs::DynamicArmSrv>("/frcrobot_jetson/dynamic_arm_controller/command", false, service_connection_header);
+    zero_dynamic_arm_client_ = nh_.serviceClient<std_srvs::Trigger>("/frcrobot_jetson/dynamic_arm_controller/zero", false, service_connection_header);
     if (!nh_.getParam("full_extend_height_ground", full_extend_height_ground_))
     {
       ROS_ERROR_STREAM("2022_climb_server : Could not find full_extend_height_ground");
@@ -123,14 +127,11 @@ public:
     }
     dynamic_arm_.waitForExistence();
   }
-  void reset(bool singleStep, uint8_t start_state) {
-    if (!singleStep) {
+  void reset(bool reset_fully) {
+    if (reset_fully) {
       state = 0;
       nextFunction_ = boost::bind(&ClimbStateMachine::state1, this);
       rung = 0;
-    } else if (start_state != 0 && start_state <= state_functions_.size()) {
-      state = start_state;
-      nextFunction_ = state_functions_[start_state - 1];
     }
     exited = false;
     success = false;
@@ -190,10 +191,40 @@ public:
     dpMsg.data = DYNAMIC_ARM_UPRIGHT;
     dynamic_arm_piston_.publish(dpMsg);
     if (sleepCheckingForPreempt(piston_wait_time_)) return;
+    if (sleepCheckingForPreempt(1.0)) return;
+    ROS_INFO_STREAM("2022_climb_server : zeroing dynamic arms");
+    std_srvs::Trigger srv;
+    if (!zero_dynamic_arm_client_.call(srv)) {
+      success = false;
+      exited = true;
+      return;
+    }
+    ros::Rate r(100);
+    auto nameArray = talon_states_.name;
+    int leaderIndex = -1;
+    for(size_t i = 0; i < nameArray.size(); i++){
+      if(nameArray[i] == "climber_dynamic_arm_leader"){
+        leaderIndex = i;
+      }
+    }
+    if (leaderIndex == -1) {
+      exited = true;
+      ROS_ERROR_STREAM("2022_climb_server : Couldn't find talon in /frcrobot_jetson/talon_states. Aborting climb.");
+      return;
+    }
+
+    while (!talon_states_.reverse_limit_switch[leaderIndex]) {
+      ROS_INFO_STREAM_THROTTLE(0.25, "2022_climb_server : waiting for reverse limit switch");
+      r.sleep();
+      ros::spinOnce();
+      if (as_.isPreemptRequested() || !ros::ok()) {
+        exited = true;
+        return;
+      }
+    }
     ROS_INFO_STREAM("2022_climb_server : Extended dynamic arm pistons");
     ROS_INFO_STREAM("");
     nextFunction_ = boost::bind(&ClimbStateMachine::state3, this);
-    // TODO move zeroing to a service call and zero the arm here
   }
   void state3()
   {
@@ -530,7 +561,7 @@ public:
 
   void executeCB(const behavior_actions::Climb2022GoalConstPtr &goal)
   {
-    sm.reset(goal->single_step, goal->start_state);
+    sm.reset(goal->reset);
     // start executing the action
     while (!sm.exited)
     {
@@ -573,7 +604,7 @@ public:
       ROS_INFO("%s: Succeeded", action_name_.c_str());
     } else
     {
-      sm.reset(false, 0);
+      sm.reset(true);
       ROS_INFO("%s: Failed", action_name_.c_str());
     }
     // set the action state to success or not
