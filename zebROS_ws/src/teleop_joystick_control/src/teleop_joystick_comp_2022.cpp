@@ -62,6 +62,7 @@ std::shared_ptr<actionlib::SimpleActionClient<behavior_actions::Climb2022Action>
 std::shared_ptr<actionlib::SimpleActionClient<behavior_actions::Shooting2022Action>> shooting_ac;
 std::shared_ptr<actionlib::SimpleActionClient<behavior_actions::Intaking2022Action>> intaking_ac;
 bool shoot_in_high_goal = true;
+bool reset_climb = false;
 
 void imuCallback(const sensor_msgs::Imu &imuState)
 {
@@ -423,10 +424,15 @@ void evaluateCommands(const ros::MessageEvent<frc_msgs::JoystickState const>& ev
 			if(joystick_states_array[0].buttonYPress)
 			{
 				behavior_actions::Climb2022Goal goal;
-				goal.single_step = true;
-				goal.start_state = 0;
-				if (climb_ac->getState().isDone()) {
-					// Only trigger climber when the current state is done, otherwise it will preempt/abort
+				ROS_INFO_STREAM("Climbing with reset=" << reset_climb);
+				goal.single_step = false;
+				goal.reset = reset_climb;
+				reset_climb = false;
+				if (!climb_ac->getState().isDone()) {
+					// if not done, pause.
+					climb_ac->cancelGoalsAtAndBeforeTime(ros::Time::now());
+				} else {
+					// if done, start/continue.
 					climb_ac->sendGoal(goal);
 				}
 			}
@@ -553,9 +559,10 @@ void evaluateCommands(const ros::MessageEvent<frc_msgs::JoystickState const>& ev
 
 			if(joystick_states_array[0].leftTrigger > config.trigger_threshold)
 			{
-				// Abort climb
+				// Restart climb
 				if(!left_trigger_pressed)
 				{
+					reset_climb = true;
 					climb_ac->cancelGoalsAtAndBeforeTime(ros::Time::now());
 				}
 
