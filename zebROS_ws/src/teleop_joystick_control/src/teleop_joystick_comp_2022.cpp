@@ -29,6 +29,9 @@
 #include "teleop_joystick_control/TeleopJoystickCompDiagnostics2022Config.h"
 
 #include "teleop_joystick_control/TeleopCmdVel.h"
+#include "behavior_actions/Climb2022Action.h"
+#include "behavior_actions/Shooting2022Action.h"
+#include "behavior_actions/Intaking2022Action.h"
 
 std::unique_ptr<TeleopCmdVel<teleop_joystick_control::TeleopJoystickComp2022Config>> teleop_cmd_vel;
 
@@ -170,6 +173,13 @@ void zero_all_diag_commands(void)
 	ROS_INFO_STREAM("Set climber_cmd.data to " << climber_cmd.request.data);
 	ROS_INFO_STREAM("Set intake_cmd.data to " << intake_cmd.data);
 }
+
+std::shared_ptr<actionlib::SimpleActionClient<behavior_actions::Climb2022Action>> climb_ac;
+std::shared_ptr<actionlib::SimpleActionClient<behavior_actions::Shooting2022Action>> shooting_ac;
+std::shared_ptr<actionlib::SimpleActionClient<behavior_actions::Intaking2022Action>> intaking_ac;
+bool shoot_in_high_goal = true;
+bool reset_climb = false;
+
 
 void imuCallback(const sensor_msgs::Imu &imuState)
 {
@@ -515,13 +525,15 @@ void evaluateCommands(const ros::MessageEvent<frc_msgs::JoystickState const>& ev
 			//Joystick1: buttonA
 			if(joystick_states_array[0].buttonAPress)
 			{
-
+				behavior_actions::Intaking2022Goal goal;
+				intaking_ac->sendGoal(goal);
 			}
 			if(joystick_states_array[0].buttonAButton)
 			{
 			}
 			if(joystick_states_array[0].buttonARelease)
 			{
+				intaking_ac->cancelGoalsAtAndBeforeTime(ros::Time::now());
 			}
 
 			//Joystick1: buttonB
@@ -553,6 +565,18 @@ void evaluateCommands(const ros::MessageEvent<frc_msgs::JoystickState const>& ev
 			//Joystick1: buttonY
 			if(joystick_states_array[0].buttonYPress)
 			{
+				behavior_actions::Climb2022Goal goal;
+				ROS_INFO_STREAM("Climbing with reset=" << reset_climb);
+				goal.single_step = false;
+				goal.reset = reset_climb;
+				reset_climb = false;
+				if (!climb_ac->getState().isDone()) {
+					// if not done, pause.
+					climb_ac->cancelGoalsAtAndBeforeTime(ros::Time::now());
+				} else {
+					// if done, start/continue.
+					climb_ac->sendGoal(goal);
+				}
 			}
 			if(joystick_states_array[0].buttonYButton)
 			{
@@ -564,6 +588,7 @@ void evaluateCommands(const ros::MessageEvent<frc_msgs::JoystickState const>& ev
 			//Joystick1: bumperLeft
 			if(joystick_states_array[0].bumperLeftPress)
 			{
+				shoot_in_high_goal = false;
 			}
 			if(joystick_states_array[0].bumperLeftButton)
 			{
@@ -575,6 +600,7 @@ void evaluateCommands(const ros::MessageEvent<frc_msgs::JoystickState const>& ev
 			//Joystick1: bumperRight
 			if(joystick_states_array[0].bumperRightPress)
 			{
+				shoot_in_high_goal = true;
 			}
 			if(joystick_states_array[0].bumperRightButton)
 			{
@@ -628,7 +654,10 @@ void evaluateCommands(const ros::MessageEvent<frc_msgs::JoystickState const>& ev
 			//Joystick1: directionUp
 			if(joystick_states_array[0].directionUpPress)
 			{
-
+				behavior_actions::Shooting2022Goal goal;
+				goal.num_cargo = 2;
+				goal.low_goal = !shoot_in_high_goal;
+				shooting_ac->sendGoal(goal);
 			}
 			if(joystick_states_array[0].directionUpButton)
 			{
@@ -641,7 +670,10 @@ void evaluateCommands(const ros::MessageEvent<frc_msgs::JoystickState const>& ev
 			//Joystick1: directionDown
 			if(joystick_states_array[0].directionDownPress)
 			{
-
+				behavior_actions::Shooting2022Goal goal;
+				goal.num_cargo = 1;
+				goal.low_goal = !shoot_in_high_goal;
+				shooting_ac->sendGoal(goal);
 			}
 			if(joystick_states_array[0].directionDownButton)
 			{
@@ -667,10 +699,11 @@ void evaluateCommands(const ros::MessageEvent<frc_msgs::JoystickState const>& ev
 
 			if(joystick_states_array[0].leftTrigger > config.trigger_threshold)
 			{
-				//Call intake server, but only once
-				if(!joystick1_left_trigger_pressed)
+				// Restart climb
+				if(!left_trigger_pressed)
 				{
-
+					reset_climb = true;
+					climb_ac->cancelGoalsAtAndBeforeTime(ros::Time::now());
 				}
 
 				joystick1_left_trigger_pressed = true;
@@ -1040,6 +1073,23 @@ int main(int argc, char **argv)
 
 	ros::Subscriber match_state_sub = n.subscribe("/frcrobot_rio/match_data", 1, matchStateCallback);
 	ros::ServiceServer robot_orient_service = n.advertiseService("robot_orient", orientCallback);
+
+	climb_ac = std::make_shared<actionlib::SimpleActionClient<behavior_actions::Climb2022Action>>("/climber/climb_server_2022", true);
+	shooting_ac = std::make_shared<actionlib::SimpleActionClient<behavior_actions::Shooting2022Action>>("/shooting/shooting_server_2022", true);
+	intaking_ac = std::make_shared<actionlib::SimpleActionClient<behavior_actions::Intaking2022Action>>("/intaking/intaking_server_2022", true);
+
+	ROS_INFO_STREAM("Waiting for actionlib servers");
+	if (!climb_ac->waitForServer(ros::Duration(15))) {
+		ROS_ERROR("**CLIMB LIKELY WON'T WORK*** Wait (15 sec) timed out, for climb action in teleop_joystick_comp.cpp");
+	}
+
+	if (!shooting_ac->waitForServer(ros::Duration(15))) {
+		ROS_ERROR("**SHOOTING LIKELY WON'T WORK*** Wait (15 sec) timed out, for shooting action in teleop_joystick_comp.cpp");
+	}
+
+	if (!intaking_ac->waitForServer(ros::Duration(15))) {
+		ROS_ERROR("**INTAKING LIKELY WON'T WORK*** Wait (15 sec) timed out, for intaking action in teleop_joystick_comp.cpp");
+	}
 
 	ros::ServiceServer orient_strafing_angle_service = n.advertiseService("orient_strafing_angle", orientStrafingAngleCallback);
 
