@@ -23,13 +23,15 @@ auto_mode_2: ["shoot", "start_intaking", "cmd_vel_2", "pause_cmd_vel", "stop_int
 # Test path is for path from hub with logo to the nearest ball
 # Ball is 79inches or about 2 meters back from robot and 21 deg counterclockwise turn
 #
-test_path:
+ball_from_no_logo:
+
+ball_from_frclogo:
     type: "path"
     goal:
-        apply_offset: false 
+           apply_offset: false 
         points:
             - [0.0, -2.0, 0.3763]
-
+            - [0.0, 0.0, 0.0]
 #auto_mode_1: ["start_intake", "path_to_trench_face_goal", "stop_intake", "shoot", "pause_2_sec"] #example
 #auto_mode_2: ["pause_2_sec","pause_5_sec"]
 #auto_mode_3: ["drive_back", "path_to_trench_after_drive_back"]
