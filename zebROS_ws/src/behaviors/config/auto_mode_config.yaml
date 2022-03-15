@@ -19,6 +19,18 @@ auto_mode_2: ["shoot", "start_intaking", "cmd_vel_2", "pause_cmd_vel", "stop_int
 #auto_mode_6: ["game_piece_pickup_path"]
 
 #auto_mode_1: ["start_intaking", "path_to_trench_face_goal", "stop_intaking", "shoot", "pause_2_sec"] #example
+
+# Test path is for path from hub with logo to the nearest ball
+# Ball is 79inches or about 2 meters back from robot and 21 deg counterclockwise turn
+#
+test_path:
+    type: "path"
+    goal:
+        apply_offset: false 
+        points:
+            - [0.0, -2.0, 0.3763]
+
+#auto_mode_1: ["start_intake", "path_to_trench_face_goal", "stop_intake", "shoot", "pause_2_sec"] #example
 #auto_mode_2: ["pause_2_sec","pause_5_sec"]
 #auto_mode_3: ["drive_back", "path_to_trench_after_drive_back"]
 #auto_mode_4: ["drive_back", "shoot", "path_to_trench_after_drive_back"]
