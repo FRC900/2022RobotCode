@@ -891,7 +891,7 @@ void TalonSwerveDriveController::update(const ros::Time &time, const ros::Durati
 				speed_joints_[i].setCommand(0);
 				speed_joints_[i].setMode(hardware_interface::TalonMode::TalonMode_PercentOutput);
 			}
-			if (ros::Time::now().toSec() - time_before_brake > .1)
+			if (ros::Time::now().toSec() - time_before_brake > .5)
 			{
 				brake();
 			}
@@ -1595,4 +1595,3 @@ bool TalonSwerveDriveController::getWheelNames(ros::NodeHandle &controller_nh,
   }
 */
 //}
-
