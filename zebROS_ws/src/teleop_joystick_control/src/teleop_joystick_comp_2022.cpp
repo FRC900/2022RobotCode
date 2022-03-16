@@ -156,7 +156,6 @@ void publish_diag_cmds(void)
 	indexer_straight_pub.publish(indexer_straight_cmd);
 	indexer_arc_pub.publish(indexer_arc_cmd);
 	shooter_pub.publish(shooter_cmd);
-	speed_offset_publisher.publish(speed_offset); //TODO update the speed offset once we know which button it will be
 	climber_cmd.request.use_percent_output = true;
 	if (!climber_srv.call(climber_cmd))
 	{
@@ -981,6 +980,7 @@ void evaluateCommands(const ros::MessageEvent<frc_msgs::JoystickState const>& ev
 			}
 		}
 
+		speed_offset_publisher.publish(speed_offset); //TODO update the speed offset once we know which button it will be
 		last_header_stamp = joystick_states_array[0].header.stamp;
 	}
 	else if(joystick_id == 1)

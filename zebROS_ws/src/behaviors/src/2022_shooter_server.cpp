@@ -32,7 +32,7 @@ protected:
   ros::Subscriber speed_offset_sub_;
 
   double current_speed_;
-  double speed_offset_;
+  double speed_offset_ = 0;
 
   uint64_t close_enough_counter_;
 
