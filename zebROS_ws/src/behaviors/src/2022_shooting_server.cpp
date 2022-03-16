@@ -154,7 +154,7 @@ public:
       ROS_ERROR_STREAM("2022_shooting_server : shooter server not running!!! this is unlikely to work");
     }
     result_.timed_out = false;
-    if (goal->num_cargo > cargo_num_ || goal->num_cargo == 0) {
+    if (goal->num_cargo == 0) {
       ROS_ERROR_STREAM("2022_shooting_server : invalid number of cargo. Either you have told me to launch 0 cargo, or you have requested more cargo than are in the indexer.");
       as_.setAborted(result_); // set the action state to aborted
       return;
@@ -163,7 +163,7 @@ public:
     bool success = spinUpShooter(shooterTimedOut, goal->low_goal);
     result_.timed_out = shooterTimedOut;
     uint8_t i = 0;
-    for (uint8_t i = 0; (i < goal->num_cargo) && success; i++)
+    for (uint8_t i = 0; (cargo_num_ > 0) && (i < goal->num_cargo) && success; i++)
     {
       bool indexerTimedOut = false;
       // check that preempt has not been requested by the client
@@ -188,6 +188,7 @@ public:
     ac_shooter_.cancelGoal(); // stop shooter
     ac_indexer_.cancelGoal(); // stop indexer
 
+	result_.success = success;
     if (success)
     {
       ROS_INFO_STREAM("2022_shooting_server : succeeded! yay!!");
@@ -205,8 +206,6 @@ public:
 
     feedback_ = behavior_actions::Shooting2022Feedback();
   }
-
-
 };
 
 
