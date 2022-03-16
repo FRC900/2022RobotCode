@@ -154,8 +154,9 @@ public:
       ROS_ERROR_STREAM("2022_shooting_server : shooter server not running!!! this is unlikely to work");
     }
     result_.timed_out = false;
+	result_.success = false;
     if (goal->num_cargo == 0) {
-      ROS_ERROR_STREAM("2022_shooting_server : invalid number of cargo. Either you have told me to launch 0 cargo, or you have requested more cargo than are in the indexer.");
+      ROS_ERROR_STREAM("2022_shooting_server : invalid number of cargo - must be a positive number. ");
       as_.setAborted(result_); // set the action state to aborted
       return;
     }
@@ -183,6 +184,7 @@ public:
         break;
       }
       ros::Duration(0.5).sleep();
+	  ros::spinOnce(); // update ball count, hopefully
     }
 
     ac_shooter_.cancelGoal(); // stop shooter
