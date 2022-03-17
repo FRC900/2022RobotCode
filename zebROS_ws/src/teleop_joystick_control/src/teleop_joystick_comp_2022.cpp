@@ -324,7 +324,21 @@ void buttonBoxCallback(const ros::MessageEvent<frc_msgs::ButtonBoxState const>& 
 
 	if(button_box.rightRedPress)
 	{
-
+		behavior_actions::Climb2022Goal goal;
+		ROS_INFO_STREAM("Climbing with reset=" << reset_climb);
+		goal.single_step = false;
+		goal.reset = reset_climb;
+		reset_climb = false;
+		if (!climb_ac->getState().isDone())
+		{
+			// if not done, pause.
+			climb_ac->cancelGoalsAtAndBeforeTime(ros::Time::now());
+		}
+		else
+		{
+			// if done, start/continue.
+			climb_ac->sendGoal(goal);
+		}
 	}
 	if(button_box.rightRedButton)
 	{
@@ -605,18 +619,6 @@ void evaluateCommands(const ros::MessageEvent<frc_msgs::JoystickState const>& ev
 			//Joystick1: buttonY
 			if(joystick_states_array[0].buttonYPress)
 			{
-				// behavior_actions::Climb2022Goal goal;
-				// ROS_INFO_STREAM("Climbing with reset=" << reset_climb);
-				// goal.single_step = false;
-				// goal.reset = reset_climb;
-				// reset_climb = false;
-				// if (!climb_ac->getState().isDone()) {
-				// 	// if not done, pause.
-				// 	climb_ac->cancelGoalsAtAndBeforeTime(ros::Time::now());
-				// } else {
-				// 	// if done, start/continue.
-				// 	climb_ac->sendGoal(goal);
-				// }
 			}
 			if(joystick_states_array[0].buttonYButton)
 			{
