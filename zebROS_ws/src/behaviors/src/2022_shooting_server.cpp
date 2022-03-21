@@ -98,13 +98,12 @@ public:
     feedback_.state = feedback_.WAITING_FOR_SHOOTER;
     as_.publishFeedback(feedback_);
     ROS_INFO_STREAM("2022_shooting_server : spinning up shooter");
-    bool is_spinning_fast_ = false;
     behavior_actions::Shooter2022Goal goal;
     goal.mode = low_goal ? goal.LOW_GOAL : goal.HIGH_GOAL;
     ac_shooter_.sendGoal(goal,
                          actionlib::SimpleActionClient<behavior_actions::Shooter2022Action>::SimpleDoneCallback(),
                          actionlib::SimpleActionClient<behavior_actions::Shooter2022Action>::SimpleActiveCallback(),
-                         [&is_spinning_fast_](const behavior_actions::Shooter2022FeedbackConstPtr &feedback){ is_spinning_fast_ = feedback->close_enough; });
+                         [&](const behavior_actions::Shooter2022FeedbackConstPtr &feedback){ is_spinning_fast_ = feedback->close_enough; });
     ros::Rate r(100);
     ros::Time start = ros::Time::now();
     while (ros::ok() && !is_spinning_fast_) {
