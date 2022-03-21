@@ -84,7 +84,7 @@ public:
 		shooter_speed = eject_speed_;
 		break;
 	  default:
-		ROS_ERROR_STREAM("Shooter server : invalid goal mode (" << goal->mode << ")");
+		SHOOTER_ERROR("invalid goal mode (" << goal->mode << ")");
 		msg.data = 0;
 		shooter_command_pub_.publish(msg);
 		feedback_.close_enough = false;
