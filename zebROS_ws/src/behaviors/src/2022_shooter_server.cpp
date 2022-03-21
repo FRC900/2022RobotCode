@@ -124,7 +124,7 @@ public:
         return;
       }
     }
-    SHOOTER_ERROR_THROTTLE(0.5, "Couldn't find talon in /frcrobot_jetson/talon_states. :(");
+    SHOOTER_ERROR_THROTTLE(0.5, "Couldn't find shooter_leader talon in /frcrobot_jetson/talon_states. :(");
   }
 
   void speedOffsetCallback(const std_msgs::Float64 speed_offset_msg){
