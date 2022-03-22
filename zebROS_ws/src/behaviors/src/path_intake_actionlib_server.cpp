@@ -14,7 +14,7 @@
 // This actionlib server will first generate a path with game_piece_path_gen, then run that path using PathAction, then intake a game piece using IntakeAction.
 
 template <typename T>
-void waitForActionlibServer(T &action_client, double timeout, const std::string &activity, std::function<bool()> stop);
+void waitForActionlibServer(T &action_client, double timeout, const std::string &activity, actionlib::SimpleActionServer<behavior_actions::PathIntakeAction> &as);
 
 using Point = std::array<double, 3>;
 
@@ -32,6 +32,7 @@ class PathIntakeAction{
     std::string secondary_frame_id_;
     double min_radius_;
     std::vector<geometry_msgs::Pose> hub_endpoints_;
+    bool no_intake_;
 
     ros::ServiceClient game_piece_path_gen_client_;
 
@@ -107,6 +108,12 @@ class PathIntakeAction{
         ROS_ERROR_STREAM("path_intake_actionlib_server : could not find min_radius");
         return;
       }
+
+      if (!nh_.getParam("no_intake", no_intake_))
+      {
+        // set no_intake to true in sim when not running hw interface
+        no_intake_ = false;
+      }
       as_.start();
     }
 
@@ -135,6 +142,7 @@ class PathIntakeAction{
     }
 
     void executeCB(const behavior_actions::PathIntakeGoalConstPtr &goal){
+      ROS_INFO_STREAM("path_intake_actionlib_server : waiting for game_piece_path_gen");
       if (!game_piece_path_gen_client_.waitForExistence(ros::Duration(30.0))) { // TODO make 30s configurable?
         ROS_ERROR_STREAM("path_intake_actionlib_server : game_piece_path_gen *does not exist*. Aborting.");
         result_.timed_out = true;
@@ -152,10 +160,12 @@ class PathIntakeAction{
       as_.publishFeedback(feedback_);
 
       ROS_INFO_STREAM("path_intake_actionlib_server : starting intake");
-      behavior_actions::Intake2022Goal intakeGoal;
-      intakeGoal.go_fast = false;
-      intakeGoal.reverse = false;
-      intake_ac_.sendGoal(intakeGoal);
+      if (!no_intake_) {
+        behavior_actions::Intake2022Goal intakeGoal;
+        intakeGoal.go_fast = false;
+        intakeGoal.reverse = false;
+        intake_ac_.sendGoal(intakeGoal);
+      }
 
       feedback_.current_action = feedback_.GENERATE_PATH;
       as_.publishFeedback(feedback_);
@@ -213,16 +223,17 @@ class PathIntakeAction{
       path_follower_msgs::PathGoal pathGoal;
       pathGoal.path = path;
       path_ac_.sendGoal(pathGoal);
-      std::function<bool()> whenToStop = [&](){return as_.isPreemptRequested();};
       ROS_INFO_STREAM("path_intake_actionlib_server : waiting for path driving to finish");
-      waitForActionlibServer(path_ac_, 100, "running path", whenToStop); // iterate??
+      waitForActionlibServer(path_ac_, 100, "running path", as_); // iterate??
 
       ROS_INFO_STREAM("path_intake_actionlib_server : stopping intake");
 
       feedback_.current_action = feedback_.STOP_INTAKE;
       as_.publishFeedback(feedback_);
 
-      intake_ac_.cancelGoalsAtAndBeforeTime(ros::Time::now());
+      if (!no_intake_) {
+        intake_ac_.cancelGoalsAtAndBeforeTime(ros::Time::now());
+      }
 
       ROS_INFO_STREAM("path_intake_actionlib_server : done");
 
@@ -258,7 +269,7 @@ class PathIntakeAction{
 };
 
 template <typename T>
-void waitForActionlibServer(T &action_client, double timeout, const std::string &activity, std::function<bool()> stop)
+void waitForActionlibServer(T &action_client, double timeout, const std::string &activity, actionlib::SimpleActionServer<behavior_actions::PathIntakeAction> &as)
 	//activity is a description of what we're waiting for, e.g. "waiting for mechanism to extend" - helps identify where in the server this was called (for error msgs)
 {
 	const double request_time = ros::Time::now().toSec();
@@ -268,7 +279,7 @@ void waitForActionlibServer(T &action_client, double timeout, const std::string 
 
 	//wait for actionlib server to finish
 	std::string state;
-	while(!auto_stopped && ros::ok() && !stop())
+	while(!auto_stopped && ros::ok() && !as.isPreemptRequested())
 	{
 		state = action_client.getState().toString();
     ROS_INFO_STREAM_THROTTLE(2.0, state);
