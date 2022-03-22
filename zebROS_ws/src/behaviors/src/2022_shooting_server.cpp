@@ -215,8 +215,8 @@ public:
           success = false;
           break;
         }
-        ros::Duration(0.75).sleep();
       }
+      ros::Duration(0.75).sleep();
 	    ros::spinOnce(); // update ball count, hopefully
     }
 
