@@ -1,0 +1,7 @@
+<?xml version="1.0"?>
+<launch>
+	<group ns="autopickup">
+		<rosparam file="$(find behaviors)/config/path_intake_actionlib_config.yaml" command="load"/>
+		<node name="path_intake_actionlib_server" pkg="behaviors" type="path_intake_actionlib_server" output="screen"/>
+	</group>
+</launch>

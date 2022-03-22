@@ -9,7 +9,7 @@
 #include <geometry_msgs/Pose.h>
 #include <tf2_ros/transform_listener.h>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
-// #include <behavior_actions/Intake2022Action.h>
+#include <behavior_actions/Intake2022Action.h>
 
 // This actionlib server will first generate a path with game_piece_path_gen, then run that path using PathAction, then intake a game piece using IntakeAction.
 
@@ -38,7 +38,7 @@ class PathIntakeAction{
     tf2_ros::Buffer tf_buffer_;
     tf2_ros::TransformListener tf2_listener_;
 
-    // actionlib::SimpleActionClient<behavior_actions::Intake2022Action> intake_ac_;
+    actionlib::SimpleActionClient<behavior_actions::Intake2022Action> intake_ac_;
     actionlib::SimpleActionClient<path_follower_msgs::PathAction> path_ac_;
 
   public:
@@ -47,10 +47,10 @@ class PathIntakeAction{
       as_(nh_, name, boost::bind(&PathIntakeAction::executeCB, this, _1), false),
       action_name_(name),
       tf2_listener_(tf_buffer_),
-      path_ac_("/path_follower/path_follower_server", true)/*,
-      intake_ac_("/intake/intake_server_2022", true)*/
+      path_ac_("/path_follower/path_follower_server", true),
+      intake_ac_("/intake/intake_server_2022", true)
     {
-      game_piece_path_gen_client_ = nh_.serviceClient<behavior_actions::GamePiecePickup>("game_piece_path_gen"); // TODO fix path once we know what it is
+      game_piece_path_gen_client_ = nh_.serviceClient<behavior_actions::GamePiecePickup>("/path_follower/game_piece_path_gen"); // TODO fix path once we know what it is
 
       XmlRpc::XmlRpcValue endpoints;
       if (!nh_.getParam("hub_endpoints", endpoints))
@@ -152,10 +152,10 @@ class PathIntakeAction{
       as_.publishFeedback(feedback_);
 
       ROS_INFO_STREAM("path_intake_actionlib_server : starting intake");
-      // behavior_actions::Intake2022Goal intakeGoal;
-      // intakeGoal.go_fast = false;
-      // intakeGoal.reverse = false;
-      // intake_ac_.sendGoal(intakeGoal);
+      behavior_actions::Intake2022Goal intakeGoal;
+      intakeGoal.go_fast = false;
+      intakeGoal.reverse = false;
+      intake_ac_.sendGoal(intakeGoal);
 
       feedback_.current_action = feedback_.GENERATE_PATH;
       as_.publishFeedback(feedback_);
@@ -222,7 +222,7 @@ class PathIntakeAction{
       feedback_.current_action = feedback_.STOP_INTAKE;
       as_.publishFeedback(feedback_);
 
-      // intake_ac_.cancelGoalsAtAndBeforeTime(ros::Time::now());
+      intake_ac_.cancelGoalsAtAndBeforeTime(ros::Time::now());
 
       ROS_INFO_STREAM("path_intake_actionlib_server : done");
 
