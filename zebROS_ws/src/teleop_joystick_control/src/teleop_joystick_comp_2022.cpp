@@ -174,6 +174,18 @@ void decClimber(void)
 	ROS_INFO_STREAM("Set climber_cmd.data to " << climber_cmd.request.data);
 }
 
+void moveDirection(int x, int y, int z) {
+	geometry_msgs::Twist cmd_vel;
+	cmd_vel.linear.x = x * config.button_move_speed;
+	cmd_vel.linear.y = y * config.button_move_speed;
+	cmd_vel.linear.z = z * config.button_move_speed;
+	cmd_vel.angular.x = 0.0;
+	cmd_vel.angular.y = 0.0;
+	cmd_vel.angular.z = 0.0;
+
+	JoystickRobotVel.publish(cmd_vel);
+}
+
 void publish_diag_cmds(void)
 {
 	indexer_straight_pub.publish(indexer_straight_cmd);
@@ -341,15 +353,7 @@ void buttonBoxCallback(const ros::MessageEvent<frc_msgs::ButtonBoxState const>& 
 	// TODO - tweak speed
 	if(button_box.leftRedButton)
 	{
-		geometry_msgs::Twist cmd_vel;
-		cmd_vel.linear.x = -0.3;
-		cmd_vel.linear.y = 0.0;
-		cmd_vel.linear.z = 0.0;
-		cmd_vel.angular.x = 0.0;
-		cmd_vel.angular.y = 0.0;
-		cmd_vel.angular.z = 0.0;
-
-		JoystickRobotVel.publish(cmd_vel);
+		moveDirection(-1, 0, 0);
 	}
 	if(button_box.leftRedRelease)
 	{
@@ -515,7 +519,7 @@ void buttonBoxCallback(const ros::MessageEvent<frc_msgs::ButtonBoxState const>& 
 	}
 	if(button_box.leftGreenButton)
 	{
-
+		moveDirection(0, 1, 0);
 	}
 	if(button_box.leftGreenRelease)
 	{
@@ -527,7 +531,7 @@ void buttonBoxCallback(const ros::MessageEvent<frc_msgs::ButtonBoxState const>& 
 	}
 	if(button_box.rightGreenButton)
 	{
-
+		moveDirection(0, -1, 0);
 	}
 	if(button_box.rightGreenRelease)
 	{
@@ -539,7 +543,7 @@ void buttonBoxCallback(const ros::MessageEvent<frc_msgs::ButtonBoxState const>& 
 	}
 	if(button_box.topGreenButton)
 	{
-
+		moveDirection(1, 0, 0);
 	}
 	if(button_box.topGreenRelease)
 	{
@@ -568,7 +572,7 @@ void buttonBoxCallback(const ros::MessageEvent<frc_msgs::ButtonBoxState const>& 
 	}
 	if(button_box.bottomGreenButton)
 	{
-
+		moveDirection(-1, 0, 0);
 	}
 	if(button_box.bottomGreenRelease)
 	{
@@ -1193,6 +1197,10 @@ int main(int argc, char **argv)
 	if(!n_params.getParam("max_speed_slow", config.max_speed_slow))
 	{
 		ROS_ERROR("Could not read max_speed_slow in teleop_joystick_comp");
+	}
+	if(!n_params.getParam("button_move_speed", config.button_move_speed))
+	{
+		ROS_ERROR("Could not read button_move_speed in teleop_joystick_comp");
 	}
 	if(!n_params.getParam("max_rot", config.max_rot))
 	{
