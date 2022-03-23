@@ -76,6 +76,7 @@ std_msgs::Float64 indexer_straight_cmd;
 std_msgs::Float64 shooter_cmd;
 controllers_2022_msgs::Intake intake_srv;
 controllers_2022_msgs::DynamicArmSrv climber_cmd;
+imu_zero::ImuZeroSrv imu_cmd;
 ros::Publisher indexer_straight_pub;
 ros::Publisher indexer_arc_pub;
 ros::Publisher shooter_pub;
@@ -506,8 +507,8 @@ void buttonBoxCallback(const ros::MessageEvent<frc_msgs::ButtonBoxState const>& 
 			auto_mode_select_pub.publish(auto_mode_msg);
 		} else{
 				if(imu_service_succeded){
-					std_msgs::double current_angle = config.auto_params.top_position_angle;
-					IMUZeroSrv.call();
+					imu_cmd.angle = config.top_position_angle;
+					IMUZeroSrv.call(imu_cmd);
 					imu_service_succeded = false;
 				}
 		}
@@ -531,8 +532,8 @@ void buttonBoxCallback(const ros::MessageEvent<frc_msgs::ButtonBoxState const>& 
 			auto_mode_select_pub.publish(auto_mode_msg);
 		} else{
 				if(imu_service_succeded){
-					std_msgs::double current_angle = config.auto_params.bottom_position_angle;
-					IMUZeroSrv.call();
+					imu_cmd.angle = config.bottom_position_angle;
+					IMUZeroSrv.call(imu_cmd);
 					imu_service_succeded = false;
 				}
 		}
@@ -543,8 +544,8 @@ void buttonBoxCallback(const ros::MessageEvent<frc_msgs::ButtonBoxState const>& 
 	}
 	if(!button_box.bottomSwitchUpButton && !button_box.bottomSwitchDownButton){ //The switch is in the middle position
 		if(imu_service_succeded){
-			std_msgs::double current_angle = config.auto_params.middle_position_angle;
-			IMUZeroSrv.call();
+			imu_cmd.angle = config.middle_position_angle;
+			IMUZeroSrv.call(imu_cmd);
 			imu_service_succeded = false;
 		}
 	}
