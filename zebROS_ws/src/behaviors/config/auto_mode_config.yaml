@@ -4,8 +4,16 @@
 # arrays of actions (see below) that will be executed in order
 # format: auto_mode_[integer]: array
 
+# Left (no graphics on cad) hub 2 ball auto, shoots, goes back and right ()
 auto_mode_1: ["shoot", "start_intaking", "cmd_vel_1", "pause_cmd_vel", "stop_intaking", "cmd_vel_1_reverse", "pause_cmd_vel", "shoot"]
+
+# Right side hub 2 ball auto
 auto_mode_2: ["shoot", "start_intaking", "cmd_vel_2", "pause_cmd_vel", "stop_intaking", "cmd_vel_2_reverse", "pause_cmd_vel", "shoot"]
+
+# 
+auto_mode_3: ["shoot", "start_intaking", "cmd_vel_1", "pause_cmd_vel", "stop_intaking", "cmd_vel_1_reverse", "pause_cmd_vel", "shoot", "back", "start_intaking","cmd_vel_3", "pause_cmd_vel", "pause_intaking", "cmd_vel_3_reverse", "back_reverse", "shoot"] 
+
+auto_mode_4: ["shoot", "start_intaking", "cmd_vel_2", "pause_cmd_vel", "stop_intaking", "cmd_vel_2_reverse", "pause_cmd_vel", "shoot", "back", "start_intaking","cmd_vel_4", "pause_cmd_vel", "pause_intaking", "cmd_vel_4_reverse", "back_reverse", "shoot"]
 #auto_mode_1: ["shoot", "start_intaking", "pause_2_sec", "stop_intaking"]
 # auto_moe_2: ["shoot", "start_intaking", "path_for_balls_left_hub", "stop_intaking", "shoot", "drive_forward"]
 # auto_moe_2: ["shoot", "start_intaking", "path_for_balls_right_hub", "stop_intaking", "shoot", "drive_forward"]
@@ -29,6 +37,7 @@ auto_mode_2: ["shoot", "start_intaking", "cmd_vel_2", "pause_cmd_vel", "stop_int
 # must have a value for "type", other stuff varies
 #valid action types: "intake_actionlib_server", "pause", "elevator_actionlib_server"
 
+# Straight and right away from hub 
 cmd_vel_1:
     type: cmd_vel
     duration: 2.75
@@ -36,6 +45,8 @@ cmd_vel_1:
         x: 1.0 #1.0
         y: -0.4 # -0.4
         z: 0.0
+
+# Back and left toward hub
 cmd_vel_1_reverse:
     type: cmd_vel
     duration: 2.85
@@ -44,6 +55,7 @@ cmd_vel_1_reverse:
         y: 0.4
         z: 0.0
 
+# Straight and left away from hub
 cmd_vel_2:
     type: cmd_vel
     duration: 2.75
@@ -51,6 +63,8 @@ cmd_vel_2:
         x: 1.0
         y: 0.4
         z: 0.0
+
+# Back and right toward hub
 cmd_vel_2_reverse:
     type: cmd_vel
     duration: 2.85
@@ -58,6 +72,57 @@ cmd_vel_2_reverse:
         x: -1.05
         y: -0.4
         z: 0.0
+
+# By back it means straight away from hub
+back:
+    type: cmd_vel
+    duration: 1
+    cmd_vel:
+        x: .83
+        y: 0.0
+        z: 0.0
+
+# Reverse back
+back_reverse:
+    type: cmd_vel
+    duration: 1.05
+    cmd_vel:
+        x: -.83
+        y: 0.0
+        z: 0.0
+
+cmd_vel_3:
+    type: cmd_vel
+    duration: 2.85
+    cmd_vel:
+        x: .24
+        y: 1.07
+        z: 0.0
+
+cmd_vel_3_reverse:
+    type: cmd_vel
+    duration: 2.9
+    cmd_vel:
+        x: -.24
+        y: -1.07
+        z: 0.0
+
+cmd_vel_4:
+    type: cmd_vel
+    duration: 2.85
+    cmd_vel:
+        x: .24
+        y: -1.07
+        z: 0.0
+
+cmd_vel_4_reverse:
+    type: cmd_vel
+    duration: 2.9
+    cmd_vel:
+        x: .24
+        y: 1.07
+        z: 0.0
+
 
 tuning:
   type: "path"
