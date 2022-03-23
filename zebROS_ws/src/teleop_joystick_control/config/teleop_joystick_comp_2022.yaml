@@ -15,3 +15,8 @@ teleop_params:
     stick_threshold: 0.5
 
     #teleop_diagnostics_params:
+
+auto_params:
+  top_position_angle: -110
+  middle_position_angle: 0
+  bottom_position_angle: -200

@@ -506,8 +506,7 @@ void buttonBoxCallback(const ros::MessageEvent<frc_msgs::ButtonBoxState const>& 
 			auto_mode_select_pub.publish(auto_mode_msg);
 		} else{
 				if(imu_service_succeded){
-					//call service
-					std_msgs::double current_angle = ;
+					std_msgs::double current_angle = config.auto_params.top_position_angle;
 					IMUZeroSrv.call();
 					imu_service_succeded = false;
 				}
@@ -532,8 +531,9 @@ void buttonBoxCallback(const ros::MessageEvent<frc_msgs::ButtonBoxState const>& 
 			auto_mode_select_pub.publish(auto_mode_msg);
 		} else{
 				if(imu_service_succeded){
+					std_msgs::double current_angle = config.auto_params.bottom_position_angle;
+					IMUZeroSrv.call();
 					imu_service_succeded = false;
-					//call service
 				}
 		}
 	}
@@ -543,8 +543,9 @@ void buttonBoxCallback(const ros::MessageEvent<frc_msgs::ButtonBoxState const>& 
 	}
 	if(!button_box.bottomSwitchUpButton && !button_box.bottomSwitchDownButton){ //The switch is in the middle position
 		if(imu_service_succeded){
+			std_msgs::double current_angle = config.auto_params.middle_position_angle;
+			IMUZeroSrv.call();
 			imu_service_succeded = false;
-			//call service
 		}
 	}
 
