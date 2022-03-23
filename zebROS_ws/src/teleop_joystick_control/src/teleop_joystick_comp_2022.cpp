@@ -35,6 +35,8 @@
 #include "behavior_actions/Shooting2022Action.h"
 #include "behavior_actions/Intaking2022Action.h"
 
+#include <imu_zero/ImuZeroAngle.h>
+
 std::unique_ptr<TeleopCmdVel<teleop_joystick_control::TeleopJoystickComp2022Config>> teleop_cmd_vel;
 
 bool diagnostics_mode = false;
@@ -76,7 +78,7 @@ std_msgs::Float64 indexer_straight_cmd;
 std_msgs::Float64 shooter_cmd;
 controllers_2022_msgs::Intake intake_srv;
 controllers_2022_msgs::DynamicArmSrv climber_cmd;
-imu_zero::ImuZeroSrv imu_cmd;
+imu_zero::ImuZeroAngle imu_cmd;
 ros::Publisher indexer_straight_pub;
 ros::Publisher indexer_arc_pub;
 ros::Publisher shooter_pub;
