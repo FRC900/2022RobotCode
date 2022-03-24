@@ -71,8 +71,12 @@
 	<rosparam file="$(find pf_localization)/config/skills_challenge_params.yaml" command="load"/>
 	<node pkg="pf_localization" type="pf_localization_node" name="pf_localization" output="screen" >
 	</node>
-	<!--
+	<!-- set up cargo filter (red/blue -> friendly/opponent)
 	-->
+	<group ns="tf_object_detection">
+		<node pkg="tf_object_detection" name="cargo_detection_filter" type="cargo_detection_filter" output="screen">
+		</node>
+	</group>
 
 	<!-- set up auto node to create paths -->
 	<include file="$(find behaviors)/launch/auto_node.launch"/>
