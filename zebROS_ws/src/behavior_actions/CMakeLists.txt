@@ -84,6 +84,7 @@ add_action_files(
 	Indexer.action
   Index2022.action
 	Eject.action
+  SnapToCargo2022.action
 	#GoToColor.action
 	#RotatePanel.action
 )
