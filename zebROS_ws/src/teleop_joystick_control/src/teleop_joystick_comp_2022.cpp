@@ -115,7 +115,7 @@ void incShooter(void)
 
 void decShooter(void)
 {
-	shooter_cmd.data = std::max(0.0, shooter_cmd.data - 10);
+	shooter_cmd.data = std::max(0.0, shooter_cmd.data - 10.);
 	ROS_INFO_STREAM("Set shooter_cmd.data to " << shooter_cmd.data);
 }
 
@@ -253,7 +253,7 @@ int shooter_offsets = 0;
 
 void buttonBoxCallback(const ros::MessageEvent<frc_msgs::ButtonBoxState const>& event)
 {
-	ROS_INFO_STREAM("Button Box callback running!");
+	//ROS_INFO_STREAM("Button Box callback running!");
 
 	button_box = *(event.getMessage());
 
