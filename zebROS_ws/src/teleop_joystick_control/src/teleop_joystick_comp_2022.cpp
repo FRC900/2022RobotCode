@@ -240,6 +240,7 @@ bool orientStrafingAngleCallback(teleop_joystick_control::OrientStrafingAngle::R
 }
 
 bool sendRobotZero = false;
+bool snappingToAngle = true;
 
 void buttonBoxCallback(const ros::MessageEvent<frc_msgs::ButtonBoxState const>& event)
 {
@@ -462,6 +463,7 @@ void buttonBoxCallback(const ros::MessageEvent<frc_msgs::ButtonBoxState const>& 
 		std_msgs::Float64 orient_strafing_angle_msg;
 		orient_strafing_angle_msg.data = orient_strafing_angle;
 		orient_strafing_setpoint_pub.publish(orient_strafing_angle_msg);
+		snappingToAngle = true;
 	}
 	if(button_box.yellowButton)
 	{
@@ -472,6 +474,7 @@ void buttonBoxCallback(const ros::MessageEvent<frc_msgs::ButtonBoxState const>& 
 		enable_align_msg.data = false;
 		orient_strafing_enable_pub.publish(enable_align_msg);
 		ROS_INFO_STREAM("Stopping snapping to angle for climb!");
+		snappingToAngle = false;
 		sendRobotZero = false;
 	}
 
@@ -526,6 +529,7 @@ void buttonBoxCallback(const ros::MessageEvent<frc_msgs::ButtonBoxState const>& 
 		std_msgs::Float64 orient_strafing_angle_msg;
 		orient_strafing_angle_msg.data = hub_angle;
 		orient_strafing_setpoint_pub.publish(orient_strafing_angle_msg);
+		snappingToAngle = true;
 	}
 	if(button_box.bottomGreenButton)
 	{
@@ -537,6 +541,7 @@ void buttonBoxCallback(const ros::MessageEvent<frc_msgs::ButtonBoxState const>& 
 		enable_align_msg.data = false;
 		orient_strafing_enable_pub.publish(enable_align_msg);
 		ROS_INFO_STREAM("Stopping snapping to angle for shooting!");
+		snappingToAngle = false;
 		sendRobotZero = false;
 	}
 
@@ -615,6 +620,22 @@ void evaluateCommands(const ros::MessageEvent<frc_msgs::JoystickState const>& ev
 		static ros::Time last_header_stamp = joystick_states_array[0].header.stamp;
 
 		geometry_msgs::Twist cmd_vel = teleop_cmd_vel->generateCmdVel(joystick_states_array[0], imu_angle, config);
+
+		if (cmd_vel.angular.z != 0.0) {
+			if (snappingToAngle) {
+				// Disable angle snapping, if enabled
+				std_msgs::Bool enable_align_msg;
+				enable_align_msg.data = false;
+				orient_strafing_enable_pub.publish(enable_align_msg);
+			}
+		} else {
+			if (snappingToAngle) {
+				// Disable angle snapping, if enabled
+				std_msgs::Bool enable_align_msg;
+				enable_align_msg.data = true;
+				orient_strafing_enable_pub.publish(enable_align_msg);
+			}
+		}
 
 		if((cmd_vel.linear.x == 0.0) && (cmd_vel.linear.y == 0.0) && (cmd_vel.angular.z == 0.0) && !sendRobotZero)
 		{
