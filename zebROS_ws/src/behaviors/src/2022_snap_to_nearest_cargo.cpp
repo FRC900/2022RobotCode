@@ -67,7 +67,7 @@ public:
     orient_strafing_setpoint_msg.data = 0.0;
     orient_strafing_setpoint_pub_.publish(orient_strafing_setpoint_msg);
     std_msgs::Float64 orient_strafing_state_msg;
-    ros::Rate r(10);
+    ros::Rate r(100);
     while (!as_.isPreemptRequested() && ros::ok()) {
       ROS_INFO_STREAM_THROTTLE(0.25, "2022_snap_to_cargo : currently snapped to the nearest cargo (angle: " << orient_strafing_state_msg.data << " rad)");
       orient_strafing_state_msg.data = nearest_cargo_angle_ * (M_PI/180.0);
