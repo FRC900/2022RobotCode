@@ -11,7 +11,7 @@ topics:
   priority: 175
 -
   name    : cargo snapping
-  topic   : /cargo_snap/swerve_drive_controller/cmd_vel
+  topic   : /cargo_snap/orient_strafing/swerve_drive_controller/cmd_vel
   timeout : 0.2
   priority: 200
 -
