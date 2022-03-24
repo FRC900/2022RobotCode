@@ -14,7 +14,7 @@ protected:
   std::string action_name_;
   ros::Publisher orient_strafing_enable_pub_;
   ros::Publisher orient_strafing_setpoint_pub_;
-  ros::Subscriber orient_strafing_state_sub_;
+  ros::Publisher orient_strafing_state_pub_;
   ros::Subscriber object_detection_sub_;
   double nearest_cargo_angle_;
   double imu_angle_;
@@ -27,9 +27,9 @@ public:
     action_name_(name)
   {
     as_.start();
-    orient_strafing_enable_pub_ = nh_.advertise<std_msgs::Bool>("/teleop/orient_strafing/pid_enable", 1);
-  	orient_strafing_setpoint_pub_ = nh_.advertise<std_msgs::Float64>("/teleop/orient_strafing/setpoint", 1);
-  	orient_strafing_state_sub_ = nh_.subscribe("/teleop/orient_strafing/state", 1, &SnapToCargo2022Action::imuAngleCallback, this);
+    orient_strafing_enable_pub_ = nh_.advertise<std_msgs::Bool>("orient_strafing/pid_enable", 1);
+  	orient_strafing_setpoint_pub_ = nh_.advertise<std_msgs::Float64>("orient_strafing/setpoint", 1);
+  	orient_strafing_state_pub_ = nh_.advertise<std_msgs::Float64>("orient_strafing/state", 1);
     object_detection_sub_ = nh_.subscribe("/tf_object_detection/object_detection_world_filtered", 1, &SnapToCargo2022Action::objectDetectionCallback, this);
   }
 
@@ -59,18 +59,21 @@ public:
   void executeCB(const behavior_actions::SnapToCargo2022GoalConstPtr &goal)
   {
     find_opponent_cargo_ = goal->find_opponent_cargo;
+    ROS_INFO_STREAM("2022_snap_to_cargo : snapping to cargo");
     std_msgs::Bool enable_align_msg;
     enable_align_msg.data = true;
     orient_strafing_enable_pub_.publish(enable_align_msg);
-    std_msgs::Float64 orient_strafing_angle_msg;
-    ros::Rate r(100);
-    ROS_INFO_STREAM("2022_snap_to_cargo : snapping to cargo");
-    orient_strafing_enable_pub_.publish(enable_align_msg);
-    orient_strafing_angle_msg.data = nearest_cargo_angle_ * (M_PI/180.0);
-    orient_strafing_setpoint_pub_.publish(orient_strafing_angle_msg);
-    ROS_INFO_STREAM_THROTTLE(0.25, "2022_snap_to_cargo : currently snapped to the nearest cargo (angle: " << orient_strafing_angle_msg.data << " rad)");
+    std_msgs::Float64 orient_strafing_setpoint_msg;
+    orient_strafing_setpoint_msg.data = 0.0;
+    orient_strafing_setpoint_pub_.publish(orient_strafing_setpoint_msg);
+    std_msgs::Float64 orient_strafing_state_msg;
+    ros::Rate r(10);
     while (!as_.isPreemptRequested() && ros::ok()) {
+      ROS_INFO_STREAM_THROTTLE(0.25, "2022_snap_to_cargo : currently snapped to the nearest cargo (angle: " << orient_strafing_state_msg.data << " rad)");
+      orient_strafing_state_msg.data = nearest_cargo_angle_ * (M_PI/180.0);
+      orient_strafing_state_pub_.publish(orient_strafing_state_msg);
       r.sleep();
+      ros::spinOnce();
     }
     ROS_INFO_STREAM("2022_snap_to_cargo : motion freed");
     enable_align_msg.data = false;
