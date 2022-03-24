@@ -239,6 +239,8 @@ bool orientStrafingAngleCallback(teleop_joystick_control::OrientStrafingAngle::R
 	return true;
 }
 
+bool sendRobotZero = false;
+
 void buttonBoxCallback(const ros::MessageEvent<frc_msgs::ButtonBoxState const>& event)
 {
 	//ROS_INFO_STREAM("Button Box callback running!");
@@ -470,6 +472,7 @@ void buttonBoxCallback(const ros::MessageEvent<frc_msgs::ButtonBoxState const>& 
 		enable_align_msg.data = false;
 		orient_strafing_enable_pub.publish(enable_align_msg);
 		ROS_INFO_STREAM("Stopping snapping to angle for climb!");
+		sendRobotZero = false;
 	}
 
 	if(button_box.leftGreenPress)
@@ -534,6 +537,7 @@ void buttonBoxCallback(const ros::MessageEvent<frc_msgs::ButtonBoxState const>& 
 		enable_align_msg.data = false;
 		orient_strafing_enable_pub.publish(enable_align_msg);
 		ROS_INFO_STREAM("Stopping snapping to angle for shooting!");
+		sendRobotZero = false;
 	}
 
 	// Auto-mode select?
@@ -609,8 +613,6 @@ void evaluateCommands(const ros::MessageEvent<frc_msgs::JoystickState const>& ev
 		//ROS_INFO_STREAM("js0 callback running!");
 
 		static ros::Time last_header_stamp = joystick_states_array[0].header.stamp;
-
-		static bool sendRobotZero = false;
 
 		geometry_msgs::Twist cmd_vel = teleop_cmd_vel->generateCmdVel(joystick_states_array[0], imu_angle, config);
 
