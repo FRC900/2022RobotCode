@@ -10,6 +10,11 @@ topics:
   timeout : 0.2
   priority: 175
 -
+  name    : cargo snapping
+  topic   : /cargo_snap/swerve_drive_controller/cmd_vel
+  timeout : 0.2
+  priority: 200
+-
   name    : auto_cmd_vel
   topic   : /auto/cmd_vel
   timeout : 0.2
