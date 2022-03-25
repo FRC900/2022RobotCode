@@ -97,6 +97,8 @@ ros::Publisher speed_offset_publisher; //shooter speed offset
 bool imu_service_needed = true;
 
 ros::Publisher dynamic_arm_piston_;
+double last_offset;
+bool last_robot_orient;
 
 // Diagnostic mode controls
 void decIndexerArc(void)
@@ -287,6 +289,8 @@ void preemptActionlibServers(void)
 bool orientCallback(teleop_joystick_control::RobotOrient::Request& req,
 		teleop_joystick_control::RobotOrient::Response&/* res*/)
 {
+	last_offset = req.offset_angle;
+	last_robot_orient = req.robot_orient;
 	// Used to switch between robot orient and field orient driving
 	teleop_cmd_vel->setRobotOrient(req.robot_orient, req.offset_angle);
 	ROS_WARN_STREAM("Robot Orient = " << req.robot_orient << ", Offset Angle = " << req.offset_angle);
@@ -755,7 +759,7 @@ void evaluateCommands(const ros::MessageEvent<frc_msgs::JoystickState const>& ev
 				std_msgs::Bool enable_align_msg;
 				enable_align_msg.data = false;
 				orient_strafing_enable_pub.publish(enable_align_msg);
-				teleop_cmd_vel->setRobotOrient(false, 0);
+				teleop_cmd_vel->setRobotOrient(last_robot_orient, last_offset);
 				ROS_INFO_STREAM("Stopping snapping to nearest cargo and disabling robot relative driving mode!");
 				snappingToAngle = false;
 				sendRobotZero = false;
