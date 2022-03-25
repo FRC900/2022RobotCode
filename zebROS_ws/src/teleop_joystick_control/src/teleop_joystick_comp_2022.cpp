@@ -246,7 +246,9 @@ std::shared_ptr<actionlib::SimpleActionClient<behavior_actions::Intaking2022Acti
 std::shared_ptr<actionlib::SimpleActionClient<behavior_actions::Ejecting2022Action>> ejecting_ac;
 std::shared_ptr<actionlib::SimpleActionClient<path_follower_msgs::holdPositionAction>> distance_ac;
 ros::Subscriber hub_angle_sub;
+ros::Subscriber cargo_angle_sub;
 double hub_angle;
+double cargo_angle;
 
 bool shoot_in_high_goal = true;
 bool shoot_from_downtown = false;
@@ -730,16 +732,33 @@ void evaluateCommands(const ros::MessageEvent<frc_msgs::JoystickState const>& ev
 			//Joystick1: buttonA
 			if(joystick_states_array[0].buttonAPress)
 			{
-				ROS_WARN_STREAM("Robot relative mode!");
-				teleop_cmd_vel->setRobotOrient(true, 0.0);
+				ROS_INFO_STREAM("Snapping to nearest cargo and enabling robot relative driving mode!");
+				// Align for cargo
+				ros::spinOnce();
+				std_msgs::Float64 orient_strafing_angle_msg;
+				orient_strafing_angle_msg.data = imu_angle - cargo_angle;
+				orient_strafing_setpoint_pub.publish(orient_strafing_angle_msg);
+				std_msgs::Bool enable_align_msg;
+				enable_align_msg.data = true;
+				// To align the robot to an angle, enable_align_msg.data
+				// needs to be true and the desired angle (in radians)
+				// needs to be published to orient_strafing_setpoint_pub
+				orient_strafing_enable_pub.publish(enable_align_msg);
+				teleop_cmd_vel->setRobotOrient(true, 0);
+				snappingToAngle = true;
 			}
 			if(joystick_states_array[0].buttonAButton)
 			{
 			}
 			if(joystick_states_array[0].buttonARelease)
 			{
-				ROS_WARN_STREAM("Field relative mode!");
-				teleop_cmd_vel->setRobotOrient(false, 0.0);
+				std_msgs::Bool enable_align_msg;
+				enable_align_msg.data = false;
+				orient_strafing_enable_pub.publish(enable_align_msg);
+				teleop_cmd_vel->setRobotOrient(false, 0);
+				ROS_INFO_STREAM("Stopping snapping to nearest cargo and disabling robot relative driving mode!");
+				snappingToAngle = false;
+				sendRobotZero = false;
 			}
 
 			//Joystick1: buttonB
@@ -1210,6 +1229,10 @@ void hubAngleCallback(const std_msgs::Float64 &msg) {
 	hub_angle = msg.data;
 }
 
+void cargoAngleCallback(const std_msgs::Float64 &msg) {
+	cargo_angle = msg.data;
+}
+
 int main(int argc, char **argv)
 {
 	ros::init(argc, argv, "Joystick_controller");
@@ -1361,6 +1384,7 @@ int main(int argc, char **argv)
 	intake_client = n.serviceClient<controllers_2022_msgs::Intake>("/frcrobot_jetson/intake_controller/command", false, service_connection_header);
 	speed_offset_publisher = n.advertise<std_msgs::Float64>("/shooter_speed_offset", 1, true);
 	hub_angle_sub = n.subscribe("/imu/nearest_angle", 1, &hubAngleCallback);
+	cargo_angle_sub = n.subscribe("/snap_to_angle/nearest_cargo_angle", 1, &cargoAngleCallback);
 	speed_offset.data = 0;
 
 	DynamicReconfigureWrapper<teleop_joystick_control::TeleopJoystickComp2022Config> drw(n_params, config);
