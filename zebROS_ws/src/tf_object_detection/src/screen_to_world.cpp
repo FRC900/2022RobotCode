@@ -32,8 +32,12 @@ void camera_info_callback(const sensor_msgs::CameraInfoConstPtr &info)
 // object's bounding rectangle. Use that to convert from 2D screen coordinates to 3D world coordinates
 void callback(const field_obj::TFDetectionConstPtr &objDetectionMsg, const sensor_msgs::ImageConstPtr &depthMsg)
 {
+	ROS_INFO_STREAM_THROTTLE(0.1, "Screen to world callback");
+
 	if (!caminfovalid)
 		return;
+
+	ROS_INFO_STREAM_THROTTLE(0.1, "Screen to world callback good");
 
 	cv_bridge::CvImageConstPtr cvDepth = cv_bridge::toCvShare(depthMsg, sensor_msgs::image_encodings::TYPE_32FC1);
 
@@ -87,6 +91,7 @@ void callback(const field_obj::TFDetectionConstPtr &objDetectionMsg, const senso
 		static tf2_ros::TransformBroadcaster br;
 		for(size_t i = 0; i < out_msg.objects.size(); i++)
 		{
+			ROS_INFO_STREAM_THROTTLE(0.1, "Screen to world broadcasting transform");
 			geometry_msgs::TransformStamped transformStamped;
 
 			transformStamped.header.stamp = out_msg.header.stamp;
@@ -136,7 +141,7 @@ int main (int argc, char **argv)
 	std::unique_ptr<message_filters::Synchronizer<ObjDepthSyncPolicy>> obj_depth_sync;
 	obj_depth_sync = std::make_unique<message_filters::Synchronizer<ObjDepthSyncPolicy>>(ObjDepthSyncPolicy(10), *obsub, *depth_sub);
 
-	// obj_depth_sync->setMaxIntervalDuration(ros::Duration(1, 0)); // for testing rosbags
+	obj_depth_sync->setMaxIntervalDuration(ros::Duration(1, 0)); // for testing rosbags
 	obj_depth_sync->registerCallback(boost::bind(callback, _1, _2));
 
 	// Set up a simple subscriber to capture camera info
