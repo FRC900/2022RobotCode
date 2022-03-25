@@ -856,14 +856,7 @@ void evaluateCommands(const ros::MessageEvent<frc_msgs::JoystickState const>& ev
 			if(joystick_states_array[0].directionLeftRelease)
 			{
 
-			// To align the robot to an angle, enable_align_msg.data
-			// needs to be true and the desired angle (in radians)
-			// needs to be published to orient_strafing_setpoint_pub
-			orient_strafing_enable_pub.publish(enable_align_msg);
-
-			std_msgs::Float64 orient_strafing_angle_msg;
-			orient_strafing_angle_msg.data = orient_strafing_angle;
-			orient_strafing_setpoint_pub.publish(orient_strafing_angle_msg);
+			}
 
 			//Joystick1: directionRight
 			if(joystick_states_array[0].directionRightPress)
