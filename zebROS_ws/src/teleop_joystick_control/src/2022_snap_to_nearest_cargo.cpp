@@ -12,16 +12,17 @@ protected:
   ros::NodeHandle nh_;
   ros::Subscriber object_detection_sub_;
   ros::Publisher nearest_cargo_pub_;
+  ros::Publisher nearest_opponent_cargo_pub_;
   double nearest_cargo_angle_;
   double nearest_opponent_cargo_angle_;
 
 public:
 
-  SnapToCargo2022Action()
-  {
+  void init() {
     nearest_cargo_pub_ = nh_.advertise<std_msgs::Float64>("nearest_cargo_angle", 1);
     nearest_opponent_cargo_pub_ = nh_.advertise<std_msgs::Float64>("nearest_opponent_cargo_angle", 1);
-    object_detection_sub_ = nh_.subscribe("/tf_object_detection/object_detection_world_filtered", 1, &SnapToCargo2022Action::objectDetectionCallback, this);
+    object_detection_sub_ = nh_.subscribe("/tf_object_detection/object_detection_world_filtered", 1, &SnapToCargo2022::objectDetectionCallback, this);
+    ROS_INFO_STREAM("snap_to_cargo_2022 : initialized");
   }
 
   void objectDetectionCallback(const field_obj::Detection &msg) {
@@ -44,12 +45,13 @@ public:
         }
       }
     }
-    std_msgs::Float64 msg;
-    msg.data = closest_cargo.angle * (M_PI/180.0);
-    nearest_cargo_pub_.publish(msg);
+    std_msgs::Float64 msg1;
+    msg1.data = closest_cargo.angle * (M_PI/180.0);
+    nearest_cargo_pub_.publish(msg1);
     std_msgs::Float64 msg2;
     msg2.data = closest_opponent_cargo.angle * (M_PI/180.0);
     nearest_opponent_cargo_pub_.publish(msg2);
+    ROS_INFO_STREAM_THROTTLE(1, "snap_to_cargo_2022 : publishing");
   }
 
 
@@ -60,7 +62,8 @@ int main(int argc, char** argv)
 {
   ros::init(argc, argv, "snap_to_cargo_2022");
 
-  SnapToCargo2022 cargo();
+  SnapToCargo2022 cargo;
+  cargo.init();
   ros::spin();
 
   return 0;

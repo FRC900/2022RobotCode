@@ -13,6 +13,7 @@ find_package(catkin REQUIRED COMPONENTS
 	dynamic_reconfigure
 	dynamic_reconfigure_wrapper
 	frc_msgs
+	field_obj
 	roscpp
 	std_srvs
 	talon_state_msgs
