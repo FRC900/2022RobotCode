@@ -15,7 +15,7 @@ ros::Publisher combined_cmd_vel_pub;
 
 teleop_joystick_control::TeleopJoystickCompConfig config;
 
-std::unique_ptr<rate_limiter::RateLimiter> rotation_rate_limiter;
+std::unique_ptr<rate_limiter::RateLimiter> rotation_rate_limiter{nullptr};
 
 void publishCombinedCmdVel(void)
 {
@@ -36,7 +36,11 @@ void teleopCallback(const geometry_msgs::Twist::ConstPtr &teleop_msg)
 
 void orientCallback(const std_msgs::Float64::ConstPtr &orient_msg)
 {
-	const double rotation = rotation_rate_limiter->applyLimit(orient_msg->data, ros::Time::now());
+	double rotation = orient_msg->data;
+	if (rotation_rate_limiter)
+	{
+		rotation = rotation_rate_limiter->applyLimit(rotation, ros::Time::now());
+	}
 	combined_cmd_vel.angular.z = -rotation;
 }
 
@@ -57,7 +61,7 @@ int main(int argc, char ** argv)
 
 	DynamicReconfigureWrapper<teleop_joystick_control::TeleopJoystickCompConfig> drw(n_params, config);
 
-	rotation_rate_limiter = std::make_unique<rate_limiter::RateLimiter>(-config.max_rot, config.max_rot, config.drive_rate_limit_time);
+	//rotation_rate_limiter = std::make_unique<rate_limiter::RateLimiter>(-config.max_rot, config.max_rot, config.drive_rate_limit_time);
 
 	combined_cmd_vel.linear.x = 0.0;
 	combined_cmd_vel.linear.y = 0.0;
