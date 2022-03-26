@@ -66,18 +66,18 @@ int main(int argc, char ** argv)
 	combined_cmd_vel.angular.y = 0.0;
 	combined_cmd_vel.angular.z = 0.0;
 
-	ros::Subscriber enable_sub = n.subscribe("pid_enable", 5, enableCallback);
-	ros::Subscriber teleop_sub = n.subscribe("/teleop/swerve_drive_controller/cmd_vel", 5, teleopCallback);
-	ros::Subscriber orient_sub = n.subscribe("control_effort", 5, orientCallback);
+	ros::Subscriber enable_sub = n.subscribe("pid_enable", 1, enableCallback);
+	ros::Subscriber teleop_sub = n.subscribe("/teleop/swerve_drive_controller/cmd_vel", 1, teleopCallback);
+	ros::Subscriber orient_sub = n.subscribe("control_effort", 1, orientCallback);
 
-	combined_cmd_vel_pub = n.advertise<geometry_msgs::Twist>("swerve_drive_controller/cmd_vel", 5);
+	combined_cmd_vel_pub = n.advertise<geometry_msgs::Twist>("swerve_drive_controller/cmd_vel", 1);
 
 	ros::Rate r = 100;
 
 	while(ros::ok())
 	{
-		publishCombinedCmdVel();
 		ros::spinOnce();
+		publishCombinedCmdVel();
 		r.sleep();
 	}
 
