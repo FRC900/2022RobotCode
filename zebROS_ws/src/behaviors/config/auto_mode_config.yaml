@@ -10,7 +10,7 @@ auto_mode_1: ["shoot", "start_intaking", "cmd_vel_1", "pause_cmd_vel", "stop_int
 # Right side hub 2 ball auto
 auto_mode_2: ["shoot", "start_intaking", "cmd_vel_2", "pause_cmd_vel", "stop_intaking", "cmd_vel_2_reverse", "pause_cmd_vel", "shoot"]
 
-# 
+# Left fender 3 ball, uses 2 ball auto from before and then goes for  
 auto_mode_3: ["shoot", "start_intaking", "cmd_vel_1", "pause_cmd_vel", "stop_intaking", "cmd_vel_1_reverse", "pause_cmd_vel", "shoot", "back", "start_intaking","cmd_vel_3", "pause_cmd_vel", "pause_intaking", "cmd_vel_3_reverse", "back_reverse", "shoot"] 
 
 auto_mode_4: ["shoot", "start_intaking", "cmd_vel_2", "pause_cmd_vel", "stop_intaking", "cmd_vel_2_reverse", "pause_cmd_vel", "shoot", "back", "start_intaking","cmd_vel_4", "pause_cmd_vel", "pause_intaking", "cmd_vel_4_reverse", "back_reverse", "shoot"]
@@ -123,6 +123,22 @@ cmd_vel_4_reverse:
         y: 1.07
         z: 0.0
 
+
+        # One ball auto from right fender 
+cmd_vel_5:
+    type: cmd_vel
+    duration: 2.0
+    cmd_vel:
+        x: 1.0
+        y: 0.385
+        z: 0.0
+cmd_vel_5_reverse:
+    type: cmd_vel
+    duration: 3.0 
+    cmd_vel:
+        x: -1.0
+        y: -0.26
+        z: 0.0
 
 tuning:
   type: "path"
