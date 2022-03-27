@@ -120,18 +120,19 @@ class PathIntakeAction{
     ~PathIntakeAction(void){
     }
 
-    std::optional<nav_msgs::Path> generatePath(const geometry_msgs::Pose &endpoint) {
+    std::optional<nav_msgs::Path> generatePath(const geometry_msgs::Pose &endpoint, const behavior_actions::PathIntakeGoalConstPtr &goal) {
       behavior_actions::GamePiecePickup game_piece_path_gen_srv;
       game_piece_path_gen_srv.request.object_id = "friendly_cargo";
-      game_piece_path_gen_srv.request.max_objects = 2; // TODO this needs to be 2 - <however many cargo are in the indexer>
+      game_piece_path_gen_srv.request.max_objects = goal->max_cargo;
       game_piece_path_gen_srv.request.primary_frame_id = primary_frame_id_;
       game_piece_path_gen_srv.request.secondary_object_id = "opponent_cargo";
-      game_piece_path_gen_srv.request.secondary_max_objects = secondary_max_objects_;
+      game_piece_path_gen_srv.request.secondary_max_objects = goal->hit_opponent_cargo ? secondary_max_objects_ : 0;
       game_piece_path_gen_srv.request.secondary_max_distance = secondary_max_distance_;
       game_piece_path_gen_srv.request.secondary_frame_id = secondary_frame_id_;
       game_piece_path_gen_srv.request.min_radius = min_radius_;
       ROS_INFO_STREAM("path_intake_actionlib_server : generating path with object_id=friendly_cargo, max_objects=2, primary_frame_id=" << primary_frame_id_ << ", secondary_object_id=opponent_cargo, secondary_max_objects=" << secondary_max_objects_ << ", secondary_max_distance=" << secondary_max_distance_ << ", secondary_frame_id=" << secondary_frame_id_ << ", min_radius=" << min_radius_ << ", endpoint=(" << endpoint.position.x << "," << endpoint.position.y << ")");
       game_piece_path_gen_srv.request.endpoint = endpoint;
+      game_piece_path_gen_srv.request.end_at_last_object = goal->end_at_last_cargo;
 
       if(game_piece_path_gen_client_.call(game_piece_path_gen_srv)){
         return std::optional<nav_msgs::Path>{game_piece_path_gen_srv.response.path};
@@ -184,7 +185,7 @@ class PathIntakeAction{
           // TODO jump to cleanup
         } else {
           for (auto &endpoint : hub_endpoints_) {
-            auto temp_path = generatePath(endpoint);
+            auto temp_path = generatePath(endpoint, goal);
             if (temp_path.has_value()) {
               if (temp_path.value().poses.size() < min_path_points) {
                 path = temp_path.value();
@@ -197,7 +198,7 @@ class PathIntakeAction{
         geometry_msgs::Pose endpoint = goal->endpoint.pose;
         geometry_msgs::TransformStamped map_to_base_link = tf_buffer_.lookupTransform("base_link", goal->endpoint.header.frame_id, ros::Time(0), ros::Duration(1.0));
         tf2::doTransform(endpoint, endpoint, map_to_base_link);
-        auto temp_path = generatePath(endpoint);
+        auto temp_path = generatePath(endpoint, goal);
         if (temp_path.has_value()) {
           path = temp_path.value();
         } else {

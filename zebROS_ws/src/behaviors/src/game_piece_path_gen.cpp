@@ -125,18 +125,24 @@ bool genPath(behavior_actions::GamePiecePickup::Request &req, behavior_actions::
 	const size_t objects_num = std::min((int)(lastObjectDetection.objects.size()), (int)(req.max_objects));
 	ROS_INFO_STREAM("game_piece_path_gen : objects_num: " << objects_num);
 
+	if (objects_num == 0) {
+		res.success = false;
+		res.message = "no objects detected";
+		return false;
+	}
+
 	geometry_msgs::TransformStamped cameraToRobotTransform = tfBuffer->lookupTransform(lastObjectDetection.header.frame_id, "base_link", ros::Time(0));
 
 	// If not finding the optimal cargo, uncomment the print below.
 	// ROS_INFO_STREAM("Using position: " << cameraToMapTransform.transform.translation.x << ", " << cameraToMapTransform.transform.translation.y);
-
-	Line l = Line(0, 0, req.endpoint.position.x - cameraToRobotTransform.transform.translation.x, req.endpoint.position.y - cameraToRobotTransform.transform.translation.y);
 
 	std::vector<Point> points; // List of all points
 	points.push_back({0, 0, 0}); // First point is always {0,0,0} and not transformed, robot current position
 
 	std::vector<Point> objectPoints; // List of object points (so we can sort)
 	std::vector<Point> secondaryObjectPoints; // List of secondary object points (for later)
+
+	// TODO potentially use angle for orientation?
 
 	for (size_t i = 0; i < lastObjectDetection.objects.size(); i++) // filter out selected object detections
 	{
@@ -169,6 +175,26 @@ bool genPath(behavior_actions::GamePiecePickup::Request &req, behavior_actions::
 	for (const Point &s : secondaryObjectsToRemove) {
 		secondaryObjectPoints.erase(std::remove(secondaryObjectPoints.begin(), secondaryObjectPoints.end(), s), secondaryObjectPoints.end());
 	}
+
+	if (req.end_at_last_object) {
+		Point closest = {0, 0, 0};
+		double dist = std::numeric_limits<double>::max();
+		for (size_t i = 0; i < std::min(objectPoints.size(), (size_t)req.max_objects); i++) {
+			Point current_closest;
+			for (const Point &p : objectPoints) {
+				if (hypot((closest[0] - p[0]), (closest[1] - p[1])) < dist) {
+					dist = hypot((closest[0] - p[0]), (closest[1] - p[1]));
+					current_closest = p;
+				}
+			}
+			closest = current_closest;
+		}
+		req.endpoint.position.x = closest[0];
+		req.endpoint.position.y = closest[1];
+		req.endpoint.orientation.z = 0;
+	}
+
+	Line l = Line(0, 0, req.endpoint.position.x - cameraToRobotTransform.transform.translation.x, req.endpoint.position.y - cameraToRobotTransform.transform.translation.y);
 
 	std::sort(objectPoints.begin(), objectPoints.end(), [&l](Point a, Point b) {
 		return pointToLineSegmentDistance(l, a[0], a[1]) < pointToLineSegmentDistance(l, b[0], b[1]); // sort objects by closest to line
@@ -206,7 +232,9 @@ bool genPath(behavior_actions::GamePiecePickup::Request &req, behavior_actions::
 		return false;
 	}
 
-	points.push_back({req.endpoint.position.x, req.endpoint.position.y, req.endpoint.orientation.z});
+	if (!req.end_at_last_object) {
+		points.push_back({req.endpoint.position.x, req.endpoint.position.y, req.endpoint.orientation.z});
+	}
 
 	// For each secondary point, find the primaryPoint-primaryPoint line segment it is closest to.
 	// If the distance to the closest line segment is less than the limit, add the point between those two points.
