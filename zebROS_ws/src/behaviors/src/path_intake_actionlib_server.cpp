@@ -182,7 +182,8 @@ class PathIntakeAction{
           ROS_ERROR_STREAM("path_intake_actionlib_server : unable to navigate to hub (check messages from initialization to see why)");
           as_.setAborted(result_);
           success = false;
-          // TODO jump to cleanup
+          cleanUp(success, preempted, timed_out);
+          return;
         } else {
           for (auto &endpoint : hub_endpoints_) {
             auto temp_path = generatePath(endpoint, goal);
@@ -205,7 +206,8 @@ class PathIntakeAction{
           ROS_ERROR_STREAM("path_intake_actionlib_server : path generation failed! aborting");
           as_.setAborted(result_);
           success = false;
-          // TODO jump to cleanup
+          cleanUp(success, preempted, timed_out);
+          return;
         }
       }
 
@@ -219,14 +221,18 @@ class PathIntakeAction{
 					ROS_ERROR_STREAM("path_intake_actionlib_server: Couldn't find path follower actionlib server");
           as_.setAborted(result_);
 					success = false;
-          // TODO jump to cleanup
+          cleanUp(success, preempted, timed_out);
+          return;
 			}
       path_follower_msgs::PathGoal pathGoal;
       pathGoal.path = path;
       path_ac_.sendGoal(pathGoal);
       ROS_INFO_STREAM("path_intake_actionlib_server : waiting for path driving to finish");
       waitForActionlibServer(path_ac_, 100, "running path", as_); // iterate??
+      cleanUp(success, preempted, timed_out);
+    }
 
+    void cleanUp(bool &success, bool &preempted, bool &timed_out) {
       ROS_INFO_STREAM("path_intake_actionlib_server : stopping intake");
 
       feedback_.current_action = feedback_.STOP_INTAKE;

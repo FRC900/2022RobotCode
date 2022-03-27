@@ -8,6 +8,12 @@
 #include "trajectory_msgs/JointTrajectoryPoint.h"
 #include <tf2_ros/transform_listener.h>
 #include <geometry_msgs/TransformStamped.h>
+#include <geometry_msgs/PoseStamped.h>
+#include <tf2/LinearMath/Quaternion.h>
+#include <tf2/LinearMath/Matrix3x3.h>
+#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
+#include <std_msgs/Float64.h>
+#include <sensor_msgs/Imu.h>
 
 using Point = std::array<double, 3>;
 
@@ -21,6 +27,23 @@ tf2_ros::TransformListener *tfListener;
 tf2_ros::Buffer *tfBuffer;
 
 double maximumZ = 1.0;
+
+double imu_angle = M_PI / 2.0;
+
+void imuCallback(const sensor_msgs::Imu &imuState)
+{
+	ROS_INFO_STREAM_THROTTLE(1, "game_piece_path_gen : IMU is working");
+	const tf2::Quaternion imuQuat(imuState.orientation.x, imuState.orientation.y, imuState.orientation.z, imuState.orientation.w);
+	double roll;
+	double pitch;
+	double yaw;
+	tf2::Matrix3x3(imuQuat).getRPY(roll, pitch, yaw);
+
+	if (yaw == yaw) // ignore NaN results
+	{
+		imu_angle = -yaw;
+	}
+}
 
 // Callback function to retrieve the most recent object detection message
 void objectDetectCallback(field_obj::DetectionConstPtr msg)
@@ -142,17 +165,38 @@ bool genPath(behavior_actions::GamePiecePickup::Request &req, behavior_actions::
 	std::vector<Point> objectPoints; // List of object points (so we can sort)
 	std::vector<Point> secondaryObjectPoints; // List of secondary object points (for later)
 
-	// TODO potentially use angle for orientation?
-
 	for (size_t i = 0; i < lastObjectDetection.objects.size(); i++) // filter out selected object detections
 	{
+		ros::spinOnce();
+		geometry_msgs::PoseStamped p;
+		p.header = lastObjectDetection.header;
+		ROS_INFO_STREAM("game_piece_path_gen : frame=" << p.header.frame_id);
+		p.pose.position = lastObjectDetection.objects[i].location;
+		tf2::Quaternion q;
+		q.setRPY(0, 0, lastObjectDetection.objects[i].angle * M_PI / 180.0);
+		p.pose.orientation.x = q.x();
+		p.pose.orientation.y = q.y();
+		p.pose.orientation.z = q.z();
+		p.pose.orientation.w = q.w();
 		if ((lastObjectDetection.objects[i].id == req.object_id) && (lastObjectDetection.objects[i].location.z <= maximumZ))
 		{
-			objectPoints.push_back({lastObjectDetection.objects[i].location.x, lastObjectDetection.objects[i].location.y, 0});
+			p = tfBuffer->transform(p, req.primary_frame_id);
+			tf2::Quaternion q_t(p.pose.orientation.x, p.pose.orientation.y, p.pose.orientation.z, p.pose.orientation.w);
+			tf2::Matrix3x3 m(q_t);
+			double roll, pitch, yaw;
+			m.getRPY(roll, pitch, yaw);
+			// yaw = yaw * 180.0 / M_PI;
+			objectPoints.push_back({p.pose.position.x, p.pose.position.y, 0});
 		}
 		if ((lastObjectDetection.objects[i].id == req.secondary_object_id) && (lastObjectDetection.objects[i].location.z <= maximumZ))
 		{
-			secondaryObjectPoints.push_back({lastObjectDetection.objects[i].location.x, lastObjectDetection.objects[i].location.y, 0});
+			p = tfBuffer->transform(p, req.secondary_frame_id);
+			tf2::Quaternion q_t(p.pose.orientation.x, p.pose.orientation.y, p.pose.orientation.z, p.pose.orientation.w);
+			tf2::Matrix3x3 m(q_t);
+			double roll, pitch, yaw;
+			m.getRPY(roll, pitch, yaw);
+			// yaw = yaw * 180.0 / M_PI;
+			secondaryObjectPoints.push_back({p.pose.position.x, p.pose.position.y, 0});
 		}
 	}
 
@@ -300,7 +344,7 @@ bool genPath(behavior_actions::GamePiecePickup::Request &req, behavior_actions::
 			spline_gen_srv.request.path_offset_limit.push_back(path_offset_limit);
 			point_index++;
 		}
-		else if (i == (points_num - 1))
+		else if (i == (points_num - 1) && !req.end_at_last_object)
 		{
 			spline_gen_srv.request.points[point_index] = generateTrajectoryPoint(points[i][0], points[i][1], points[i][2]);
 			spline_gen_srv.request.point_frame_id[point_index] = "base_link";
@@ -374,6 +418,7 @@ int main(int argc, char **argv)
 
 	ros::Subscriber powercellSubscriber = nh.subscribe("/tf_object_detection/object_detection_world", 1, objectDetectCallback);
 	ros::ServiceServer svc = nh.advertiseService("game_piece_path_gen", genPath);
+	ros::Subscriber imu_heading = nh.subscribe("/imu/zeroed_imu", 1, &imuCallback);
 
 	const std::map<std::string, std::string> service_connection_header{ {"tcp_nodelay", "1"} };
 	spline_gen_cli = nh.serviceClient<base_trajectory_msgs::GenerateSpline>("/path_follower/base_trajectory/spline_gen", false, service_connection_header);
