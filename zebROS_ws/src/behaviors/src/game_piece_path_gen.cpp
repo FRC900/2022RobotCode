@@ -168,35 +168,13 @@ bool genPath(behavior_actions::GamePiecePickup::Request &req, behavior_actions::
 	for (size_t i = 0; i < lastObjectDetection.objects.size(); i++) // filter out selected object detections
 	{
 		ros::spinOnce();
-		geometry_msgs::PoseStamped p;
-		p.header = lastObjectDetection.header;
-		ROS_INFO_STREAM("game_piece_path_gen : frame=" << p.header.frame_id);
-		p.pose.position = lastObjectDetection.objects[i].location;
-		tf2::Quaternion q;
-		q.setRPY(0, 0, lastObjectDetection.objects[i].angle * M_PI / 180.0);
-		p.pose.orientation.x = q.x();
-		p.pose.orientation.y = q.y();
-		p.pose.orientation.z = q.z();
-		p.pose.orientation.w = q.w();
 		if ((lastObjectDetection.objects[i].id == req.object_id) && (lastObjectDetection.objects[i].location.z <= maximumZ))
 		{
-			p = tfBuffer->transform(p, req.primary_frame_id);
-			tf2::Quaternion q_t(p.pose.orientation.x, p.pose.orientation.y, p.pose.orientation.z, p.pose.orientation.w);
-			tf2::Matrix3x3 m(q_t);
-			double roll, pitch, yaw;
-			m.getRPY(roll, pitch, yaw);
-			// yaw = yaw * 180.0 / M_PI;
-			objectPoints.push_back({p.pose.position.x, p.pose.position.y, 0});
+			objectPoints.push_back({lastObjectDetection.objects[i].location.x, lastObjectDetection.objects[i].location.y, imu_angle - (lastObjectDetection.objects[i].angle * M_PI / 180.0)});
 		}
 		if ((lastObjectDetection.objects[i].id == req.secondary_object_id) && (lastObjectDetection.objects[i].location.z <= maximumZ))
 		{
-			p = tfBuffer->transform(p, req.secondary_frame_id);
-			tf2::Quaternion q_t(p.pose.orientation.x, p.pose.orientation.y, p.pose.orientation.z, p.pose.orientation.w);
-			tf2::Matrix3x3 m(q_t);
-			double roll, pitch, yaw;
-			m.getRPY(roll, pitch, yaw);
-			// yaw = yaw * 180.0 / M_PI;
-			secondaryObjectPoints.push_back({p.pose.position.x, p.pose.position.y, 0});
+			secondaryObjectPoints.push_back({lastObjectDetection.objects[i].location.x, lastObjectDetection.objects[i].location.y, imu_angle - (lastObjectDetection.objects[i].angle * M_PI / 180.0)});
 		}
 	}
 

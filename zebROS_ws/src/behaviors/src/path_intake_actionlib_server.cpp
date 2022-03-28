@@ -233,7 +233,9 @@ class PathIntakeAction{
     }
 
     void cleanUp(bool &success, bool &preempted, bool &timed_out) {
-      ROS_INFO_STREAM("path_intake_actionlib_server : stopping intake");
+      ROS_INFO_STREAM("path_intake_actionlib_server : stopping path & intake");
+
+      path_ac_.cancelGoalsAtAndBeforeTime(ros::Time::now());
 
       feedback_.current_action = feedback_.STOP_INTAKE;
       as_.publishFeedback(feedback_);
