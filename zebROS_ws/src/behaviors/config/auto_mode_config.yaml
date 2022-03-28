@@ -10,9 +10,16 @@ auto_mode_1: ["shoot", "start_intaking", "cmd_vel_1", "pause_cmd_vel", "stop_int
 # Right side hub 2 ball auto
 auto_mode_2: ["shoot", "start_intaking", "cmd_vel_2", "pause_cmd_vel", "stop_intaking", "cmd_vel_2_reverse", "pause_cmd_vel", "shoot"]
 
-# 3 Ball auto from right fender, should work for both sides of the field??
+# 3 Ball auto from right fender, should work for both sides of the field?
 # https://ncssm.onshape.com/documents/b58e6137abb53c3da59d7ab0/w/57492416489eb3dfbd994bac/e/97a5cb11b9c0f488a86b1139
-auto_mode_3: ["shoot", "start_intaking", "cmd_vel_5", "pause_cmd_vel", "cmd_vel_6", "pause_cmd_vel", "cmd_vel_7", "stop_intaking", "shoot", "shoot"]
+# Total time: 13.14
+# Shoot x3 ~= 1.5 sec
+# cmd_vel_5 = 2.17 sec
+# cmd_vel_6 = 2.92 sec
+# cmd_vel_5 = 2.05 sec
+# pause x3 = 4.5 seconds
+
+auto_mode_3: ["shoot", "start_intaking", "cmd_vel_5", "pause_cmd_vel", "cmd_vel_6", "pause_cmd_vel", "stop_intaking", "cmd_vel_7", "pause_cmd_vel", "shoot", "shoot"]
 
 #auto_mode_1: ["shoot", "start_intaking", "pause_2_sec", "stop_intaking"]
 # auto_moe_2: ["shoot", "start_intaking", "path_for_balls_left_hub", "stop_intaking", "shoot", "drive_forward"]
@@ -98,6 +105,7 @@ cmd_vel_7:
         x: -1.0
         y: -0.376
         z: 0.0
+
 
 
 
