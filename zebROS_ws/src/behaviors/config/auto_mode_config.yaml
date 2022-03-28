@@ -10,10 +10,10 @@ auto_mode_1: ["shoot", "start_intaking", "cmd_vel_1", "pause_cmd_vel", "stop_int
 # Right side hub 2 ball auto
 auto_mode_2: ["shoot", "start_intaking", "cmd_vel_2", "pause_cmd_vel", "stop_intaking", "cmd_vel_2_reverse", "pause_cmd_vel", "shoot"]
 
-# Left fender 3 ball, uses 2 ball auto from before and then goes for  
-auto_mode_3: ["shoot", "start_intaking", "cmd_vel_1", "pause_cmd_vel", "stop_intaking", "cmd_vel_1_reverse", "pause_cmd_vel", "shoot", "back", "start_intaking","cmd_vel_3", "pause_cmd_vel", "pause_intaking", "cmd_vel_3_reverse", "back_reverse", "shoot"] 
+# 3 Ball auto from right fender, should work for both sides of the field??
+# https://ncssm.onshape.com/documents/b58e6137abb53c3da59d7ab0/w/57492416489eb3dfbd994bac/e/97a5cb11b9c0f488a86b1139
+auto_mode_3: ["shoot", "start_intaking", "cmd_vel_5", "pause_cmd_vel", "cmd_vel_6", "pause_cmd_vel", "cmd_vel_7", "stop_intaking", "shoot", "shoot"]
 
-auto_mode_4: ["shoot", "start_intaking", "cmd_vel_2", "pause_cmd_vel", "stop_intaking", "cmd_vel_2_reverse", "pause_cmd_vel", "shoot", "back", "start_intaking","cmd_vel_4", "pause_cmd_vel", "pause_intaking", "cmd_vel_4_reverse", "back_reverse", "shoot"]
 #auto_mode_1: ["shoot", "start_intaking", "pause_2_sec", "stop_intaking"]
 # auto_moe_2: ["shoot", "start_intaking", "path_for_balls_left_hub", "stop_intaking", "shoot", "drive_forward"]
 # auto_moe_2: ["shoot", "start_intaking", "path_for_balls_right_hub", "stop_intaking", "shoot", "drive_forward"]
@@ -37,7 +37,7 @@ auto_mode_4: ["shoot", "start_intaking", "cmd_vel_2", "pause_cmd_vel", "stop_int
 # must have a value for "type", other stuff varies
 #valid action types: "intake_actionlib_server", "pause", "elevator_actionlib_server"
 
-# Straight and right away from hub 
+# Straight and right away from hub
 cmd_vel_1:
     type: cmd_vel
     duration: 2.75
@@ -73,72 +73,33 @@ cmd_vel_2_reverse:
         y: -0.4
         z: 0.0
 
-# By back it means straight away from hub
-back:
-    type: cmd_vel
-    duration: 1
-    cmd_vel:
-        x: .83
-        y: 0.0
-        z: 0.0
-
-# Reverse back
-back_reverse:
-    type: cmd_vel
-    duration: 1.05
-    cmd_vel:
-        x: -.83
-        y: 0.0
-        z: 0.0
-
-cmd_vel_3:
-    type: cmd_vel
-    duration: 2.85
-    cmd_vel:
-        x: .24
-        y: 1.07
-        z: 0.0
-
-cmd_vel_3_reverse:
-    type: cmd_vel
-    duration: 2.9
-    cmd_vel:
-        x: -.24
-        y: -1.07
-        z: 0.0
-
-cmd_vel_4:
-    type: cmd_vel
-    duration: 2.85
-    cmd_vel:
-        x: .24
-        y: -1.07
-        z: 0.0
-
-cmd_vel_4_reverse:
-    type: cmd_vel
-    duration: 2.9
-    cmd_vel:
-        x: .24
-        y: 1.07
-        z: 0.0
-
-
-        # One ball auto from right fender 
+# Starting from right fender, will forward and to the robots right
 cmd_vel_5:
     type: cmd_vel
-    duration: 2.0
+    duration: 2.17
     cmd_vel:
-        x: 1.0
-        y: 0.385
+        x: 0.678
+        y: -1.0
         z: 0.0
-cmd_vel_5_reverse:
+
+# Starting from the ball gotten above, goes to the third ball
+cmd_vel_6:
     type: cmd_vel
-    duration: 3.0 
+    duration: 2.92
+    cmd_vel:
+        x: 0.191
+        y: 1.0
+        z: 0.0
+# Returns to hub from third ball
+cmd_vel_7:
+    type: cmd_vel
+    duration: 2.05
     cmd_vel:
         x: -1.0
-        y: -0.26
+        y: -0.376
         z: 0.0
+
+
 
 tuning:
   type: "path"
