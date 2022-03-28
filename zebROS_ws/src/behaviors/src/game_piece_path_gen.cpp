@@ -284,7 +284,7 @@ bool genPath(behavior_actions::GamePiecePickup::Request &req, behavior_actions::
 			return la.lengthSquared() < lb.lengthSquared(); // sort objects by distance to point 1
 		});
 		for (const Point &p : lineAndPoints.second) {
-			if (secondaryObjects > req.secondary_max_objects) {
+			if (secondaryObjects >= req.secondary_max_objects) {
 				break;
 			}
 			auto it = std::find(points.begin(), points.end(), lineAndPoints.first.second);
@@ -292,8 +292,9 @@ bool genPath(behavior_actions::GamePiecePickup::Request &req, behavior_actions::
 			ROS_INFO_STREAM("game_piece_path_gen: adding secondary game piece at " << p[0] << "," << p[1] << " relative to " << lastObjectDetection.header.frame_id);
 			points.insert(it, p);
 			secondaryObjectIndices.push_back(std::find(points.begin(), points.end(), p)-points.begin());
+			secondaryObjects++;
 		}
-		if (secondaryObjects > req.secondary_max_objects) {
+		if (secondaryObjects >= req.secondary_max_objects) {
 			break;
 		}
 	}
