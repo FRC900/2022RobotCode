@@ -336,7 +336,7 @@ void buttonBoxCallback(const ros::MessageEvent<frc_msgs::ButtonBoxState const>& 
 	if(button_box.leftRedButton)
 	{
 		geometry_msgs::Twist cmd_vel;
-		cmd_vel.linear.x = -0.2;
+		cmd_vel.linear.x = -0.3;
 		cmd_vel.linear.y = 0.0;
 		cmd_vel.linear.z = 0.0;
 		cmd_vel.angular.x = 0.0;
