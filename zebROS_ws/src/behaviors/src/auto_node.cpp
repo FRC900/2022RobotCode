@@ -14,6 +14,9 @@
 #include "behavior_actions/Intaking2022Action.h"
 #include <behavior_actions/DynamicPath.h>
 #include <path_follower_msgs/PathAction.h>
+#include <path_follower_msgs/holdPositionAction.h>
+#include <tf2/LinearMath/Quaternion.h>
+#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 
 #include <thread>
 #include <atomic>
@@ -514,10 +517,12 @@ int main(int argc, char** argv)
 	actionlib::SimpleActionClient<path_follower_msgs::PathAction> path_ac("/path_follower/path_follower_server", true); //TODO fix this path
 	actionlib::SimpleActionClient<behavior_actions::Shooting2022Action> shooting_ac("/shooting/shooting_server_2022", true);
 	actionlib::SimpleActionClient<behavior_actions::Intaking2022Action> intaking_ac("/intaking/intaking_server_2022", true);
-	preemptAll = [&path_ac, &shooting_ac, &intaking_ac](){ // must include all actions called
+	actionlib::SimpleActionClient<path_follower_msgs::holdPositionAction> distance_ac("/hold_distance/hold_position_server", true);
+	preemptAll = [&path_ac, &shooting_ac, &intaking_ac, &distance_ac](){ // must include all actions called
 		path_ac.cancelGoalsAtAndBeforeTime(ros::Time::now());
 		shooting_ac.cancelGoalsAtAndBeforeTime(ros::Time::now());
 		intaking_ac.cancelGoalsAtAndBeforeTime(ros::Time::now());
+		distance_ac.cancelGoalsAtAndBeforeTime(ros::Time::now());
 	};
 
 	//other variables
@@ -615,6 +620,32 @@ int main(int argc, char** argv)
 						behavior_actions::Intaking2022Goal goal;
 						intaking_ac.sendGoal(goal);
 					}
+				}
+				else if(action_data_type == "hold_distance_actionlib_server")
+				{
+					//for some reason this is necessary, even if the server has been up and running for a while
+					if(!distance_ac.waitForServer(ros::Duration(5))){
+						shutdownNode(ERROR,"Auto node - couldn't find intaking actionlib server");
+						return 1;
+					}
+					if (!action_data.hasMember("goal"))
+					{
+						shutdownNode(ERROR,"Auto node - hold_distance_actionlib_server call missing \"goal\" field");
+						return 1;
+					}
+
+					path_follower_msgs::holdPositionGoal goal;
+					double yaw;
+					readFloatParam("x", action_data["goal"], goal.pose.position.x);
+					readFloatParam("y", action_data["goal"], goal.pose.position.y);
+					readFloatParam("yaw", action_data["goal"], yaw);
+					tf2::Quaternion quaternion;
+					quaternion.setRPY(0, 0, yaw);
+					goal.pose.orientation.x = quaternion.x();
+					goal.pose.orientation.y = quaternion.y();
+					goal.pose.orientation.z = quaternion.z();
+					goal.pose.orientation.w = quaternion.w();
+					distance_ac.sendGoal(goal);
 				}
 				else if(action_data_type == "shooting_actionlib_server")
 				{
