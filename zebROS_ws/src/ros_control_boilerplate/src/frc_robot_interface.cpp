@@ -168,7 +168,7 @@ bool FRCRobotInterface::initDevices(ros::NodeHandle root_nh)
 		}
 	}
 	ROS_INFO_STREAM("Pausing for CTRE init");
-	ros::Duration(2.).sleep();
+	ros::Duration(.25).sleep();
 	ctre_mc_init_time_ = ros::Time::now();
 	ROS_INFO_STREAM("Resuming after CTRE init");
 
@@ -1475,10 +1475,6 @@ void FRCRobotInterface::write(const ros::Time& time, const ros::Duration& period
 	talon_config_count_ = 0;
 	for (size_t joint_id = 0; joint_id < num_can_ctre_mcs_; ++joint_id)
 	{
-		if ((time - ctre_mc_init_time_).toSec() < (1.0 + 0.05 * joint_id))
-		{
-			continue;
-		}
 		if (!can_ctre_mc_local_hardwares_[joint_id])
 		{
 			continue;
@@ -1726,126 +1722,104 @@ void FRCRobotInterface::write(const ros::Time& time, const ros::Duration& period
 		const double radians_per_second_scale = getConversionFactor(encoder_ticks_per_rotation, internal_feedback_device, hardware_interface::TalonMode_Velocity) * conversion_factor;
 		const double closed_loop_scale = getConversionFactor(encoder_ticks_per_rotation, internal_feedback_device, talon_mode) * conversion_factor;
 
-		bool close_loop_mode = false;
-		bool motion_profile_mode = false;
+		int slot;
+		const bool slot_changed = tc.slotChanged(slot);
 
-		if ((talon_mode == hardware_interface::TalonMode_Position) ||
-			(talon_mode == hardware_interface::TalonMode_Velocity) ||
-			(talon_mode == hardware_interface::TalonMode_Current ))
+		double p;
+		double i;
+		double d;
+		double f;
+		int    iz;
+		int    allowable_closed_loop_error;
+		double max_integral_accumulator;
+		double closed_loop_peak_output;
+		int    closed_loop_period;
+
+		if (tc.pidfChanged(p, i, d, f, iz, allowable_closed_loop_error, max_integral_accumulator, closed_loop_peak_output, closed_loop_period, slot))
 		{
-			close_loop_mode = true;
-		}
-		else if ((talon_mode == hardware_interface::TalonMode_MotionProfile) ||
-				 (talon_mode == hardware_interface::TalonMode_MotionMagic)   ||
-				 (talon_mode == hardware_interface::TalonMode_MotionProfileArc))
-		{
-			close_loop_mode = true;
-			motion_profile_mode = true;
-		}
-		// TODO : fix me
-		close_loop_mode = motion_profile_mode = true;
-
-		if (close_loop_mode)
-		{
-			int slot;
-			const bool slot_changed = tc.slotChanged(slot);
-
-			double p;
-			double i;
-			double d;
-			double f;
-			int    iz;
-			int    allowable_closed_loop_error;
-			double max_integral_accumulator;
-			double closed_loop_peak_output;
-			int    closed_loop_period;
-
-			if (tc.pidfChanged(p, i, d, f, iz, allowable_closed_loop_error, max_integral_accumulator, closed_loop_peak_output, closed_loop_period, slot))
+			bool rc = safeTalonConfigCall(victor->Config_kP(slot, p, configTimeoutMs), "Config_kP", ts.getCANID());
+			if (rc)
 			{
-				bool rc = safeTalonConfigCall(victor->Config_kP(slot, p, configTimeoutMs), "Config_kP", ts.getCANID());
-				if (rc)
-				{
-					rc = safeTalonConfigCall(victor->Config_kI(slot, i, configTimeoutMs), "Config_kI", ts.getCANID());
-				}
-				if (rc)
-				{
-					rc = safeTalonConfigCall(victor->Config_kD(slot, d, configTimeoutMs), "Config_kD", ts.getCANID());
-				}
-				if (rc)
-				{
-					rc = safeTalonConfigCall(victor->Config_kF(slot, f, configTimeoutMs), "Config_kF", ts.getCANID());
-				}
-				if (rc)
-				{
-					rc = safeTalonConfigCall(victor->Config_IntegralZone(slot, iz, configTimeoutMs), "Config_IntegralZone", ts.getCANID());
-				}
-				// TODO : Scale these two?
-				if (rc)
-				{
-					rc = safeTalonConfigCall(victor->ConfigAllowableClosedloopError(slot, allowable_closed_loop_error, configTimeoutMs), "ConfigAllowableClosedloopError", ts.getCANID());
-				}
-				if (rc)
-				{
-					rc = safeTalonConfigCall(victor->ConfigMaxIntegralAccumulator(slot, max_integral_accumulator, configTimeoutMs), "ConfigMaxIntegralAccumulator", ts.getCANID());
-				}
-				if (rc)
-				{
-					rc = safeTalonConfigCall(victor->ConfigClosedLoopPeakOutput(slot, closed_loop_peak_output, configTimeoutMs), "ConfigClosedLoopPeakOutput", ts.getCANID());
-				}
-				if (rc)
-				{
-					rc = safeTalonConfigCall(victor->ConfigClosedLoopPeriod(slot, closed_loop_period, configTimeoutMs), "ConfigClosedLoopPeriod", ts.getCANID());
-				}
-
-				if (rc)
-				{
-					ROS_INFO_STREAM("Updated joint " << joint_id << "=" << can_ctre_mc_names_[joint_id] << " PIDF slot " << slot << " config values");
-					ts.setPidfP(p, slot);
-					ts.setPidfI(i, slot);
-					ts.setPidfD(d, slot);
-					ts.setPidfF(f, slot);
-					ts.setPidfIzone(iz, slot);
-					ts.setAllowableClosedLoopError(allowable_closed_loop_error, slot);
-					ts.setMaxIntegralAccumulator(max_integral_accumulator, slot);
-					ts.setClosedLoopPeakOutput(closed_loop_peak_output, slot);
-					ts.setClosedLoopPeriod(closed_loop_period, slot);
-				}
-				else
-				{
-					tc.resetPIDF(slot);
-					break;
-				}
+				rc = safeTalonConfigCall(victor->Config_kI(slot, i, configTimeoutMs), "Config_kI", ts.getCANID());
+			}
+			if (rc)
+			{
+				rc = safeTalonConfigCall(victor->Config_kD(slot, d, configTimeoutMs), "Config_kD", ts.getCANID());
+			}
+			if (rc)
+			{
+				rc = safeTalonConfigCall(victor->Config_kF(slot, f, configTimeoutMs), "Config_kF", ts.getCANID());
+			}
+			if (rc)
+			{
+				rc = safeTalonConfigCall(victor->Config_IntegralZone(slot, iz, configTimeoutMs), "Config_IntegralZone", ts.getCANID());
+			}
+			// TODO : Scale these two?
+			if (rc)
+			{
+				rc = safeTalonConfigCall(victor->ConfigAllowableClosedloopError(slot, allowable_closed_loop_error, configTimeoutMs), "ConfigAllowableClosedloopError", ts.getCANID());
+			}
+			if (rc)
+			{
+				rc = safeTalonConfigCall(victor->ConfigMaxIntegralAccumulator(slot, max_integral_accumulator, configTimeoutMs), "ConfigMaxIntegralAccumulator", ts.getCANID());
+			}
+			if (rc)
+			{
+				rc = safeTalonConfigCall(victor->ConfigClosedLoopPeakOutput(slot, closed_loop_peak_output, configTimeoutMs), "ConfigClosedLoopPeakOutput", ts.getCANID());
+			}
+			if (rc)
+			{
+				rc = safeTalonConfigCall(victor->ConfigClosedLoopPeriod(slot, closed_loop_period, configTimeoutMs), "ConfigClosedLoopPeriod", ts.getCANID());
 			}
 
-			bool aux_pid_polarity;
-			if (tc.auxPidPolarityChanged(aux_pid_polarity))
+			if (rc)
 			{
-				if (safeTalonConfigCall(victor->ConfigAuxPIDPolarity(aux_pid_polarity, configTimeoutMs), "ConfigAuxPIDPolarity", ts.getCANID()))
-				{
-					ROS_INFO_STREAM("Updated joint " << joint_id << "=" << can_ctre_mc_names_[joint_id] <<
-							" AUX PIDF polarity to " << aux_pid_polarity << std::endl);
-					ts.setAuxPidPolarity(aux_pid_polarity);
-				}
-				else
-				{
-					tc.resetAuxPidPolarity();
-					break;
-				}
+				ROS_INFO_STREAM("Updated joint " << joint_id << "=" << can_ctre_mc_names_[joint_id] << " PIDF slot " << slot << " config values");
+				ts.setPidfP(p, slot);
+				ts.setPidfI(i, slot);
+				ts.setPidfD(d, slot);
+				ts.setPidfF(f, slot);
+				ts.setPidfIzone(iz, slot);
+				ts.setAllowableClosedLoopError(allowable_closed_loop_error, slot);
+				ts.setMaxIntegralAccumulator(max_integral_accumulator, slot);
+				ts.setClosedLoopPeakOutput(closed_loop_peak_output, slot);
+				ts.setClosedLoopPeriod(closed_loop_period, slot);
 			}
-
-			if (slot_changed)
+			else
 			{
-				if (safeTalonConfigCall(victor->SelectProfileSlot(slot, pidIdx), "SelectProfileSlot", ts.getCANID()))
-				{
-					ROS_INFO_STREAM("Updated joint " << joint_id << "=" << can_ctre_mc_names_[joint_id] <<
-							" PIDF slot to " << slot << std::endl);
-					ts.setSlot(slot);
-				}
-				else
-				{
-					tc.resetPidfSlot();
-					break;
-				}
+				tc.resetPIDF(slot);
+				break;
+			}
+		}
+
+		bool aux_pid_polarity;
+		if (tc.auxPidPolarityChanged(aux_pid_polarity))
+		{
+			if (safeTalonConfigCall(victor->ConfigAuxPIDPolarity(aux_pid_polarity, configTimeoutMs), "ConfigAuxPIDPolarity", ts.getCANID()))
+			{
+				ROS_INFO_STREAM("Updated joint " << joint_id << "=" << can_ctre_mc_names_[joint_id] <<
+						" AUX PIDF polarity to " << aux_pid_polarity << std::endl);
+				ts.setAuxPidPolarity(aux_pid_polarity);
+			}
+			else
+			{
+				tc.resetAuxPidPolarity();
+				break;
+			}
+		}
+
+		if (slot_changed)
+		{
+			if (safeTalonConfigCall(victor->SelectProfileSlot(slot, pidIdx), "SelectProfileSlot", ts.getCANID()))
+			{
+				ROS_INFO_STREAM("Updated joint " << joint_id << "=" << can_ctre_mc_names_[joint_id] <<
+						" PIDF slot to " << slot << std::endl);
+				ts.setSlot(slot);
+			}
+			else
+			{
+				tc.resetPidfSlot();
+				break;
 			}
 		}
 
@@ -1855,11 +1829,9 @@ void FRCRobotInterface::write(const ros::Time& time, const ros::Duration& period
 		{
 			ROS_INFO_STREAM("Updated joint " << joint_id << "=" << can_ctre_mc_names_[joint_id] <<
 					" invert = " << invert << " phase = " << sensor_phase);
-			// TODO : can these calls fail. If so, what to do if they do?
+			// TODO : can these calls fail? If so, what to do if they do?
 			victor->SetInverted(invert);
-			safeTalonConfigCall(victor->GetLastError(), "SetInverted", ts.getCANID());
 			victor->SetSensorPhase(sensor_phase);
-			safeTalonConfigCall(victor->GetLastError(), "SetSensorPhase", ts.getCANID());
 			ts.setInvert(invert);
 			ts.setSensorPhase(sensor_phase);
 		}
@@ -1871,13 +1843,13 @@ void FRCRobotInterface::write(const ros::Time& time, const ros::Duration& period
 		{
 
 			ROS_INFO_STREAM("Updated joint " << joint_id << "=" << can_ctre_mc_names_[joint_id] << " neutral mode");
+			// TODO : can this call fail? If so, what to do if they do?
 			victor->SetNeutralMode(ctre_neutral_mode);
-			safeTalonConfigCall(victor->GetLastError(), "SetNeutralMode", ts.getCANID());
 			ts.setNeutralMode(neutral_mode);
 		}
 
 		double iaccum;
-		if (close_loop_mode && tc.integralAccumulatorChanged(iaccum))
+		if (tc.integralAccumulatorChanged(iaccum))
 		{
 			//The units on this aren't really right?
 			if (safeTalonConfigCall(victor->SetIntegralAccumulator(iaccum / closed_loop_scale, pidIdx, configTimeoutMs), "SetIntegralAccumulator", ts.getCANID()))
@@ -1976,10 +1948,7 @@ void FRCRobotInterface::write(const ros::Time& time, const ros::Duration& period
 			{
 				// Only enable once settings are correctly written to the Talon
 				victor->EnableVoltageCompensation(v_c_enable);
-				rc = safeTalonConfigCall(victor->GetLastError(), "EnableVoltageCompensation", ts.getCANID());
-			}
-			if (rc)
-			{
+
 				ROS_INFO_STREAM("Updated joint " << joint_id << "=" << can_ctre_mc_names_[joint_id] << " voltage compensation");
 
 				ts.setVoltageCompensationSaturation(v_c_saturation);
@@ -2163,8 +2132,6 @@ void FRCRobotInterface::write(const ros::Time& time, const ros::Duration& period
 		{
 			const double softlimit_forward_threshold_NU = softlimit_forward_threshold / radians_scale; //native units
 			const double softlimit_reverse_threshold_NU = softlimit_reverse_threshold / radians_scale;
-			victor->OverrideSoftLimitsEnable(softlimit_override_enable);
-			bool rc = safeTalonConfigCall(victor->GetLastError(), "OverrideSoftLimitsEnable", ts.getCANID());
 			if (rc)
 			{
 				rc = safeTalonConfigCall(victor->ConfigForwardSoftLimitThreshold(softlimit_forward_threshold_NU, configTimeoutMs),"ConfigForwardSoftLimitThreshold", ts.getCANID());
@@ -2184,6 +2151,8 @@ void FRCRobotInterface::write(const ros::Time& time, const ros::Duration& period
 
 			if (rc)
 			{
+				// Only set override enable if all config calls succeed
+				victor->OverrideSoftLimitsEnable(softlimit_override_enable);
 				ts.setOverrideSoftLimitsEnable(softlimit_override_enable);
 				ts.setForwardSoftLimitThreshold(softlimit_forward_threshold);
 				ts.setForwardSoftLimitEnable(softlimit_forward_enable);
@@ -2220,11 +2189,8 @@ void FRCRobotInterface::write(const ros::Time& time, const ros::Duration& period
 				}
 				if (rc)
 				{
+					// Only enable current limit if all config calls succeed
 					talon->EnableCurrentLimit(enable);
-					rc = safeTalonConfigCall(talon->GetLastError(), "EnableCurrentLimit", ts.getCANID());
-				}
-				if (rc)
-				{
 					ROS_INFO_STREAM("Updated joint " << joint_id << "=" << can_ctre_mc_names_[joint_id] << " peak current");
 					ts.setPeakCurrentLimit(peak_amps);
 					ts.setPeakCurrentDuration(peak_msec);
@@ -2381,81 +2347,78 @@ void FRCRobotInterface::write(const ros::Time& time, const ros::Duration& period
 			}
 		}
 
-		if (motion_profile_mode)
+		double motion_cruise_velocity;
+		double motion_acceleration;
+		int motion_s_curve_strength;
+		if (tc.motionCruiseChanged(motion_cruise_velocity, motion_acceleration, motion_s_curve_strength))
 		{
-			double motion_cruise_velocity;
-			double motion_acceleration;
-			int motion_s_curve_strength;
-			if (tc.motionCruiseChanged(motion_cruise_velocity, motion_acceleration, motion_s_curve_strength))
+			//converted from rad/sec to native units
+			bool rc = safeTalonConfigCall(victor->ConfigMotionCruiseVelocity(motion_cruise_velocity / radians_per_second_scale, configTimeoutMs),"ConfigMotionCruiseVelocity(", ts.getCANID());
+			if (rc)
 			{
-				//converted from rad/sec to native units
-				bool rc = safeTalonConfigCall(victor->ConfigMotionCruiseVelocity(motion_cruise_velocity / radians_per_second_scale, configTimeoutMs),"ConfigMotionCruiseVelocity(", ts.getCANID());
-				if (rc)
-				{
-					rc = safeTalonConfigCall(victor->ConfigMotionAcceleration(motion_acceleration / radians_per_second_scale, configTimeoutMs),"ConfigMotionAcceleration(", ts.getCANID());
-				}
-				if (rc)
-				{
-					rc = safeTalonConfigCall(victor->ConfigMotionSCurveStrength(motion_s_curve_strength, configTimeoutMs), "ConfigMotionSCurveStrength", ts.getCANID());
-				}
-
-				if (rc)
-				{
-					ROS_INFO_STREAM("Updated joint " << joint_id << "=" << can_ctre_mc_names_[joint_id] << " cruise velocity / acceleration");
-					ts.setMotionCruiseVelocity(motion_cruise_velocity);
-					ts.setMotionAcceleration(motion_acceleration);
-					ts.setMotionSCurveStrength(motion_s_curve_strength);
-				}
-				else
-				{
-					tc.resetMotionCruise();
-					break;
-				}
+				rc = safeTalonConfigCall(victor->ConfigMotionAcceleration(motion_acceleration / radians_per_second_scale, configTimeoutMs),"ConfigMotionAcceleration(", ts.getCANID());
 			}
-			int motion_profile_trajectory_period;
-			if (tc.motionProfileTrajectoryPeriodChanged(motion_profile_trajectory_period))
+			if (rc)
 			{
-				if (safeTalonConfigCall(victor->ConfigMotionProfileTrajectoryPeriod(motion_profile_trajectory_period, configTimeoutMs),"ConfigMotionProfileTrajectoryPeriod", ts.getCANID()))
-				{
-					ts.setMotionProfileTrajectoryPeriod(motion_profile_trajectory_period);
-					ROS_INFO_STREAM("Updated joint " << joint_id << "=" << can_ctre_mc_names_[joint_id] << " motion profile trajectory period");
-				}
-				else
-				{
-					tc.resetMotionProfileTrajectoryPeriod();
-					break;
-				}
+				rc = safeTalonConfigCall(victor->ConfigMotionSCurveStrength(motion_s_curve_strength, configTimeoutMs), "ConfigMotionSCurveStrength", ts.getCANID());
 			}
 
-			if (tc.clearMotionProfileTrajectoriesChanged())
+			if (rc)
 			{
-				if (safeTalonConfigCall(victor->ClearMotionProfileTrajectories(), "ClearMotionProfileTrajectories", ts.getCANID()))
-				{
-					ROS_INFO_STREAM("Cleared joint " << joint_id << "=" << can_ctre_mc_names_[joint_id] << " motion profile trajectories");
-				}
-				else
-				{
-					tc.setClearMotionProfileTrajectories();
-				}
+				ROS_INFO_STREAM("Updated joint " << joint_id << "=" << can_ctre_mc_names_[joint_id] << " cruise velocity / acceleration");
+				ts.setMotionCruiseVelocity(motion_cruise_velocity);
+				ts.setMotionAcceleration(motion_acceleration);
+				ts.setMotionSCurveStrength(motion_s_curve_strength);
 			}
-
-			if (tc.clearMotionProfileHasUnderrunChanged())
+			else
 			{
-				if (safeTalonConfigCall(victor->ClearMotionProfileHasUnderrun(configTimeoutMs),"ClearMotionProfileHasUnderrun", ts.getCANID()))
-				{
-					ROS_INFO_STREAM("Cleared joint " << joint_id << "=" << can_ctre_mc_names_[joint_id] << " motion profile underrun changed");
-				}
-				else
-				{
-					tc.setClearMotionProfileHasUnderrun();
-				}
+				tc.resetMotionCruise();
+				break;
 			}
-
-			// TODO : check that Talon motion buffer is not full
-			// before writing, communicate how many have been written
-			// - and thus should be cleared - from the talon_command
-			// list of requests.
 		}
+		int motion_profile_trajectory_period;
+		if (tc.motionProfileTrajectoryPeriodChanged(motion_profile_trajectory_period))
+		{
+			if (safeTalonConfigCall(victor->ConfigMotionProfileTrajectoryPeriod(motion_profile_trajectory_period, configTimeoutMs),"ConfigMotionProfileTrajectoryPeriod", ts.getCANID()))
+			{
+				ts.setMotionProfileTrajectoryPeriod(motion_profile_trajectory_period);
+				ROS_INFO_STREAM("Updated joint " << joint_id << "=" << can_ctre_mc_names_[joint_id] << " motion profile trajectory period");
+			}
+			else
+			{
+				tc.resetMotionProfileTrajectoryPeriod();
+				break;
+			}
+		}
+
+		if (tc.clearMotionProfileTrajectoriesChanged())
+		{
+			if (safeTalonConfigCall(victor->ClearMotionProfileTrajectories(), "ClearMotionProfileTrajectories", ts.getCANID()))
+			{
+				ROS_INFO_STREAM("Cleared joint " << joint_id << "=" << can_ctre_mc_names_[joint_id] << " motion profile trajectories");
+			}
+			else
+			{
+				tc.setClearMotionProfileTrajectories();
+			}
+		}
+
+		if (tc.clearMotionProfileHasUnderrunChanged())
+		{
+			if (safeTalonConfigCall(victor->ClearMotionProfileHasUnderrun(configTimeoutMs),"ClearMotionProfileHasUnderrun", ts.getCANID()))
+			{
+				ROS_INFO_STREAM("Cleared joint " << joint_id << "=" << can_ctre_mc_names_[joint_id] << " motion profile underrun changed");
+			}
+			else
+			{
+				tc.setClearMotionProfileHasUnderrun();
+			}
+		}
+
+		// TODO : check that Talon motion buffer is not full
+		// before writing, communicate how many have been written
+		// - and thus should be cleared - from the talon_command
+		// list of requests.
 
 		// TODO : rewrite this using BufferedTrajectoryPointStream
 		std::vector<hardware_interface::TrajectoryPoint> trajectory_points;
@@ -3142,7 +3105,7 @@ bool FRCRobotInterface::safeTalonConfigCall(ctre::phoenix::ErrorCode error_code,
 	talon_config_count_ += 1;
 	if (talon_config_count_ > talon_config_count_limit_)
 	{
-		ROS_INFO_STREAM("Talon config call count for this iteration reached on function " << talon_method_name);
+		//ROS_INFO_STREAM("Talon config call count for this iteration reached on function " << talon_method_name);
 		return false;
 	}
 	if (!safeTalonCall(error_code, talon_method_name, talon_id, true))
