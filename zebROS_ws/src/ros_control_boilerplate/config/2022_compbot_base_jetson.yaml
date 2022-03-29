@@ -57,7 +57,7 @@ hardware_interface:
        - {name: br_angle, type: can_talon_fx, can_id: 14, local: true}
        - {name: bl_drive, type: can_talon_fx, can_id: 23, local: true}
        - {name: bl_angle, type: can_talon_fx, can_id: 13, local: true}
-       - {name: bl_angle_encoder, type: can_talon_srx, can_id: 3, local: true}
+         #- {name: bl_angle_encoder, type: can_talon_srx, can_id: 3, local: true}
        # - {name: pdh, type: pdh}
        # - {name: pcm, type: pcm, pcm_id: 0}
 
@@ -109,6 +109,10 @@ dynamic_arm_controller:
   # retracting
   motion_magic_velocity_fast: 0.20 # was 0.42, slowing down for first few matches
   motion_magic_acceleration_fast: 1.0
+
+  # retracting from ground to mid
+  motion_magic_velocity_ground_to_mid: 0.36 # was 0.42, slowing down for first few matches
+  motion_magic_acceleration_ground_to_mid: 1.0
 
   # retracting to traversal
   motion_magic_velocity_traversal: 0.13 # was 0.3
@@ -201,6 +205,7 @@ shooter_controller:
   voltage_compensation_saturation: 12
   dynamic_reconfigure: False
   neutral_mode: Coast
+  neutral_deadband: 0.01
   velocity_measurement_period: Period_20Ms
   velocity_measurement_window: 4
   #status_1_general_period: 10
@@ -226,6 +231,7 @@ shooter_follower_controller:
   invert_output: False
   follow_joint: shooter_leader
   enable_read_thread: False
+  neutral_deadband: 0.01
   voltage_compensation_enable: True
   voltage_compensation_saturation: 12
   status_1_general_period: 250 # Default = 10

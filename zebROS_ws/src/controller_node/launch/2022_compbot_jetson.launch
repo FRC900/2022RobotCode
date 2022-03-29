@@ -32,7 +32,7 @@
 		<!-- Load controller manager-->
 		<!-- Add 2022 controllers, once we know what they are -->
 		<node name="ros_control_controller_manager" pkg="controller_manager" type="controller_manager" respawn="false"
-			output="screen" args="spawn joint_state_controller_jetson joint_state_listener_controller talon_state_controller_jetson talon_config_controller match_state_listener_controller swerve_drive_controller shooter_controller shooter_follower_controller dynamic_arm_solenoid_controller static_hook_solenoid_controller intake_controller indexer_straight_motor_controller indexer_arc_motor_controller dynamic_arm_controller bl_angle_encoder_controller robot_code_ready_controller" />
+			output="screen" args="spawn joint_state_controller_jetson joint_state_listener_controller talon_state_controller_jetson talon_config_controller match_state_listener_controller swerve_drive_controller shooter_controller shooter_follower_controller dynamic_arm_solenoid_controller static_hook_solenoid_controller intake_controller indexer_straight_motor_controller indexer_arc_motor_controller dynamic_arm_controller robot_code_ready_controller" />
 
 		<node name="uptime_jetson" pkg="uptime" type="uptime_node" output="screen" />
 
@@ -63,6 +63,7 @@
 	<include file="$(find controller_node)/launch/teleop.launch">
 		<arg name="year" value="2022" />
 	</include>
+	<include file="$(find teleop_joystick_control)/launch/2022_snap_to_angle.launch"/>
 	<group ns="cmd_vel_mux">
 		<node name="twist_mux" pkg="twist_mux" type="twist_mux">
 			<rosparam command="load" file="$(find talon_swerve_drive_controller)/config/2022_twist_mux.yaml"/>
@@ -73,35 +74,41 @@
 	<!-- 2022 TODO add actionlib servers with namespaces -->
 	<!--
 	<include file="$(find controller_node)/launch/hold_position.launch"/>
-	<include file="$(find controller_node)/launch/distance_to_pose.launch"/>
 	<include file="$(find controller_node)/launch/path_follower.launch"/>
 	-->
+	<include file="$(find controller_node)/launch/distance_to_pose.launch"/>
 	<include file="$(find behaviors)/launch/auto_node.launch"/>
 
 	<group ns="index">
-		<node name="index_server_2022" pkg="behaviors" type="2022_index_server_node"/>
+		<node name="index_server_2022" pkg="behaviors" type="2022_index_server_node" output="screen"/>
 		<rosparam command="load" file="$(find behaviors)/config/2022_index_server.yaml"/>
 	</group>
 
 	<group ns="shooter">
-		<node name="shooter_server_2022" pkg="behaviors" type="2022_shooter_server_node"/>
+		<node name="shooter_server_2022" pkg="behaviors" type="2022_shooter_server_node" output="screen"/>
 	</group>
 
 	<group ns="intake">
-		<node name="intake_server_2022" pkg="behaviors" type="2022_intake_server_node"/>
+		<node name="intake_server_2022" pkg="behaviors" type="2022_intake_server_node" output="screen"/>
 		<rosparam command="load" file="$(find behaviors)/config/2022_intake_config.yaml"/>
 	</group>
 
 	<group ns="intaking">
-		<node name="intaking_server_2022" pkg="behaviors" type="2022_intaking_server_node"/>
+		<node name="intaking_server_2022" pkg="behaviors" type="2022_intaking_server_node" output="screen"/>
 	</group>
 
 	<group ns="shooting">
-		<node name="shooting_server_2022" pkg="behaviors" type="2022_shooting_server_node"/>
+		<node name="shooting_server_2022" pkg="behaviors" type="2022_shooting_server_node" output="screen"/>
+	</group>
+
+	<group ns="ejecting">
+		<node name="ejecting_server_2022" pkg="behaviors" type="2022_ejecting_server_node" output="screen"/>
 	</group>
 	<include file="$(find behaviors)/launch/2022_climb.launch"/>
 
-	
+	<include file="$(find controller_node)/launch/2022_terabee.launch" if="$(eval arg('hw_or_sim')=='hw')">
+	</include>
+
 	<!-- Run ZED camera + tensorflow object detection -->
 	<!--
 	<include file="$(find tf_object_detection)/launch/detection.launch" if="$(eval arg('hw_or_sim')=='hw')">
@@ -117,7 +124,7 @@
 	-->
 
 	<!-- Consider adding 2022 launch file for recording -->
-	<include file="$(find controller_node)/launch/record_2022_compbot.launch" if="$(arg record)" /> 
+	<include file="$(find controller_node)/launch/record_2022_compbot.launch" if="$(arg record)" />
 	<!--
 	<include file="$(find controller_node)/launch/record_2022_no_zed.launch" if="$(arg record)" />
 

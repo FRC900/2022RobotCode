@@ -36,6 +36,7 @@ protected:
   double speed_offset_ = 0;
 
   uint64_t close_enough_counter_;
+  int shooter_wheel_checks_ = 20;
 
 public:
 
@@ -51,8 +52,10 @@ public:
     ddr_.registerVariable<double>("low_goal_speed", &low_goal_speed_, "Low Goal Shooting Speed", 0, 500);
     eject_speed_ = 120;
     ddr_.registerVariable<double>("eject_speed", &eject_speed_, "Eject Cargo - Shooting Speed", 0, 500);
-    error_margin_ = 1;
+    error_margin_ = 2;
     ddr_.registerVariable<double>("error_margin", &error_margin_, "Shooter margin of error", 0, 50);
+    shooter_wheel_checks_ = 5;
+    ddr_.registerVariable<int>("shooter_wheel_checks", &shooter_wheel_checks_, "Number of times to check shooter wheel speed", 0, 50);
     // change close_enough to operate with multiple samples
     // error_margin_ = 5;
     // ddr_.registerVariable<double>("samples_for_close_enough", &error_margin_, "Shooter margin of error", 0, 50);
@@ -93,7 +96,9 @@ public:
 		as_.setPreempted();
 		return;
 	}
+  shooter_speed += speed_offset_;
 	SHOOTER_INFO("Shooter speed setpoint = " << msg.data);
+  int good_samples = 0;
     ros::Rate r(100);
     while (ros::ok()) {
       ros::spinOnce();
@@ -108,9 +113,15 @@ public:
         as_.setPreempted();
         break;
       }
-	  msg.data = shooter_speed + speed_offset_;
+	  msg.data = shooter_speed;
 	  shooter_command_pub_.publish(msg);
-	  feedback_.close_enough = fabs(shooter_speed - fabs(current_speed_)) < error_margin_;
+    /* Measure if the sample is close enough to the requested shooter wheel speed */
+    if(fabs(shooter_speed - fabs(current_speed_)) < error_margin_) {
+      good_samples++;
+    } else {
+      good_samples = 0;
+    }
+	  feedback_.close_enough = good_samples > shooter_wheel_checks_;
       as_.publishFeedback(feedback_);
       r.sleep();
     }
