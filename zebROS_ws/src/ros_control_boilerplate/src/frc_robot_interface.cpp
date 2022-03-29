@@ -2132,10 +2132,7 @@ void FRCRobotInterface::write(const ros::Time& time, const ros::Duration& period
 		{
 			const double softlimit_forward_threshold_NU = softlimit_forward_threshold / radians_scale; //native units
 			const double softlimit_reverse_threshold_NU = softlimit_reverse_threshold / radians_scale;
-			if (rc)
-			{
-				rc = safeTalonConfigCall(victor->ConfigForwardSoftLimitThreshold(softlimit_forward_threshold_NU, configTimeoutMs),"ConfigForwardSoftLimitThreshold", ts.getCANID());
-			}
+			bool rc = safeTalonConfigCall(victor->ConfigForwardSoftLimitThreshold(softlimit_forward_threshold_NU, configTimeoutMs),"ConfigForwardSoftLimitThreshold", ts.getCANID());
 			if (rc)
 			{
 				rc = safeTalonConfigCall(victor->ConfigForwardSoftLimitEnable(softlimit_forward_enable, configTimeoutMs),"ConfigForwardSoftLimitEnable", ts.getCANID());
