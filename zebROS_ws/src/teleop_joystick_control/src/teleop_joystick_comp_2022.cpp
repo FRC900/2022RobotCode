@@ -174,11 +174,18 @@ void decClimber(void)
 	ROS_INFO_STREAM("Set climber_cmd.data to " << climber_cmd.request.data);
 }
 
+int direction_x;
+int direction_y;
+int direction_z;
+
 void moveDirection(int x, int y, int z) {
 	geometry_msgs::Twist cmd_vel;
-	cmd_vel.linear.x = x * config.button_move_speed;
-	cmd_vel.linear.y = y * config.button_move_speed;
-	cmd_vel.linear.z = z * config.button_move_speed;
+	direction_x += x;
+	direction_y += y;
+	direction_z += z;
+	cmd_vel.linear.x = direction_x * config.button_move_speed;
+	cmd_vel.linear.y = direction_y * config.button_move_speed;
+	cmd_vel.linear.z = direction_z * config.button_move_speed;
 	cmd_vel.angular.x = 0.0;
 	cmd_vel.angular.y = 0.0;
 	cmd_vel.angular.z = 0.0;
@@ -346,32 +353,34 @@ void buttonBoxCallback(const ros::MessageEvent<frc_msgs::ButtonBoxState const>& 
 
 	if(button_box.leftRedPress)
 	{
+		ROS_INFO_STREAM("Snapping to angle for shooting!");
+		// Align for shooting
+		std_msgs::Bool enable_align_msg;
+		enable_align_msg.data = true;
+		// To align the robot to an angle, enable_align_msg.data
+		// needs to be true and the desired angle (in radians)
+		// needs to be published to orient_strafing_setpoint_pub
+		orient_strafing_enable_pub.publish(enable_align_msg);
 
-		ROS_INFO_STREAM("Driving backwards for climb");
+		ros::spinOnce();
+		std_msgs::Float64 orient_strafing_angle_msg;
+		orient_strafing_angle_msg.data = hub_angle;
+		orient_strafing_setpoint_pub.publish(orient_strafing_angle_msg);
+		snappingToAngle = true;
 	}
-	// Drive backwards during climb
-	// TODO - tweak speed
+
 	if(button_box.leftRedButton)
 	{
-		moveDirection(-1, 0, 0);
+
 	}
 	if(button_box.leftRedRelease)
 	{
-		geometry_msgs::Twist cmd_vel;
-		cmd_vel.linear.x = 0.0;
-		cmd_vel.linear.y = 0.0;
-		cmd_vel.linear.z = 0.0;
-		cmd_vel.angular.x = 0.0;
-		cmd_vel.angular.y = 0.0;
-		cmd_vel.angular.z = 0.0;
-
-		JoystickRobotVel.publish(cmd_vel);
-		std_srvs::Empty empty;
-		if (!BrakeSrv.call(empty))
-		{
-			ROS_ERROR("BrakeSrv call failed in sendRobotZero_");
-		}
-		ROS_INFO("BrakeSrv called");
+		std_msgs::Bool enable_align_msg;
+		enable_align_msg.data = false;
+		orient_strafing_enable_pub.publish(enable_align_msg);
+		ROS_INFO_STREAM("Stopping snapping to angle for shooting!");
+		snappingToAngle = false;
+		sendRobotZero = false;
 	}
 
 	if(button_box.rightRedPress)
@@ -523,7 +532,7 @@ void buttonBoxCallback(const ros::MessageEvent<frc_msgs::ButtonBoxState const>& 
 	}
 	if(button_box.leftGreenRelease)
 	{
-
+		moveDirection(0, -1, 0);
 	}
 
 	if(button_box.rightGreenPress)
@@ -535,7 +544,7 @@ void buttonBoxCallback(const ros::MessageEvent<frc_msgs::ButtonBoxState const>& 
 	}
 	if(button_box.rightGreenRelease)
 	{
-
+		moveDirection(0, 1, 0);
 	}
 
 	if(button_box.topGreenPress)
@@ -547,41 +556,20 @@ void buttonBoxCallback(const ros::MessageEvent<frc_msgs::ButtonBoxState const>& 
 	}
 	if(button_box.topGreenRelease)
 	{
-
+		moveDirection(-1, 0, 0);
 	}
 
 	if(button_box.bottomGreenPress)
 	{
-		ROS_INFO_STREAM("Snapping to angle for shooting!");
-		ROS_INFO_STREAM("Angle: " << hub_angle << " radians");
-		ros::spinOnce();
-		std_msgs::Float64 orient_strafing_angle_msg;
-		orient_strafing_angle_msg.data = hub_angle;
-		orient_strafing_setpoint_pub.publish(orient_strafing_angle_msg);
-
-		// Align for shooting
-		std_msgs::Bool enable_align_msg;
-		enable_align_msg.data = true;
-		// To align the robot to an angle, enable_align_msg.data
-		// needs to be true and the desired angle (in radians)
-		// needs to be published to orient_strafing_setpoint_pub
-		orient_strafing_enable_pub.publish(enable_align_msg);
-
-		orient_strafing_setpoint_pub.publish(orient_strafing_angle_msg);
-		snappingToAngle = true;
+		moveDirection(-1, 0, 0);
 	}
 	if(button_box.bottomGreenButton)
 	{
-		moveDirection(-1, 0, 0);
+
 	}
 	if(button_box.bottomGreenRelease)
 	{
-		std_msgs::Bool enable_align_msg;
-		enable_align_msg.data = false;
-		orient_strafing_enable_pub.publish(enable_align_msg);
-		ROS_INFO_STREAM("Stopping snapping to angle for shooting!");
-		snappingToAngle = false;
-		sendRobotZero = false;
+		moveDirection(1, 0, 0);
 	}
 
 	// Auto-mode select?
