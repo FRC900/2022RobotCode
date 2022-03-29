@@ -525,10 +525,10 @@ void buttonBoxCallback(const ros::MessageEvent<frc_msgs::ButtonBoxState const>& 
 
 	if(button_box.leftGreenPress)
 	{
+		moveDirection(0, 1, 0);
 	}
 	if(button_box.leftGreenButton)
 	{
-		moveDirection(0, 1, 0);
 	}
 	if(button_box.leftGreenRelease)
 	{
@@ -537,10 +537,10 @@ void buttonBoxCallback(const ros::MessageEvent<frc_msgs::ButtonBoxState const>& 
 
 	if(button_box.rightGreenPress)
 	{
+		moveDirection(0, -1, 0);
 	}
 	if(button_box.rightGreenButton)
 	{
-		moveDirection(0, -1, 0);
 	}
 	if(button_box.rightGreenRelease)
 	{
@@ -549,10 +549,10 @@ void buttonBoxCallback(const ros::MessageEvent<frc_msgs::ButtonBoxState const>& 
 
 	if(button_box.topGreenPress)
 	{
+		moveDirection(1, 0, 0);
 	}
 	if(button_box.topGreenButton)
 	{
-		moveDirection(1, 0, 0);
 	}
 	if(button_box.topGreenRelease)
 	{
