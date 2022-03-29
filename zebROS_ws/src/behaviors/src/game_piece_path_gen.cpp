@@ -170,11 +170,11 @@ bool genPath(behavior_actions::GamePiecePickup::Request &req, behavior_actions::
 		ros::spinOnce();
 		if ((lastObjectDetection.objects[i].id == req.object_id) && (lastObjectDetection.objects[i].location.z <= maximumZ))
 		{
-			objectPoints.push_back({lastObjectDetection.objects[i].location.x, lastObjectDetection.objects[i].location.y, imu_angle - (lastObjectDetection.objects[i].angle * M_PI / 180.0)});
+			objectPoints.push_back({lastObjectDetection.objects[i].location.x, lastObjectDetection.objects[i].location.y, lastObjectDetection.objects[i].angle * M_PI / 180.0});
 		}
 		if ((lastObjectDetection.objects[i].id == req.secondary_object_id) && (lastObjectDetection.objects[i].location.z <= maximumZ))
 		{
-			secondaryObjectPoints.push_back({lastObjectDetection.objects[i].location.x, lastObjectDetection.objects[i].location.y, imu_angle - (lastObjectDetection.objects[i].angle * M_PI / 180.0)});
+			secondaryObjectPoints.push_back({lastObjectDetection.objects[i].location.x, lastObjectDetection.objects[i].location.y, lastObjectDetection.objects[i].angle * M_PI / 180.0});
 		}
 	}
 
