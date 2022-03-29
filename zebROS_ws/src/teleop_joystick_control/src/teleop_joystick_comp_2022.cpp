@@ -89,7 +89,7 @@ ros::ServiceClient intake_client;
 std_msgs::Float64 speed_offset;
 ros::Publisher speed_offset_publisher; //shooter speed offset
 
-bool imu_service_succeded = false;
+bool imu_service_needed = true;
 
 // Diagnostic mode controls
 void decIndexerArc(void)
@@ -497,7 +497,7 @@ void buttonBoxCallback(const ros::MessageEvent<frc_msgs::ButtonBoxState const>& 
 	// Auto-mode select?
 	if(button_box.bottomSwitchUpPress)
 	{
-		imu_service_succeded = true;
+		imu_service_needed = true;
 	}
 	if(button_box.bottomSwitchUpButton)
 	{
@@ -507,22 +507,21 @@ void buttonBoxCallback(const ros::MessageEvent<frc_msgs::ButtonBoxState const>& 
 			auto_mode_msg.header.stamp = ros::Time::now();
 			auto_mode_msg.auto_mode = 1;
 			auto_mode_select_pub.publish(auto_mode_msg);
-		} else{
-				if(imu_service_succeded){
-					imu_cmd.request.angle = config.top_position_angle;
-					IMUZeroSrv.call(imu_cmd);
-					imu_service_succeded = false;
-				}
+		}
+		if(imu_service_needed){
+			imu_cmd.request.angle = config.top_position_angle;
+			IMUZeroSrv.call(imu_cmd);
+			imu_service_needed = false;
 		}
 	}
 	if(button_box.bottomSwitchUpRelease)
 	{
-		imu_service_succeded = true;
+		imu_service_needed = true;
 	}
 
 	if(button_box.bottomSwitchDownPress)
 	{
-		imu_service_succeded = true;
+		imu_service_needed = true;
 	}
 	if(button_box.bottomSwitchDownButton)
 	{
@@ -532,23 +531,22 @@ void buttonBoxCallback(const ros::MessageEvent<frc_msgs::ButtonBoxState const>& 
 			auto_mode_msg.header.stamp = ros::Time::now();
 			auto_mode_msg.auto_mode = 2;
 			auto_mode_select_pub.publish(auto_mode_msg);
-		} else{
-				if(imu_service_succeded){
-					imu_cmd.request.angle = config.bottom_position_angle;
-					IMUZeroSrv.call(imu_cmd);
-					imu_service_succeded = false;
-				}
 		}
+		if(imu_service_needed){
+			imu_cmd.request.angle = config.bottom_position_angle;
+			IMUZeroSrv.call(imu_cmd);
+			imu_service_needed = false;
+			}
 	}
 	if(button_box.bottomSwitchDownRelease)
 	{
-		imu_service_succeded = true;
+		imu_service_needed = true;
 	}
 	if(!button_box.bottomSwitchUpButton && !button_box.bottomSwitchDownButton){ //The switch is in the middle position
-		if(imu_service_succeded){
+		if(imu_service_needed){
 			imu_cmd.request.angle = config.middle_position_angle;
 			IMUZeroSrv.call(imu_cmd);
-			imu_service_succeded = false;
+			imu_service_needed = false;
 		}
 	}
 
@@ -1150,7 +1148,7 @@ int main(int argc, char **argv)
 	{
 		ROS_ERROR("Wait (15 sec) timed out, for Brake Service in teleop_joystick_comp.cpp");
 	}
-	if(!IMUZeroSrv.waitForExistence(ros::Duration(15)))
+	if(!IMUZeroSrv.waitForExistence(ros::Duration(1)))
 	{
 		ROS_ERROR("Wait (15 sec) timed out, for IMU Zero Service in teleop_joystick_comp.cpp");
 	}
