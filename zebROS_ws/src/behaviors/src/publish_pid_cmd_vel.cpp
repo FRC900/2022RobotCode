@@ -190,6 +190,10 @@ int main(int argc, char ** argv)
 			  cmd_vel_msg.linear.x = x_command * cos(rotate_angle) - y_command * sin(rotate_angle);
 			  cmd_vel_msg.linear.y = x_command * sin(rotate_angle) + y_command * cos(rotate_angle);
 			}
+			else {
+				cmd_vel_msg.linear.x = x_command;
+				cmd_vel_msg.linear.y = y_command;
+			}
 			cmd_vel_pub.publish(cmd_vel_msg);
 		}
 
