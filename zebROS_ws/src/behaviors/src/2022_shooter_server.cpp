@@ -82,38 +82,38 @@ public:
   void executeCB(const behavior_actions::Shooter2022GoalConstPtr &goal)
   {
     SHOOTER_INFO("Shooter action called with mode " << goal->mode);
-	std_msgs::Float64 msg;
-  std_msgs::Float64 downtown_msg;
-  downtown_msg.data = DOWNTOWN_DOWN;
-	double shooter_speed;
-	switch (goal->mode) {
-	  case behavior_actions::Shooter2022Goal::HIGH_GOAL:
-	    shooter_speed = high_goal_speed_;
-  		break;
-  	case behavior_actions::Shooter2022Goal::LOW_GOAL:
-  		shooter_speed = low_goal_speed_;
-  		break;
-  	case behavior_actions::Shooter2022Goal::EJECT:
-  		shooter_speed = eject_speed_;
-  		break;
-    case behavior_actions::Shooter2022Goal::DOWNTOWN:
-      downtown_msg.data = DOWNTOWN_UP;
-      shooter_speed = downtown_high_goal_speed_;
-      break;
-	  default:
-  		SHOOTER_ERROR("invalid goal mode (" << goal->mode << ")");
-  		msg.data = 0;
-  		shooter_command_pub_.publish(msg);
-  		feedback_.close_enough = false;
-  		as_.publishFeedback(feedback_);
-  		// set the action state to preempted
-  		as_.setPreempted();
-  		return;
-	}
-  downtown_command_pub_.publish(downtown_msg);
-  shooter_speed += speed_offset_;
-	SHOOTER_INFO("Shooter speed setpoint = " << msg.data);
-  int good_samples = 0;
+    std_msgs::Float64 msg;
+    std_msgs::Float64 downtown_msg;
+    downtown_msg.data = DOWNTOWN_DOWN;
+    double shooter_speed;
+    switch (goal->mode) {
+      case behavior_actions::Shooter2022Goal::HIGH_GOAL:
+        shooter_speed = high_goal_speed_;
+        break;
+      case behavior_actions::Shooter2022Goal::LOW_GOAL:
+        shooter_speed = low_goal_speed_;
+        break;
+      case behavior_actions::Shooter2022Goal::EJECT:
+        shooter_speed = eject_speed_;
+        break;
+      case behavior_actions::Shooter2022Goal::DOWNTOWN:
+        downtown_msg.data = DOWNTOWN_UP;
+        shooter_speed = downtown_high_goal_speed_;
+        break;
+      default:
+        SHOOTER_ERROR("invalid goal mode (" << goal->mode << ")");
+        msg.data = 0;
+        shooter_command_pub_.publish(msg);
+        feedback_.close_enough = false;
+        as_.publishFeedback(feedback_);
+        // set the action state to preempted
+        as_.setPreempted();
+        return;
+    }
+    downtown_command_pub_.publish(downtown_msg);
+    shooter_speed += speed_offset_;
+    SHOOTER_INFO("Shooter speed setpoint = " << msg.data);
+    int good_samples = 0;
     ros::Rate r(100);
     while (ros::ok()) {
       ros::spinOnce();
@@ -121,6 +121,8 @@ public:
       {
         msg.data = 0;
         shooter_command_pub_.publish(msg);
+        downtown_msg.data = DOWNTOWN_DOWN;
+        downtown_command_pub_.publish(downtown_msg);
         feedback_.close_enough = false;
         as_.publishFeedback(feedback_);
         SHOOTER_INFO(" : Preempted");
@@ -128,15 +130,15 @@ public:
         as_.setPreempted();
         break;
       }
-	  msg.data = shooter_speed;
-	  shooter_command_pub_.publish(msg);
-    /* Measure if the sample is close enough to the requested shooter wheel speed */
-    if(fabs(shooter_speed - fabs(current_speed_)) < error_margin_) {
-      good_samples++;
-    } else {
-      good_samples = 0;
-    }
-	  feedback_.close_enough = good_samples > shooter_wheel_checks_;
+      msg.data = shooter_speed;
+      shooter_command_pub_.publish(msg);
+      /* Measure if the sample is close enough to the requested shooter wheel speed */
+      if(fabs(shooter_speed - fabs(current_speed_)) < error_margin_) {
+        good_samples++;
+      } else {
+        good_samples = 0;
+      }
+      feedback_.close_enough = good_samples > shooter_wheel_checks_;
       as_.publishFeedback(feedback_);
       r.sleep();
     }
