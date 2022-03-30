@@ -193,6 +193,18 @@ void moveDirection(int x, int y, int z) {
 	JoystickRobotVel.publish(cmd_vel);
 }
 
+void sendDirection() {
+	geometry_msgs::Twist cmd_vel;
+	cmd_vel.linear.x = direction_x * config.button_move_speed;
+	cmd_vel.linear.y = direction_y * config.button_move_speed;
+	cmd_vel.linear.z = direction_z * config.button_move_speed;
+	cmd_vel.angular.x = 0.0;
+	cmd_vel.angular.y = 0.0;
+	cmd_vel.angular.z = 0.0;
+
+	JoystickRobotVel.publish(cmd_vel);
+}
+
 void publish_diag_cmds(void)
 {
 	indexer_straight_pub.publish(indexer_straight_cmd);
@@ -529,6 +541,7 @@ void buttonBoxCallback(const ros::MessageEvent<frc_msgs::ButtonBoxState const>& 
 	}
 	if(button_box.leftGreenButton)
 	{
+		sendDirection();
 	}
 	if(button_box.leftGreenRelease)
 	{
@@ -541,6 +554,7 @@ void buttonBoxCallback(const ros::MessageEvent<frc_msgs::ButtonBoxState const>& 
 	}
 	if(button_box.rightGreenButton)
 	{
+		sendDirection();
 	}
 	if(button_box.rightGreenRelease)
 	{
@@ -553,6 +567,7 @@ void buttonBoxCallback(const ros::MessageEvent<frc_msgs::ButtonBoxState const>& 
 	}
 	if(button_box.topGreenButton)
 	{
+		sendDirection();
 	}
 	if(button_box.topGreenRelease)
 	{
@@ -565,7 +580,7 @@ void buttonBoxCallback(const ros::MessageEvent<frc_msgs::ButtonBoxState const>& 
 	}
 	if(button_box.bottomGreenButton)
 	{
-
+		sendDirection();
 	}
 	if(button_box.bottomGreenRelease)
 	{
