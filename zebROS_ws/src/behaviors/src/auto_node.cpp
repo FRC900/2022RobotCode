@@ -144,7 +144,7 @@ void publishAutoState(ros::NodeHandle &nh)
 
 //function to wait while an actionlib server is running
 template <class T>
-void waitForActionlibServer(T &action_client, double timeout, const std::string &activity)
+void waitForActionlibServer(T &action_client, double timeout, const std::string &activity, boost::optional<const bool&> stop_waiting = boost::optional<const bool&>())
 	//activity is a description of what we're waiting for, e.g. "waiting for mechanism to extend" - helps identify where in the server this was called (for error msgs)
 {
 	const double request_time = ros::Time::now().toSec();
@@ -179,6 +179,10 @@ void waitForActionlibServer(T &action_client, double timeout, const std::string 
 		else if (auto_stopped){
 			ROS_WARN_STREAM("Auto node - auto_stopped set");
 			action_client.cancelGoalsAtAndBeforeTime(ros::Time::now());
+		}
+		else if (stop_waiting){
+			ROS_INFO_STREAM("Auto node (waitForActionlibServer) - " << activity << " said this function can exit now");
+			break;
 		}
 		else { //if didn't succeed and nothing went wrong, keep waiting
 			ros::spinOnce();
@@ -636,16 +640,30 @@ int main(int argc, char** argv)
 
 					path_follower_msgs::holdPositionGoal goal;
 					double yaw;
-					readFloatParam("x", action_data["goal"], goal.pose.position.x);
-					readFloatParam("y", action_data["goal"], goal.pose.position.y);
-					readFloatParam("yaw", action_data["goal"], yaw);
+					if (!readFloatParam("x", action_data["goal"], goal.pose.position.x)) {
+						shutdownNode(ERROR,"Auto node - hold_distance_actionlib_server.goal missing \"x\" field");
+						return 1;
+					}
+					if (!readFloatParam("y", action_data["goal"], goal.pose.position.y)) {
+						shutdownNode(ERROR,"Auto node - hold_distance_actionlib_server.goal missing \"y\" field");
+						return 1;
+					}
+					if (!readFloatParam("yaw", action_data["goal"], yaw)) {
+						shutdownNode(ERROR,"Auto node - hold_distance_actionlib_server.goal missing \"yaw\" field");
+						return 1;
+					}
+					bool aligned = false;
 					tf2::Quaternion quaternion;
 					quaternion.setRPY(0, 0, yaw);
 					goal.pose.orientation.x = quaternion.x();
 					goal.pose.orientation.y = quaternion.y();
 					goal.pose.orientation.z = quaternion.z();
 					goal.pose.orientation.w = quaternion.w();
-					distance_ac.sendGoal(goal);
+					distance_ac.sendGoal(goal,
+			                         actionlib::SimpleActionClient<path_follower_msgs::holdPositionAction>::SimpleDoneCallback(),
+			                         actionlib::SimpleActionClient<path_follower_msgs::holdPositionAction>::SimpleActiveCallback(),
+			                         [&](const path_follower_msgs::holdPositionFeedbackConstPtr &feedback){ aligned = feedback->isAligned; });
+					waitForActionlibServer(distance_ac, 100, "hold distance server", aligned);
 				}
 				else if(action_data_type == "shooting_actionlib_server")
 				{
