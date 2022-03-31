@@ -9,7 +9,6 @@ auto_mode_2: ["shoot", "start_intaking", "cmd_vel_2", "pause_cmd_vel", "stop_int
 #auto_mode_1: ["shoot", "start_intaking", "pause_2_sec", "stop_intaking"]
 # auto_moe_2: ["shoot", "start_intaking", "path_for_balls_left_hub", "stop_intaking", "shoot", "drive_forward"]
 # auto_moe_2: ["shoot", "start_intaking", "path_for_balls_right_hub", "stop_intaking", "shoot", "drive_forward"]
-auto_mode_3: ["drive_to_wall"]
 
 # Examples
 #auto_mode_1: ["tuning"]
