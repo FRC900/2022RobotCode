@@ -181,8 +181,10 @@ void waitForActionlibServer(T &action_client, double timeout, const std::string 
 			action_client.cancelGoalsAtAndBeforeTime(ros::Time::now());
 		}
 		else if (stop_waiting){
-			ROS_INFO_STREAM("Auto node (waitForActionlibServer) - " << activity << " said this function can exit now");
-			break;
+			if (stop_waiting.get()) {
+				ROS_INFO_STREAM("Auto node (waitForActionlibServer) - " << activity << " said this function can exit now");
+				break;
+			}
 		}
 		else { //if didn't succeed and nothing went wrong, keep waiting
 			ros::spinOnce();
@@ -659,6 +661,7 @@ int main(int argc, char** argv)
 					goal.pose.orientation.y = quaternion.y();
 					goal.pose.orientation.z = quaternion.z();
 					goal.pose.orientation.w = quaternion.w();
+					goal.isAbsoluteCoord = true;
 					distance_ac.sendGoal(goal,
 			                         actionlib::SimpleActionClient<path_follower_msgs::holdPositionAction>::SimpleDoneCallback(),
 			                         actionlib::SimpleActionClient<path_follower_msgs::holdPositionAction>::SimpleActiveCallback(),
