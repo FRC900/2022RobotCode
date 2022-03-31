@@ -10,8 +10,8 @@
 #define SHOOTER_ERROR(x) ROS_ERROR_STREAM("2022_shooter_server : " << x)
 #define SHOOTER_ERROR_THROTTLE(d,x) ROS_ERROR_STREAM_THROTTLE((d), "2022_shooter_server : " << x)
 
-#define DOWNTOWN_UP    1.0
-#define DOWNTOWN_DOWN -1.0
+#define DOWNTOWN_ACTIVE    0.0
+#define DOWNTOWN_INACTIVE  1.0
 
 class ShooterAction2022
 {
@@ -84,7 +84,7 @@ public:
     SHOOTER_INFO("Shooter action called with mode " << goal->mode);
     std_msgs::Float64 msg;
     std_msgs::Float64 downtown_msg;
-    downtown_msg.data = DOWNTOWN_DOWN;
+    downtown_msg.data = DOWNTOWN_INACTIVE;
     double shooter_speed;
     switch (goal->mode) {
       case behavior_actions::Shooter2022Goal::HIGH_GOAL:
@@ -97,7 +97,7 @@ public:
         shooter_speed = eject_speed_;
         break;
       case behavior_actions::Shooter2022Goal::DOWNTOWN:
-        downtown_msg.data = DOWNTOWN_UP;
+        downtown_msg.data = DOWNTOWN_ACTIVE;
         shooter_speed = downtown_high_goal_speed_;
         break;
       default:
@@ -121,7 +121,7 @@ public:
       {
         msg.data = 0;
         shooter_command_pub_.publish(msg);
-        downtown_msg.data = DOWNTOWN_DOWN;
+        downtown_msg.data = DOWNTOWN_INACTIVE;
         downtown_command_pub_.publish(downtown_msg);
         feedback_.close_enough = false;
         as_.publishFeedback(feedback_);
