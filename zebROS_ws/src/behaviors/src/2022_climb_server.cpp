@@ -151,7 +151,6 @@ public:
       nextFunction_ = boost::bind(&ClimbStateMachine::state1, this);
       rung = 0;
       driven_backwards_ = false;
-      climb_zeroed_ = false;
     }
     exited = false;
     success = false;
