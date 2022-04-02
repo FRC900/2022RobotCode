@@ -53,7 +53,7 @@ public:
   {
     high_goal_speed_ = 348; // was 325 at start of UNCA, 343 at UNCP
     ddr_.registerVariable<double>("high_goal_speed", &high_goal_speed_, "High Goal Shooting Speed", 0, 500);
-    downtown_high_goal_speed_ = 335;
+    downtown_high_goal_speed_ = 398;
     ddr_.registerVariable<double>("downtown_high_goal_speed", &downtown_high_goal_speed_, "Downtown High Goal Shooting Speed", 0, 500);
     low_goal_speed_ = 200; // 180 or 200
     ddr_.registerVariable<double>("low_goal_speed", &low_goal_speed_, "Low Goal Shooting Speed", 0, 500);
