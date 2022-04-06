@@ -3,8 +3,7 @@
 
 	<!-- GDB functionality -->
 	<arg name="debug" default="false" />
-
-	<arg name="launch_prefix" value="" />
+	<arg name="launch_prefix" value="valgrind" />
 
 	<arg name="hw_or_sim" default="hw" />
 	<arg name="joy_or_key" default="joy" />
