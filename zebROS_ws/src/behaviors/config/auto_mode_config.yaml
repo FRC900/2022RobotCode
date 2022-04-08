@@ -86,16 +86,16 @@ cmd_vel_3:
 
 cmd_vel_4_reverse:
     type: cmd_vel
-    duration: 0.5
+    duration: 1.0
     cmd_vel:
-        x: -0.5
+        x: -1.1
         y: 0.0
         z: 0.0
 cmd_vel_4_forward:
     type: cmd_vel
-    duration: 0.5
+    duration: 1.0
     cmd_vel:
-        x: 0.5
+        x: 1.1
         y: 0.0
         z: 0.0
 
