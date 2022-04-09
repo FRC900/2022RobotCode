@@ -68,14 +68,14 @@ cmd_vel_21:
     cmd_vel:
         x: 1.0
         y: -0.3
-        z: -0.5
+        z: -0.52
 cmd_vel_21_reverse:
     type: cmd_vel
     duration: 1.9
     cmd_vel:
         x: -1.0
         y: 0.3
-        z: 0.5
+        z: 0.52
 
 cmd_vel_3:
     type: cmd_vel
