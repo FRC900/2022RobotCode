@@ -1,3 +1,7 @@
+map_frame_id: 'map'
+odom_frame_id: 'zed_objdet_odom'
+tf_tolerance: 2.0
+
 noise_delta_t: 1.0
 
 field_dims:

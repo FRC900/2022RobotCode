@@ -4,6 +4,7 @@
   <arg name="zed_name"      default="zed_objdetect" />
   <arg name="zed_node_name" default="zed_objdetect" />
   <arg name="camera_model"  default="zed2" />
+  <arg name="detection"     default="trt" />
 
   <include file="$(find zed_wrapper)/launch/include/zed_camera.launch.xml" if="$(eval input_type != 'video')">
     <arg name="common_params_file"   value="$(find controller_node)/config/zed_objdet/common.yaml" />
@@ -23,7 +24,7 @@
 
   <group ns="tf_object_detection">
     <rosparam command="load" file="$(find tf_object_detection)/config/tf_default_config.yaml" />
-    <node pkg="tf_object_detection" name="tf_object_detection" type="trtdetection.py" output="screen">
+    <node pkg="tf_object_detection" name="tf_object_detection" type="$(arg detection)detection.py" output="screen">
     </node>
 <!--
     <node pkg="tf_object_detection" name="tf_object_screen_to_world" type="tf_object_screen_to_world" output="screen">

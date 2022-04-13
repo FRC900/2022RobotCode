@@ -101,19 +101,19 @@ void publish_prediction(const ros::TimerEvent &/*event*/)
       tf2::toMsg(tmp_tf.inverse(), baselink_to_map.pose);
 
       // baselink_to_map transformed from base_link to odom == odom->map
-      tf_buffer_.transform(baselink_to_map, odom_to_map, odom_frame_id, ros::Duration(0.02));
+      // tf_buffer_.transform(baselink_to_map, odom_to_map, odom_frame_id, ros::Duration(0.02));
 
       geometry_msgs::TransformStamped transformStamped;
 
-      transformStamped.header.stamp = last_time + tf_tolerance;
+      transformStamped.header.stamp = last_time;
       transformStamped.header.frame_id = map_frame_id;
-      transformStamped.child_frame_id = odom_frame_id;
+      transformStamped.child_frame_id = "base_link";
 
       // Computed transform is odom->map, but need to invert
       // it to publish map->odom instead
-      tf2::Transform odom_to_map_tf;
-      tf2::convert(odom_to_map.pose, odom_to_map_tf);
-      tf2::convert(odom_to_map_tf.inverse(), transformStamped.transform);
+      tf2::Transform baselink_to_map_tf;
+      tf2::convert(baselink_to_map.pose, baselink_to_map_tf);
+      tf2::convert(baselink_to_map_tf.inverse(), transformStamped.transform);
 
       tfbr->sendTransform(transformStamped);
     }
