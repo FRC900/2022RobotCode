@@ -26,12 +26,30 @@ from object_detection.utils import ops as utils_ops
 from object_detection.utils import label_map_util
 #from object_detection.utils import visualization_utils as vis_util
 from visualization import BBoxVisualization
+import threading
+
+threads = []
+max_threads = 6
+
+def cb(msg):
+  global threads
+  print("callback")
+  threads = [t for t in threads if t.is_alive()]
+  if len(threads) < max_threads:
+    print("creating new thread")
+    t = threading.Thread(target=lambda: run_inference_for_single_image(msg))
+    threads.append(t)
+    t.start()
+    return
+  else:
+    run_inference_for_single_image(msg)
 
 # Takes a image, and using the tensorflow session and graph
 # provided, runs inference on the image. This returns a list
 # of detections - each includes the object bounding box, type
 # and confidence
 def run_inference_for_single_image(msg):
+  print("inferring")
   image_np = bridge.imgmsg_to_cv2(msg, "rgb8")
   try:
     image = np.expand_dims(image_np, axis=0)
@@ -102,7 +120,7 @@ def run_inference_for_single_image(msg):
     #hard_neg_mine(output_dict, image_np)
     #mine_undetected_power_cells(output_dict, image_np)
 
-    visualize(output_dict, image_np)
+    # visualize(output_dict, image_np)
 
 def visualize(output_dict, image_np):
     if pub_debug.get_num_connections() > 0:
@@ -216,7 +234,7 @@ def main():
         category_dict[k] = category_index[k]['name']
     vis = BBoxVisualization(category_dict)
 
-    sub = rospy.Subscriber(sub_topic, Image, run_inference_for_single_image)
+    sub = rospy.Subscriber(sub_topic, Image, cb)
     pub = rospy.Publisher(pub_topic, TFDetection, queue_size=2)
     pub_debug = rospy.Publisher("debug_image", Image, queue_size=1)
 

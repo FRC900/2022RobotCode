@@ -29,7 +29,7 @@
 
 const std::string rot_topic = "/imu/zeroed_imu";
 const std::string cmd_topic = "/frcrobot_jetson/swerve_drive_controller/cmd_vel_out";
-const std::string goal_pos_topic = "/goal_detection/goal_detect_msg";
+const std::string goal_pos_topic = "/tf_object_detection/object_detection_world";
 
 const std::string pub_debug_topic = "pf_debug";
 const std::string pub_topic = "predicted_pose";
@@ -139,6 +139,7 @@ void publish_prediction(const ros::TimerEvent &/*event*/)
 // Extra arg here allows for switching between bearing only vs. 2d x,y position
 // detection messages based on how the subscribe call is defined
 void goalCallback(const field_obj::Detection::ConstPtr& msg, const bool bearingOnly){
+  ROS_INFO_STREAM_THROTTLE(1, "Got object detection data");
   // TODO - just transform all of the detection coords to base_link here,
   // remove the need to do so inside the particle filter
   geometry_msgs::TransformStamped zed_to_baselink;
