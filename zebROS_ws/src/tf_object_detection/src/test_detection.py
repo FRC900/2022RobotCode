@@ -120,7 +120,7 @@ def run_inference_for_single_image(msg):
     #hard_neg_mine(output_dict, image_np)
     #mine_undetected_power_cells(output_dict, image_np)
 
-    # visualize(output_dict, image_np)
+    visualize(output_dict, image_np)
 
 def visualize(output_dict, image_np):
     if pub_debug.get_num_connections() > 0:

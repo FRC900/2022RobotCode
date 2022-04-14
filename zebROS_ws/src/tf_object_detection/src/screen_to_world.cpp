@@ -135,9 +135,9 @@ int main (int argc, char **argv)
 	// TODO - try this with an exact synchronizer?
 	typedef message_filters::sync_policies::ApproximateTime<field_obj::TFDetection, sensor_msgs::Image> ObjDepthSyncPolicy;
 	std::unique_ptr<message_filters::Synchronizer<ObjDepthSyncPolicy>> obj_depth_sync;
-	obj_depth_sync = std::make_unique<message_filters::Synchronizer<ObjDepthSyncPolicy>>(ObjDepthSyncPolicy(10), *obsub, *depth_sub);
+	obj_depth_sync = std::make_unique<message_filters::Synchronizer<ObjDepthSyncPolicy>>(ObjDepthSyncPolicy(100), *obsub, *depth_sub);
 
-	obj_depth_sync->setMaxIntervalDuration(ros::Duration(5.0));
+	obj_depth_sync->setMaxIntervalDuration(ros::Duration(0.02));
 	obj_depth_sync->registerCallback(boost::bind(callback, _1, _2));
 
 	// Set up a simple subscriber to capture camera info
