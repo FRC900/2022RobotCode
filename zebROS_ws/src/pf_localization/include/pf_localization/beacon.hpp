@@ -12,6 +12,7 @@
 #include <iostream>
 #include <string>
 #include <vector>
+#include <optional>
 
 struct PositionBeacon;
 struct BeaconBase {
@@ -28,7 +29,13 @@ struct BeaconBase {
 struct PositionBeacon : BeaconBase {
   const double x_;
   const double y_;
-  PositionBeacon(double x, double y, const std::string& type) : BeaconBase(type), x_(x), y_(y) {}
+	const std::optional<double> max_rot_;
+	const std::optional<double> min_rot_;
+	const std::optional<double> max_rot_2_;
+	const std::optional<double> min_rot_2_;
+  PositionBeacon(double x, double y, const std::string& type) : BeaconBase(type), x_(x), y_(y), max_rot_(std::nullopt), min_rot_(std::nullopt), max_rot_2_(std::nullopt), min_rot_2_(std::nullopt) {}
+	PositionBeacon(double x, double y, const std::string& type, double min_rot, double max_rot) : BeaconBase(type), x_(x), y_(y), max_rot_(max_rot), min_rot_(min_rot), max_rot_2_(std::nullopt), min_rot_2_(std::nullopt) {}
+	PositionBeacon(double x, double y, const std::string& type, double min_rot, double max_rot, double min_rot_2, double max_rot_2) : BeaconBase(type), x_(x), y_(y), max_rot_(max_rot), min_rot_(min_rot), max_rot_2_(max_rot_2), min_rot_2_(min_rot_2) {}
   std::vector<double> distances(const std::vector<PositionBeacon>& rel) const override
   {
 	  std::vector<double> res;

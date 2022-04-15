@@ -285,8 +285,16 @@ int main(int argc, char **argv) {
 
   // TODO - I think this fails if a beacon is specified as an int
   for (size_t i = 0; i < (unsigned) xml_beacons.size(); i++) {
-    PositionBeacon b {xml_beacons[i][0], xml_beacons[i][1], xml_beacons[i][2]};
-    beacons.push_back(b);
+    if (xml_beacons[i].size() == 5) { // has max and min rotation
+      PositionBeacon b {xml_beacons[i][0], xml_beacons[i][1], xml_beacons[i][2], xml_beacons[i][3], xml_beacons[i][4]};
+      beacons.push_back(b);
+    } else if (xml_beacons[i].size() == 7) { // has two max/min rotation ranges
+      PositionBeacon b {xml_beacons[i][0], xml_beacons[i][1], xml_beacons[i][2], xml_beacons[i][3], xml_beacons[i][4], xml_beacons[i][5], xml_beacons[i][6]};
+      beacons.push_back(b);
+    } else { // just position and name
+      PositionBeacon b {xml_beacons[i][0], xml_beacons[i][1], xml_beacons[i][2]};
+      beacons.push_back(b);
+    }
   }
 
   WorldModel world(beacons, f_x_min, f_x_max, f_y_min, f_y_max);

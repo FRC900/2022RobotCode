@@ -67,6 +67,13 @@ struct beacons {
   std::vector<std::vector<double>> dists;
 };
 
+// https://stackoverflow.com/a/11980362
+inline double wrap_angle(double angle)
+{
+    double twoPi = 2.0 * M_PI;
+    return angle - twoPi * floor(angle / twoPi);
+}
+
 //Uses hungarian algorithm to pair particle relative beacons and robot relative beacons and returns the total error
 //(sum of distance errors from particle to robot beacons)
 double WorldModel::total_distance(const Particle& p, const std::vector<std::shared_ptr<BeaconBase>>& m) const {
@@ -74,7 +81,29 @@ double WorldModel::total_distance(const Particle& p, const std::vector<std::shar
 
   // Put relative distances of field beacons into beacons_by_type
   for (const auto &b : beacons_) {
-    beacons_by_type[b.type_].rel.push_back(particle_relative_beacon(p, b));
+    bool added = false;
+    // if rotation-constrained only add it if rotation is within first or second range
+    if (b.min_rot_.has_value() && b.max_rot_.has_value()) {
+      double angle = wrap_angle(p.rot_);
+      // std::cout << angle << std::endl;
+      if (angle >= wrap_angle(b.min_rot_.value()) && angle <= wrap_angle(b.max_rot_.value())) {
+        beacons_by_type[b.type_].rel.push_back(particle_relative_beacon(p, b));
+        added = true;
+      }
+    } else {
+      beacons_by_type[b.type_].rel.push_back(particle_relative_beacon(p, b));
+      added = true;
+    }
+    if (!added && b.min_rot_2_.has_value() && b.max_rot_2_.has_value()) {
+      double angle = wrap_angle(p.rot_);
+      if (angle >= wrap_angle(b.min_rot_2_.value()) && angle <= wrap_angle(b.max_rot_2_.value())) {
+        beacons_by_type[b.type_].rel.push_back(particle_relative_beacon(p, b));
+        added = true;
+      }
+    }
+    if (!added) {
+      // std::cout << "Particle filter: eschewing beacon at (" << b.x_ << ", " << b.y_ << ") due to angle constraint." << std::endl;
+    }
   }
 
   // For each detection of this type, create a list of distances from
@@ -108,4 +137,3 @@ double WorldModel::total_distance(const Particle& p, const std::vector<std::shar
 
   return total_res;
 }
-
