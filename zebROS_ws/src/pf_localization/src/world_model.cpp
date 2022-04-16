@@ -102,7 +102,7 @@ double WorldModel::total_distance(const Particle& p, const std::vector<std::shar
       }
     }
     if (!added) {
-      // std::cout << "Particle filter: eschewing beacon at (" << b.x_ << ", " << b.y_ << ") due to angle constraint." << std::endl;
+      // std::cout << "Particle filter: eschewing beacon at (" << b.x_ << ", " << b.y_ << ") due to angle constraint. Current angle = " << wrap_angle(p.rot_) << std::endl;
     }
   }
 
