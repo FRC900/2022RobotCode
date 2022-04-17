@@ -56,6 +56,7 @@ void rotCallback(const sensor_msgs::Imu::ConstPtr& msg) {
   tf2::Quaternion raw;
   tf2::convert(msg -> orientation, raw);
   tf2::Matrix3x3(raw).getRPY(roll, pitch, yaw);
+  ROS_INFO_STREAM_THROTTLE(0.2, yaw);
   pf->set_rotation(yaw);
   #ifdef EXTREME_VERBOSE
   ROS_INFO("rotCallback called");
@@ -139,7 +140,7 @@ void publish_prediction(const ros::TimerEvent &/*event*/)
 // Extra arg here allows for switching between bearing only vs. 2d x,y position
 // detection messages based on how the subscribe call is defined
 void goalCallback(const field_obj::Detection::ConstPtr& msg, const bool bearingOnly){
-  ROS_INFO_STREAM_THROTTLE(1, "Got object detection data");
+  ROS_INFO_STREAM_THROTTLE(0.1, "Got object detection data");
   // TODO - just transform all of the detection coords to base_link here,
   // remove the need to do so inside the particle filter
   geometry_msgs::TransformStamped zed_to_baselink;

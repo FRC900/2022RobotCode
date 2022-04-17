@@ -99,6 +99,7 @@ beacons:
   - [0.0081280000000028, 2.1761671361, "terminal_base_corner"]
   - [5.4724049556, 4.1148, "red_black_tape_intersect"]
   - [10.9924465444, 4.1148, "blue_black_tape_intersect"]
+# Note about rotation limiting/filtering: it works, but it looks like the IMU was messed up in the recording so it's not usable with the data we have :/
   - [0.0, 3.4819117052, "ds_numbers"] #, 1.57, 4.71]
   - [0.0, 4.3883742052, "ds_numbers"] #, 1.57, 4.71]
   - [0.0, 5.2948367052, "ds_numbers"] #, 1.57, 4.71]

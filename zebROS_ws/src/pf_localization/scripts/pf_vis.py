@@ -9,8 +9,8 @@ from geometry_msgs.msg import Quaternion
 from tf.transformations import euler_from_quaternion
 from geometry_msgs.msg import PoseArray, PoseWithCovarianceStamped
 
-particles_topic = "/pf_debug"
-pf_pose_topic = "/predicted_pose"
+particles_topic = "/pf_localization/pf_debug"
+pf_pose_topic = "/pf_localization/predicted_pose"
 ground_truth_topic = "/base_pose_ground_truth"
 
 x_data = []
