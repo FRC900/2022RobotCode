@@ -166,8 +166,8 @@ public:
       ROS_WARN_STREAM("2022_climb_server : Could not find finale_track, defaulting to \"/home/ubuntu/2022RobotCode/zebROS_ws/src/behaviors/chirp/mario.chrp\"");
       finale_track_ = "/home/ubuntu/2022RobotCode/zebROS_ws/src/behaviors/chirp/mario.chrp";
     }
-    setupFinale();
     dynamic_arm_.waitForExistence();
+    setupFinale();
   }
   void reset(bool reset_fully) {
     if (reset_fully) {
@@ -214,14 +214,20 @@ public:
     }
   }
   void setupFinale() {
+    orchestra_instrument_client_.waitForExistence();
+    orchestra_music_client_.waitForExistence();
+    orchestra_state_client_.waitForExistence();
     talon_controller_msgs::LoadInstrumentsSrv srv;
     srv.request.instruments = falcons_for_finale_;
     orchestra_instrument_client_.call(srv);
-  }
-  void climbFinale() {
     talon_controller_msgs::LoadMusicSrv srv_music;
     srv_music.request.music_path = finale_track_;
     orchestra_music_client_.call(srv_music);
+    talon_controller_msgs::SetOrchestraStateSrv srv_state;
+    srv_state.request.state = srv_state.request.STOP;
+    orchestra_state_client_.call(srv_state);
+  }
+  void climbFinale() {
     talon_controller_msgs::SetOrchestraStateSrv srv_state;
     srv_state.request.state = srv_state.request.PLAY;
     orchestra_state_client_.call(srv_state);
@@ -229,6 +235,7 @@ public:
   }
   void state1()
   {
+    setupFinale();
     state = 1;
     ROS_INFO_STREAM("2022_climb_server : State 1");
     ROS_INFO_STREAM("2022_climb_server : ---");
