@@ -11,12 +11,14 @@ elif [[ ! $ROS_ROOT = "$HOME/wpilib/2022/roborio/arm-frc2022-linux-gnueabi/opt/r
 	exit 1
 fi
 
-catkin config --profile cross -x _isolated --install --blacklist \
+catkin config --profile cross -x _isolated --install --skiplist \
 	ar_track_alvar \
 	base_trajectory \
 	color_spin \
 	controllers_2019 \
 	controllers_2019_msgs \
+	controllers_2020 \
+	controllers_2020_msgs \
 	demo_tf_node \
 	fake_sensors \
 	goal_detection \

@@ -23,11 +23,13 @@ if [ $? -eq 1 ]; then
 	EXTRA_CMD_LINE="--limit-status-rate 5"
 fi
 
-catkin config --blacklist \
+catkin config --skiplist \
 	ar_track_alvar \
 	color_spin \
 	controllers_2019 \
 	controllers_2019_msgs \
+	controllers_2020 \
+	controllers_2020_msgs \
 	realsense2_camera \
 	realsense2_description \
 	velocity_controllers \
