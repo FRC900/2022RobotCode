@@ -1,6 +1,5 @@
 #include <ros/ros.h>
 #include <actionlib/server/simple_action_server.h>
-#include <behavior_actions/SnapToCargo2022Action.h>
 #include <field_obj/Detection.h>
 #include <std_msgs/Bool.h>
 #include <std_msgs/Float64.h>
