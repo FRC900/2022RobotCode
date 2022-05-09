@@ -64,7 +64,6 @@
 	<include file="$(find controller_node)/launch/teleop.launch">
 		<arg name="year" value="2022" />
 	</include>
-	<include file="$(find teleop_joystick_control)/launch/2022_snap_to_angle.launch"/>
 
 	<group ns="cmd_vel_mux">
 		<node name="twist_mux" pkg="twist_mux" type="twist_mux">
