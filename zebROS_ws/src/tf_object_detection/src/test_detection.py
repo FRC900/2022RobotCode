@@ -189,7 +189,7 @@ def main():
     # This shouldn't need to change
     rospack = rospkg.RosPack()
     THIS_DIR = join(rospack.get_path('tf_object_detection'), 'src/')
-    PATH_TO_FROZEN_GRAPH = join(THIS_DIR, 'ssd_mobilenet_vs_512x512.pb')
+    PATH_TO_FROZEN_GRAPH = join(THIS_DIR, 'ssd_mobilenet_v2_512x512.pb')
     #PATH_TO_FROZEN_GRAPH = join(THIS_DIR, 'trt_ssd_mobilenet_v2.pb')
     rospy.logwarn("Loading graph from " + str(PATH_TO_FROZEN_GRAPH))
 

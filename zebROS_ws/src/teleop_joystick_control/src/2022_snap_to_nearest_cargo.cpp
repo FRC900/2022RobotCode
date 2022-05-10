@@ -6,7 +6,8 @@
 #include <tf2/LinearMath/Quaternion.h>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 #include <tf2_ros/transform_listener.h>
-#include <geometry_msgs/QuaternionStamped.h>
+#include <geometry_msgs/PoseStamped.h>
+#include <geometry_msgs/PointStamped.h>
 
 class SnapToCargo2022
 {
@@ -56,19 +57,15 @@ public:
     }
     std_msgs::Float64 msg1;
     try {
-      geometry_msgs::QuaternionStamped q1s;
+      geometry_msgs::PoseStamped p1s;
+      p1s.header = msg.header;
+      p1s.pose.position = closest_cargo.location;
       tf2::Quaternion q1;
       q1.setRPY(0, 0, closest_cargo.angle * (M_PI/180.0));
-      q1s.header = msg.header;
-      q1s.quaternion.x = q1.x();
-      q1s.quaternion.y = q1.y();
-      q1s.quaternion.z = q1.z();
-      q1s.quaternion.w = q1.w();
-      q1s = tf_buffer_.transform(q1s, "base_link", ros::Duration(0.05));
-      double r1, p1, y1;
-      tf2::Matrix3x3 q1_m(q1);
-      q1_m.getRPY(r1, p1, y1);
-      msg1.data = y1;
+      geometry_msgs::Quaternion q1m = tf2::toMsg(q1);
+      p1s.pose.orientation = q1m;
+      p1s = tf_buffer_.transform(p1s, "base_link", ros::Duration(0.05));
+      msg1.data = atan2(p1s.pose.position.y, p1s.pose.position.x);
     } catch (...) {
       ROS_WARN_STREAM_THROTTLE(0.1, "snap_to_cargo_2022 : transform to base_link failed, using untransformed angle");
       msg1.data = closest_cargo.angle * (M_PI/180.0);
@@ -77,19 +74,15 @@ public:
 
     std_msgs::Float64 msg2;
     try {
-      geometry_msgs::QuaternionStamped q2s;
+      geometry_msgs::PoseStamped p2s;
+      p2s.header = msg.header;
+      p2s.pose.position = closest_opponent_cargo.location;
       tf2::Quaternion q2;
       q2.setRPY(0, 0, closest_opponent_cargo.angle * (M_PI/180.0));
-      q2s.header = msg.header;
-      q2s.quaternion.x = q2.x();
-      q2s.quaternion.y = q2.y();
-      q2s.quaternion.z = q2.z();
-      q2s.quaternion.w = q2.w();
-      q2s = tf_buffer_.transform(q2s, "base_link", ros::Duration(0.05));
-      double r2, p2, y2;
-      tf2::Matrix3x3 q2_m(q2);
-      q2_m.getRPY(r2, p2, y2);
-      msg2.data = y2;
+      geometry_msgs::Quaternion q2m = tf2::toMsg(q2);
+      p2s.pose.orientation = q2m;
+      p2s = tf_buffer_.transform(p2s, "base_link", ros::Duration(0.05));
+      msg2.data = atan2(p2s.pose.position.y, p2s.pose.position.x);
     } catch (...) {
       ROS_WARN_STREAM_THROTTLE(0.1, "snap_to_cargo_2022 : transform to base_link failed, using untransformed angle");
       msg2.data = closest_opponent_cargo.angle * (M_PI/180.0);
