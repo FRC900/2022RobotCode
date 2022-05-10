@@ -735,7 +735,7 @@ void evaluateCommands(const ros::MessageEvent<frc_msgs::JoystickState const>& ev
 				// Align for cargo
 				ros::spinOnce();
 				std_msgs::Float64 orient_strafing_angle_msg;
-				orient_strafing_angle_msg.data = imu_angle - cargo_angle;
+				orient_strafing_angle_msg.data = cargo_angle - imu_angle;
 				orient_strafing_setpoint_pub.publish(orient_strafing_angle_msg);
 				std_msgs::Bool enable_align_msg;
 				enable_align_msg.data = true;
