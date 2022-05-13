@@ -41,12 +41,10 @@
 		</include>
 	</group>
 
-	<group ns="imu">
-		<include file="$(find controller_node)/launch/2019_compbot_jetson_imu.launch">
-			<arg name="hw_or_sim" value="$(arg hw_or_sim)" />
-			<arg name="primary_imu" value="$(arg primary_imu)" />
-		</include>
-	</group>
+	<include file="$(find controller_node)/launch/2019_compbot_jetson_imu.launch">
+		<arg name="hw_or_sim" value="$(arg hw_or_sim)" />
+		<arg name="primary_imu" value="$(arg primary_imu)" />
+	</include>
 
 	<group ns="robot_state">
 		<param name="robot_description" command="$(find xacro)/xacro '$(find controller_node)/urdf/2022_compbot.xacro'" />
