@@ -10,6 +10,7 @@
 #include <cstdio>
 #include <angles/angles.h>
 #include <costmap_2d/costmap_2d_ros.h>
+#include <iterator>
 #include <tf2/LinearMath/Quaternion.h>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 #include <tf2_ros/transform_listener.h>
@@ -27,6 +28,7 @@
 #include "base_trajectory/thread_pool.h"
 #include "ddynamic_reconfigure/ddynamic_reconfigure.h"
 #include "spline_util/spline_util.h"
+#include "nav_msgs/Path.h"
 
 // Uncomment to generate Matlab scripts which create a movie of the
 // optimization process - one frame per improved path cost
@@ -1188,8 +1190,10 @@ bool evaluateTrajectory(T &cost,
 // Convert from Trajectory type into the correct output
 // message type
 ros::Publisher local_plan_pub;
+ros::Publisher input_waypoints_pub;
 template <class T>
 void trajectoryToSplineResponseMsg(base_trajectory_msgs::GenerateSpline::Response &out_msg,
+								   const nav_msgs::Path &input_waypoints_msg,
 								   const XYTTrajectory<T> &trajectory,
 								   const std::vector<std::string> &jointNames,
 								   const geometry_msgs::TransformStamped &pathToMapTransform,
@@ -1331,6 +1335,7 @@ void trajectoryToSplineResponseMsg(base_trajectory_msgs::GenerateSpline::Respons
 	}
 	writeMatlabPath(out_msg.path.poses, 3, "Optimized Paths vs real time");
 	local_plan_pub.publish(out_msg.path);
+	input_waypoints_pub.publish(input_waypoints_msg);
 }
 
 template <class T>
@@ -1919,8 +1924,25 @@ bool callback(base_trajectory_msgs::GenerateSpline::Request &msg,
 		tf2::convert(invtf.inverse(), inversePathToMapTransform.transform);
 		ROS_INFO_STREAM("pathToMapTransform = " << pathToMapTransform);
 	}
+	nav_msgs::Path input_waypoints;
+	// might not need to add header at all
+	input_waypoints.header = header;
 	for (size_t i = 1; i < msg.points.size(); i++)
-	{
+	{	
+
+		ROS_ERROR_STREAM("FINDME111 Loop num " << i);
+		ROS_ERROR_STREAM("Positions X " << msg.points[i].positions[0]);
+		ROS_ERROR_STREAM("Positions Y " << msg.points[i].positions[1]);
+		ROS_ERROR_STREAM("Positions Z " << msg.points[i].positions[2]);
+		geometry_msgs::PoseStamped input_pose;
+		input_pose.header = header;
+		input_pose.pose.position.x = msg.points[i].positions[0];
+		input_pose.pose.position.y = msg.points[i].positions[1];
+		tf2::Quaternion quaternion;
+		quaternion.setRPY(0,0,msg.points[i].positions[2]);
+		input_pose.pose.orientation = tf2::toMsg(quaternion);
+		input_waypoints.poses.push_back(input_pose);
+
 		if (msg.header.frame_id == "map")
 		{
 			// If the path is specified in terms of the map, use the transform read above
@@ -1946,6 +1968,7 @@ bool callback(base_trajectory_msgs::GenerateSpline::Request &msg,
 		// Apply the transform from each individual waypoint as well. This is useful
 		// for e.g. specifying that the intake should be driven through a waypoint
 		// to pick up an object as opposed to driving the center of the robot there
+
 		if (i < msg.point_frame_id.size())
 		{
 			if (!transformTrajectoryPoint(msg.points[i].positions, header, msg.point_frame_id[i]))
@@ -2034,7 +2057,7 @@ bool callback(base_trajectory_msgs::GenerateSpline::Request &msg,
 		}
 
 		base_trajectory_msgs::GenerateSpline::Response tmp_msg;
-		trajectoryToSplineResponseMsg(tmp_msg, trajectory, jointNames, pathToMapTransform, sampleTrajectory, optParams);
+		trajectoryToSplineResponseMsg(tmp_msg, input_waypoints, trajectory, jointNames, pathToMapTransform, sampleTrajectory, optParams);
 		writeMatlabSplines(trajectory, 1, "Initial Splines");
 		messageFilter.disable();
 		fflush(stdout);
@@ -2056,7 +2079,7 @@ bool callback(base_trajectory_msgs::GenerateSpline::Request &msg,
 		messageFilter.enable();
 	}
 
-	trajectoryToSplineResponseMsg(out_msg, trajectory, jointNames, pathToMapTransform, sampleTrajectory, optParams);
+	trajectoryToSplineResponseMsg(out_msg, input_waypoints, trajectory, jointNames, pathToMapTransform, sampleTrajectory, optParams);
 	writeMatlabSplines(trajectory, 2, "Optimized Splines");
 	fflush(stdout);
 	const auto t2 = high_resolution_clock::now();
@@ -2205,7 +2228,7 @@ int main(int argc, char **argv)
 			"Costs lower than this are ignored in obstacle gradient calculation", 0, 255);
 
 	local_plan_pub = nh.advertise<nav_msgs::Path>("local_plan", 1, true);
-
+	input_waypoints_pub = nh.advertise<nav_msgs::Path>("input_waypoints", 1, true);
 	ddr.publishServicesTopics();
 
 	ros::spin();
