@@ -1925,11 +1925,6 @@ bool callback(base_trajectory_msgs::GenerateSpline::Request &msg,
 	input_waypoints.header = header;
 	for (size_t i = 1; i < msg.points.size(); i++)
 	{	
-
-		ROS_ERROR_STREAM("FINDME111 Loop num " << i);
-		ROS_ERROR_STREAM("Positions X " << msg.points[i].positions[0]);
-		ROS_ERROR_STREAM("Positions Y " << msg.points[i].positions[1]);
-		ROS_ERROR_STREAM("Positions Z " << msg.points[i].positions[2]);
 		geometry_msgs::PoseStamped input_pose;
 		input_pose.header = header;
 		input_pose.pose.position.x = msg.points[i].positions[0];
