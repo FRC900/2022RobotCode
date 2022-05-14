@@ -10,7 +10,6 @@
 #include <cstdio>
 #include <angles/angles.h>
 #include <costmap_2d/costmap_2d_ros.h>
-#include <iterator>
 #include <tf2/LinearMath/Quaternion.h>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 #include <tf2_ros/transform_listener.h>
