@@ -90,7 +90,7 @@ find_package(Gperftools REQUIRED)
 catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES ${PROJECT_NAME}
-	CATKIN_DEPENDS roscpp ddynamic_reconfigure
+	CATKIN_DEPENDS roscpp ddynamic_reconfigure nav_msgs
 #  DEPENDS system_lib
 )
 find_package(CUDA REQUIRED)
@@ -144,7 +144,6 @@ target_link_libraries(${PROJECT_NAME}_node
   ${nlopt_LIBRARY}
 )
 
-if (0)
 add_executable(test_obstacle_cost
 	src/cuda_utils.cu
 	src/obstacle_cost.cpp
@@ -203,7 +202,6 @@ target_link_libraries(test_sample_trajectory
   ${GPERFTOOLS_LIBRARIES}
   ${CUDA_nvToolsExt_LIBRARY}
 )
-endif()
 
 #############
 ## Install ##
