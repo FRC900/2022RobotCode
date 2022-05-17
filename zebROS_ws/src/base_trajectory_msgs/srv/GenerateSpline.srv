@@ -10,3 +10,4 @@ Coefs[]       x_coefs
 Coefs[]       y_coefs
 float64[]     end_points
 nav_msgs/Path path
+nav_msgs/Path waypoints

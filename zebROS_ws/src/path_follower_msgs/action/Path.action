@@ -1,5 +1,9 @@
 nav_msgs/Path path
+nav_msgs/Path waypoints
 ---
 bool timed_out
 bool success
 ---
+float32 percent_complete
+float32 percent_next_waypoint
+int32 current_waypoint

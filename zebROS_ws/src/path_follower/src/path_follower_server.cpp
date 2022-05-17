@@ -169,9 +169,14 @@ class PathAction
 			bool preempted = false;
 			bool timed_out = false;
 			bool succeeded = false;
-
+			path_follower_msgs::PathFeedback feedback;
+			
+			//feedback.percent_complete = 0.5;
+			//as_.publishFeedback(feedback);
+			ROS_ERROR_STREAM("FINDME98765");
+			ROS_ERROR_STREAM(goal->waypoints);
 			const size_t num_waypoints = goal->path.poses.size();
-
+			
 			// Spin once to get the most up to date odom and yaw info
 			ros::spinOnce();
 
@@ -218,6 +223,8 @@ class PathAction
 			//in loop, send PID enable commands to rotation, x, y
 			double distance_travelled = 0;
 			const auto start_time = ros::Time::now().toSec();
+
+
 			while (ros::ok() && !preempted && !timed_out && !succeeded)
 			{
 				// Spin once to get the most up to date odom and yaw info
@@ -317,6 +324,9 @@ class PathAction
 					r.sleep();
 				}
 			}
+
+
+			
 			ROS_INFO_STREAM("    delta odom_ = " << odom_.pose.pose.position.x - starting_odom.pose.pose.position.x
 					<< ", " << odom_.pose.pose.position.y - starting_odom.pose.pose.position.y);
 			ROS_INFO_STREAM("    delta pose_ = " << pose_.pose.position.x - starting_pose.pose.position.x
@@ -341,7 +351,7 @@ class PathAction
 
 			//log result and set actionlib server state appropriately
 			path_follower_msgs::PathResult result;
-
+			
 			if (preempted)
 			{
 				ROS_WARN("%s: Finished - Preempted", action_name_.c_str());

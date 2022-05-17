@@ -1186,7 +1186,6 @@ bool evaluateTrajectory(T &cost,
 // Convert from Trajectory type into the correct output
 // message type
 ros::Publisher local_plan_pub;
-ros::Publisher input_waypoints_pub;
 template <class T>
 void trajectoryToSplineResponseMsg(base_trajectory_msgs::GenerateSpline::Response &out_msg,
 								   const nav_msgs::Path &input_waypoints_msg,
@@ -1331,7 +1330,6 @@ void trajectoryToSplineResponseMsg(base_trajectory_msgs::GenerateSpline::Respons
 	}
 	writeMatlabPath(out_msg.path.poses, 3, "Optimized Paths vs real time");
 	local_plan_pub.publish(out_msg.path);
-	input_waypoints_pub.publish(input_waypoints_msg);
 }
 
 template <class T>
@@ -1967,6 +1965,7 @@ bool callback(base_trajectory_msgs::GenerateSpline::Request &msg,
 		}
 	}
 
+	out_msg.waypoints = input_waypoints; 
 	// Need to also transform kinematic constraints from whatever frame they're
 	// specified in into the path frame.
 	kinematicConstraints.resetConstraints();
@@ -2219,7 +2218,6 @@ int main(int argc, char **argv)
 			"Costs lower than this are ignored in obstacle gradient calculation", 0, 255);
 
 	local_plan_pub = nh.advertise<nav_msgs::Path>("local_plan", 1, true);
-	input_waypoints_pub = nh.advertise<nav_msgs::Path>("input_waypoints", 1, true);
 	ddr.publishServicesTopics();
 
 	ros::spin();

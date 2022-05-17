@@ -14,7 +14,7 @@
 #include "behavior_actions/Intaking2022Action.h"
 #include <behavior_actions/DynamicPath.h>
 #include <path_follower_msgs/PathAction.h>
-
+#include <path_follower_msgs/PathFeedback.h>
 #include <thread>
 #include <atomic>
 #include <functional>
@@ -38,6 +38,10 @@ enum AutoStates {
 std::atomic<int> auto_state(NOT_READY); //This state is published by the publish thread
 
 std::map<std::string, nav_msgs::Path> premade_paths;
+
+// Inital waypoints used to make the paths, when passed into the path follower allows for more persise control
+// Can use for things like "start intake after X waypoint or X percent through"
+std::map<std::string, nav_msgs::Path> premade_waypoints;
 
 ros::ServiceClient spline_gen_cli_;
 
@@ -80,10 +84,12 @@ void enable_auto_in_teleop(const std_msgs::Bool::ConstPtr& msg)
 	enable_teleop = msg->data;
 }
 
+
 bool dynamic_path_storage(behavior_actions::DynamicPath::Request &req, behavior_actions::DynamicPath::Response &/*res*/)
 {
 	ROS_INFO_STREAM("auto_node : addding " << req.path_name << " to premade_paths");
 	premade_paths[req.path_name] = req.dynamic_path;
+	
 	return true;
 }
 
@@ -441,6 +447,8 @@ bool waitForAutoStart(ros::NodeHandle nh)
 								return false;
 							}
 							premade_paths[auto_steps[j]] = spline_gen_srv.response.path;
+							premade_waypoints[auto_steps[j]] = spline_gen_srv.response.waypoints;
+							ROS_INFO_STREAM(spline_gen_srv.response.waypoints);
 						}
 					}
 				}
@@ -472,6 +480,12 @@ bool resetMaps(std_srvs::Empty::Request &/*req*/,
 	premade_paths.clear();
 	ROS_INFO_STREAM("premade paths were cleared");
 	return true;
+}
+
+// Called everytime feedback is published
+void feedbackCb(const path_follower_msgs::PathFeedbackConstPtr& feedback)
+{
+  ROS_ERROR_STREAM("FINDME!!!Got Feedback!! " << (feedback->percent_complete));
 }
 
 int main(int argc, char** argv)
@@ -650,7 +664,10 @@ int main(int argc, char** argv)
 							shutdownNode(ERROR, "Can't find premade path " + std::string(auto_steps[i]));
 						}
 						goal.path = premade_paths[auto_steps[i]];
-						path_ac.sendGoal(goal);
+						goal.waypoints = premade_waypoints[auto_steps[i]];
+						// Sends the goal and sets feedbackCb to be run when feedback is updated
+						path_ac.sendGoal(goal, NULL, NULL, &feedbackCb);
+
 						waitForActionlibServer(path_ac, 100, "running path");
 						iteration_value --;
 					}
