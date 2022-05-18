@@ -61,7 +61,7 @@ double PathFollower::interpolate(double start_t, double end_t, double start_x, d
 // position and passing it in to run. run would then return a pose (x_pos, y_pos,
 // orientation) and whoever called run would be responsible for sending that
 // where it needs to go.
-geometry_msgs::Pose PathFollower::run(double &total_distance_travelled)
+std::pair<geometry_msgs::Pose, size_t> PathFollower::runReturnIndex(double &total_distance_travelled)
 {
 	if (num_waypoints_ == 0)
 	{
@@ -74,7 +74,7 @@ geometry_msgs::Pose PathFollower::run(double &total_distance_travelled)
 		target_pos.orientation.y = 0;
 		target_pos.orientation.z = 0;
 		target_pos.orientation.w = 1;
-		return target_pos; //TODO: better way to handle errors? This will just time out the server
+		return {target_pos, 0}; //TODO: better way to handle errors? This will just time out the server
 	}
 
 	size_t current_waypoint_index = 0; //the index BEFORE the point on the path
@@ -161,5 +161,10 @@ geometry_msgs::Pose PathFollower::run(double &total_distance_travelled)
 	total_distance_travelled = vec_path_length_[current_waypoint_index];
 
 	ROS_INFO_STREAM("Successfully returned target position and orientation");
-	return target_pos;
+	return {target_pos, index};
+}
+
+geometry_msgs::Pose PathFollower::run(double &total_distance_travelled)
+{
+	return runReturnIndex(total_distance_travelled).first;
 }

@@ -1,0 +1,7 @@
+nav_msgs/Path                          path
+trajectory_msgs/JointTrajectoryPoint[] points
+string[]                               point_frame_id
+---
+bool timed_out
+bool success
+---

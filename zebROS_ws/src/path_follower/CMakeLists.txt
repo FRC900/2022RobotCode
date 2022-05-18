@@ -14,6 +14,8 @@ find_package(catkin REQUIRED COMPONENTS
   std_msgs
   tf2
   tf2_ros
+  trajectory_msgs
+  field_obj
 )
 
 ## System dependencies are found with CMake's conventions
@@ -115,10 +117,15 @@ include_directories(
 add_executable(path_follower_server src/path_follower_server.cpp src/path_follower.cpp)
 add_dependencies(path_follower_server ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 add_executable(hold_position_server src/hold_position_server.cpp)
+add_executable(path_follower_server_obstacles src/path_follower_server_obstacles.cpp src/path_follower.cpp)
+add_dependencies(path_follower_server_obstacles ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 add_dependencies(hold_position_server ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 add_executable(convert_distance_to_pose src/convert_distance_to_pose.cpp)
 add_dependencies(convert_distance_to_pose ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 target_link_libraries(path_follower_server
+  ${catkin_LIBRARIES}
+)
+target_link_libraries(path_follower_server_obstacles
   ${catkin_LIBRARIES}
 )
 target_link_libraries(hold_position_server
@@ -144,6 +151,12 @@ target_link_libraries(convert_distance_to_pose
 
 ## Mark executables and/or libraries for installation
 install(TARGETS path_follower_server
+  ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+  LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+  RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)
+
+install(TARGETS path_follower_server_obstacles
   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}

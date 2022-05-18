@@ -57,6 +57,7 @@ add_action_files(
   FILES
   Path.action
   holdPosition.action
+  PathAvoidObstacles.action
 )
 
 ## Generate added messages and services with any dependencies listed here

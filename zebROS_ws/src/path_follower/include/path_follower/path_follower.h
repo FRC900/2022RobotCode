@@ -106,7 +106,8 @@ class PathFollower
 		// interpolation function, just for cleanness
 		double interpolate(double start_t, double end_t, double start_x, double end_x, double current_t) const;
 
+		std::pair<geometry_msgs::Pose, size_t> runReturnIndex(double &distance_travelled);
+
 		// contains the main control loop
 		geometry_msgs::Pose run(double &distance_travelled);
 };
-
