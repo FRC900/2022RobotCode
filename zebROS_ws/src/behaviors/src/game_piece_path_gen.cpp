@@ -9,6 +9,12 @@
 #include <tf2_ros/transform_listener.h>
 #include <geometry_msgs/TransformStamped.h>
 
+#define OBSTACLES
+#ifdef OBSTACLES
+#include <path_follower_msgs/PathAvoidObstaclesAction.h>
+#include <actionlib/client/simple_action_client.h>
+#endif
+
 using Point = std::array<double, 3>;
 
 // Create service clients
@@ -315,6 +321,17 @@ bool genPath(behavior_actions::GamePiecePickup::Request &req, behavior_actions::
 	res.success = true; // Default to failure
 	res.message = "to infinity and beyond!";
 	res.path = spline_gen_srv.response.path;
+
+	#ifdef OBSTACLES
+	actionlib::SimpleActionClient<path_follower_msgs::PathAvoidObstaclesAction> ac("/path_follower/path_follower_server", true);
+	ac.waitForServer();
+	path_follower_msgs::PathAvoidObstaclesGoal goal;
+  goal.path = spline_gen_srv.response.path;
+	goal.points = spline_gen_srv.request.points;
+	goal.point_frame_id = spline_gen_srv.request.point_frame_id;
+  ac.sendGoal(goal);
+	#endif
+
 	return true;
 }
 

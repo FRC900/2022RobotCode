@@ -195,6 +195,13 @@ class PathAvoidObstaclesAction
 			return point;
 		}
 
+		trajectory_msgs::JointTrajectoryPoint makeTrajectoryPointJustXY(const geometry_msgs::Point &point) {
+			trajectory_msgs::JointTrajectoryPoint pt;
+			pt.positions[0] = point.x;
+			pt.positions[1] = point.y;
+			return pt;
+		}
+
 		std::vector<geometry_msgs::Point> obstaclesBetween(const trajectory_msgs::JointTrajectoryPoint &one, const trajectory_msgs::JointTrajectoryPoint &two) {
 			double x1 = one.positions[0];
 			double x2 = two.positions[0];
@@ -220,6 +227,69 @@ class PathAvoidObstaclesAction
 			return obstacles;
 		}
 
+		geometry_msgs::Point makePoint(double x, double y, double z) {
+			geometry_msgs::Point p;
+			p.x = x;
+			p.y = y;
+			p.z = z;
+			return p;
+		}
+
+		std::vector<trajectory_msgs::JointTrajectoryPoint> generatePointsBetween(const trajectory_msgs::JointTrajectoryPoint &one, const trajectory_msgs::JointTrajectoryPoint &two, const geometry_msgs::Point &obstacle) {
+			double x1 = one.positions[0];
+			double x2 = two.positions[0];
+			double y1 = one.positions[1];
+			double y2 = two.positions[1];
+
+			// corners
+			geometry_msgs::Point c1 = makePoint(obstacle.x + obstacle_radius, obstacle.y + obstacle_radius, two.positions[2]);
+			geometry_msgs::Point c2 = makePoint(obstacle.x + obstacle_radius, obstacle.y - obstacle_radius, two.positions[2]);
+			geometry_msgs::Point c3 = makePoint(obstacle.x - obstacle_radius, obstacle.y + obstacle_radius, two.positions[2]);
+			geometry_msgs::Point c4 = makePoint(obstacle.x - obstacle_radius, obstacle.y - obstacle_radius, two.positions[2]);
+
+			geometry_msgs::Point closest_to_one;
+			if (x1 <= obstacle.x) {
+				if (y1 <= obstacle.y) {
+					closest_to_one = c4;
+				} else {
+					closest_to_one = c3;
+				}
+			} else {
+				if (y1 <= obstacle.y) {
+					closest_to_one = c2;
+				} else {
+					closest_to_one = c1;
+				}
+			}
+
+			geometry_msgs::Point closest_to_two;
+			if (x2 <= obstacle.x) {
+				if (y2 <= obstacle.y) {
+					closest_to_two = c4;
+				} else {
+					closest_to_two = c3;
+				}
+			} else {
+				if (y2 <= obstacle.y) {
+					closest_to_two = c2;
+				} else {
+					closest_to_two = c1;
+				}
+			}
+
+			std::vector<trajectory_msgs::JointTrajectoryPoint> points_to_add{makeTrajectoryPointJustXY(closest_to_one)};
+			// determine any other intermediate points
+			if (closest_to_one.x != closest_to_two.x) {
+				if (closest_to_one.y < closest_to_two.y) {
+					points_to_add.push_back(makeTrajectoryPointJustXY(c3));
+				} else if (closest_to_one.y > closest_to_two.y) {
+					points_to_add.push_back(makeTrajectoryPointJustXY(c1));
+				}
+			}
+			points_to_add.push_back(makeTrajectoryPointJustXY(closest_to_two));
+			return points_to_add;
+		}
+
 		void executeCB(const path_follower_msgs::PathAvoidObstaclesGoalConstPtr &goal)
 		{
 			bool preempted = false;
@@ -233,9 +303,9 @@ class PathAvoidObstaclesAction
 				double min_error = std::numeric_limits<double>::max();
 				uint16_t pose_idx = 0;
 				for (auto &pose : goal->path.poses) {
-					double error = (pose.pose.position.x - point.positions[0]) + (pose.pose.position.y - point.positions[1]) + (pose.pose.orientation.z - point.positions[2]);
+					double error = fabs(pose.pose.position.x - point.positions[0]) + fabs(pose.pose.position.y - point.positions[1]) + fabs(pose.pose.orientation.z - point.positions[2]);
 					if (error < min_error) {
-						pose_idx_to_original_point_[pose_idx] = point;
+						pose_idx_to_original_point_[pose_idx] = point; // need to have the one at index be the *only* one that refers to point
 						min_error = error;
 					}
 					pose_idx++;
@@ -309,18 +379,28 @@ class PathAvoidObstaclesAction
 					<< " " << path_follower_.getYaw(odom_.pose.pose.orientation));	// PID controllers.
 				auto waypoint_and_index = path_follower_.runReturnIndex(distance_travelled);
 				geometry_msgs::Pose next_waypoint = waypoint_and_index.first;
-				size_t index = waypoint_and_index.second;
+				uint16_t index = waypoint_and_index.second;
 
 				ROS_INFO_STREAM("Before transform: next_waypoint = (" << next_waypoint.position.x << ", " << next_waypoint.position.y << ", " << path_follower_.getYaw(next_waypoint.orientation) << ")");
 				tf2::doTransform(next_waypoint, next_waypoint, odom_to_base_link_tf);
 				ROS_INFO_STREAM("After transform: next_waypoint = (" << next_waypoint.position.x << ", " << next_waypoint.position.y << ", " << path_follower_.getYaw(next_waypoint.orientation) << ")");
 
 				// Check for obstacles on the way to the next point
-				const auto it = pose_idx_to_original_point_.upper_bound(index);
-				auto next_point = it->second; // robot in the future
+				ROS_INFO_STREAM("Index: " << index);
+				ROS_INFO_STREAM("Size: " << pose_idx_to_original_point_.size());
+				for (auto &p : pose_idx_to_original_point_) {
+					ROS_INFO_STREAM(p.first << " " << p.second);
+				}
+			 	auto it = pose_idx_to_original_point_.upper_bound(index);
+				ROS_INFO_STREAM("it: " << std::addressof(it));
+				auto next_point = (*it).second; // robot in the future
+				ROS_INFO_STREAM("got next point");
 				auto obstacles = obstaclesBetween(makeTrajectoryPointJustXY(odom_.pose.pose), next_point);
 				if (obstacles.size() != 0) {
-					ROS_INFO_STREAM("path_follower_server_obstacles: Rut row! Obstacles detected. Replanning path (in the background)...");
+					ROS_INFO_STREAM("path_follower_server_obstacles: Rut row! Obstacles detected. Replanning path (in the background)... Using:");
+					for (const auto &point : generatePointsBetween(makeTrajectoryPointJustXY(odom_.pose.pose), next_point, obstacles[0])) {
+						ROS_INFO_STREAM("(" << point.positions[0] << ", " << point.positions[1] << ")");
+					}
 					// TODO add code to add points between the two points to avoid the obstacle
 				}
 
