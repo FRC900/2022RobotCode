@@ -81,7 +81,7 @@ array<double, WHEELCOUNT> swerveDriveMath<WHEELCOUNT>::parkingAngles(void) const
 {
 	//only must be run once to determine the angles of the wheels in parking config
 	array<double, WHEELCOUNT> angles;
-	ROS_WARN_STREAM("######## " << __PRETTY_FUNCTION__ << " wheelCoordinate_.size() = " << wheelCoordinate_.size());
+	//ROS_WARN_STREAM("######## " << __PRETTY_FUNCTION__ << " wheelCoordinate_.size() = " << wheelCoordinate_.size());
 	for (size_t i = 0; i < wheelCoordinate_.size(); i++)
 	{
 		angles[i] = atan2(wheelCoordinate_[i][0], wheelCoordinate_[i][1]);

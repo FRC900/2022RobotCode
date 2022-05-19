@@ -473,9 +473,6 @@ void update(const ros::Time &time, const ros::Duration &period)
 		curr_cmd.ang = 0.0;
 	}
 
-	// TODO : make member var, initialize properly
-	static std::array<Eigen::Vector2d, WHEELCOUNT> speeds_angles;
-
 	for (size_t i = 0; i < WHEELCOUNT; ++i)
 	{
 		if (!dont_set_angle_mode_)
@@ -487,7 +484,6 @@ void update(const ros::Time &time, const ros::Duration &period)
 		speed_joints_[i].setPIDFSlot(0);
 	}
 
-	hardware_interface::NeutralMode neutral_mode = hardware_interface::NeutralMode::NeutralMode_Coast;
 	// Special case for when the drive base is stopped
 	if (fabs(curr_cmd.lin[0]) <= 1e-6 && fabs(curr_cmd.lin[1]) <= 1e-6 && fabs(curr_cmd.ang) <= 1e-6)
 	{
@@ -505,7 +501,7 @@ void update(const ros::Time &time, const ros::Duration &period)
 			for (size_t i = 0; i < WHEELCOUNT; ++i)
 			{
 				if (!dont_set_angle_mode)
-					steering_joints_[i].setCommand(speeds_angles[i][1]);
+					steering_joints_[i].setCommand(speeds_angles_[i][1]);
 				speed_joints_[i].setNeutralMode(hardware_interface::NeutralMode::NeutralMode_Coast);
 			}
 		}
@@ -530,12 +526,12 @@ void update(const ros::Time &time, const ros::Duration &period)
 
 	// Compute wheels velocities:
 	//Parse curr_cmd to get velocity vector and rotation (z axis)
-	speeds_angles = swerveC_->motorOutputs(curr_cmd.lin, curr_cmd.ang, M_PI / 2.0, steer_angles, true, *(center_of_rotation_.readFromRT()), use_cos_scaling_);
+	speeds_angles_ = swerveC_->motorOutputs(curr_cmd.lin, curr_cmd.ang, M_PI / 2.0, steer_angles, true, *(center_of_rotation_.readFromRT()), use_cos_scaling_);
 
 	// Set wheel steering angles, as long as dont_set_angle_mode is false
 	for (size_t i = 0; !dont_set_angle_mode && (i < WHEELCOUNT); ++i)
 	{
-		steering_joints_[i].setCommand(speeds_angles[i][1]);
+		steering_joints_[i].setCommand(speeds_angles_[i][1]);
 	}
 
 	// Wait a bit after coming out of parking
@@ -549,10 +545,10 @@ void update(const ros::Time &time, const ros::Duration &period)
 				speed_joints_[i].setMode(hardware_interface::TalonMode::TalonMode_Velocity);
 
 				// Add static feed forward in direction of current velocity
-				if(fabs(speeds_angles[i][0]) > 1e-5)
+				if(fabs(speeds_angles_[i][0]) > 1e-5)
 				{
 					speed_joints_[i].setDemand1Type(hardware_interface::DemandType::DemandType_ArbitraryFeedForward);
-					speed_joints_[i].setDemand1Value(copysign(f_s_, speeds_angles[i][0]));
+					speed_joints_[i].setDemand1Value(copysign(f_s_, speeds_angles_[i][0]));
 				}
 				else
 				{
@@ -560,7 +556,7 @@ void update(const ros::Time &time, const ros::Duration &period)
 					speed_joints_[i].setDemand1Value(0);
 				}
 
-				speed_joints_[i].setCommand(speeds_angles[i][0]);
+				speed_joints_[i].setCommand(speeds_angles_[i][0]);
 			}
 			else
 			{
@@ -1007,6 +1003,7 @@ double brake_last_{ros::Time::now().toSec()};
 double time_before_brake_{0};
 double parking_config_time_delay_{0.1};
 double drive_speed_time_delay_{0.1};
+std::array<Eigen::Vector2d, WHEELCOUNT> speeds_angles_;
 
 ros::Subscriber sub_command_;
 
