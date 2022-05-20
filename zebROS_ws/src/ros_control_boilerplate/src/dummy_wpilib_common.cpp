@@ -203,6 +203,11 @@ void SendableRegistry::AddLW(Sendable* /*sendable*/, std::string_view /*moduleTy
 	//ROS_ERROR("Called SendableRegistry::AddLW(Sendable *, std::string_view, int) on unsupported platform");
 }
 
+void SendableRegistry::SetName(Sendable* /*sendable*/, std::string_view /*moduleType*/, int /*something*/)
+{
+	// unbreak the robot
+}
+
 void SendableRegistry::AddLW(Sendable* /*sendable*/, std::string_view /*moduleType*/, int /*moduleNumber*/, int /*channel*/)
 {
 	//ROS_ERROR("Called SendableRegistry::AddLW(Sendable *, std::string_view, int, int) on unsupported platform");
@@ -267,9 +272,8 @@ wpi::detail::type_error wpi::detail::type_error::create(int,std::string_view , s
 
 #include <FRC_NetworkCommunication/FRCComm.h>
 
-
-int FRC_NetworkCommunication_getJoystickAxes(uint8_t joystickNum, struct JoystickAxes_t *axes, uint8_t maxAxes) 
-{	
+int FRC_NetworkCommunication_getJoystickAxes(uint8_t joystickNum, struct JoystickAxes_t *axes, uint8_t maxAxes)
+{
 	axes->count = 0;
 	return 1;
 }
