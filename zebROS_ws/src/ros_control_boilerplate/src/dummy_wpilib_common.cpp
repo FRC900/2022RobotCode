@@ -203,6 +203,11 @@ void SendableRegistry::AddLW(Sendable* /*sendable*/, std::string_view /*moduleTy
 	//ROS_ERROR("Called SendableRegistry::AddLW(Sendable *, std::string_view, int) on unsupported platform");
 }
 
+void SendableRegistry::SetName(Sendable* /*sendable*/, std::string_view /*moduleType*/, int /*something*/)
+{
+	// unbreak the robot
+}
+
 void SendableRegistry::AddLW(Sendable* /*sendable*/, std::string_view /*moduleType*/, int /*moduleNumber*/, int /*channel*/)
 {
 	//ROS_ERROR("Called SendableRegistry::AddLW(Sendable *, std::string_view, int, int) on unsupported platform");
@@ -263,4 +268,3 @@ wpi::detail::type_error wpi::detail::type_error::create(int,std::string_view , s
 {
 	ROS_ERROR("Called static wpi::detail::type_error::create(int, std::string_view, std::string_view) const on unsupported platform");
 }
-
