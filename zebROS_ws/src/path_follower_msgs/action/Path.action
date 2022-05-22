@@ -1,5 +1,6 @@
 nav_msgs/Path path
 nav_msgs/Path waypoints
+int32[] waypointsIdx
 ---
 bool timed_out
 bool success

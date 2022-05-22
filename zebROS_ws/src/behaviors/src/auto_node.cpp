@@ -18,7 +18,7 @@
 #include <thread>
 #include <atomic>
 #include <functional>
-
+#include <vector>
 #include "std_msgs/Bool.h"
 //VARIABLES ---------------------------------------------------------
 int auto_mode = -1; //-1 if nothing selected
@@ -42,6 +42,10 @@ std::map<std::string, nav_msgs::Path> premade_paths;
 // Inital waypoints used to make the paths, when passed into the path follower allows for more persise control
 // Can use for things like "start intake after X waypoint or X percent through"
 std::map<std::string, nav_msgs::Path> premade_waypoints;
+
+// Stores the waypoint that each section of the generated path corresponds to
+std::map<std::string, std::vector<int>> waypointsIdxs;
+
 
 ros::ServiceClient spline_gen_cli_;
 
@@ -448,7 +452,15 @@ bool waitForAutoStart(ros::NodeHandle nh)
 							}
 							premade_paths[auto_steps[j]] = spline_gen_srv.response.path;
 							premade_waypoints[auto_steps[j]] = spline_gen_srv.response.waypoints;
+							waypointsIdxs[auto_steps[j]] = spline_gen_srv.response.waypointsIdx;
+							ROS_INFO_STREAM("AUTO_MODE_DEBUG");
+							
 							ROS_INFO_STREAM(spline_gen_srv.response.waypoints);
+							for (int xx = 0; xx < spline_gen_srv.response.waypointsIdx.size(); xx++) {
+								ROS_INFO_STREAM(spline_gen_srv.response.waypointsIdx[xx]);
+
+							}
+							
 						}
 					}
 				}
@@ -485,7 +497,10 @@ bool resetMaps(std_srvs::Empty::Request &/*req*/,
 // Called everytime feedback is published
 void feedbackCb(const path_follower_msgs::PathFeedbackConstPtr& feedback)
 {
-  ROS_ERROR_STREAM("FINDME!!!Got Feedback!! " << (feedback->percent_complete));
+  ROS_ERROR_STREAM("GOT FEEDBACK!!!!!");
+  //ROS_ERROR_STREAM("FINDME!!!Got Feedback!! " << (feedback->percent_complete));
+  //ROS_ERROR_STREAM((feedback->percent_next_waypoint));
+  //ROS_ERROR_STREAM((feedback->current_waypoint));
 }
 
 int main(int argc, char** argv)
@@ -665,6 +680,7 @@ int main(int argc, char** argv)
 						}
 						goal.path = premade_paths[auto_steps[i]];
 						goal.waypoints = premade_waypoints[auto_steps[i]];
+						goal.waypointsIdx = waypointsIdxs[auto_steps[i]];
 						// Sends the goal and sets feedbackCb to be run when feedback is updated
 						path_ac.sendGoal(goal, NULL, NULL, &feedbackCb);
 

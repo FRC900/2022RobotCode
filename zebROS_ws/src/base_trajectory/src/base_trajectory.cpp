@@ -1273,7 +1273,13 @@ void trajectoryToSplineResponseMsg(base_trajectory_msgs::GenerateSpline::Respons
 		const auto currentTime = equalArcLengthTimes[(i == 0) ? (i + 1) : ((i == equalArcLengthTimes.size() - 1) ? (i - 1) : (i))];
 		//ROS_INFO_STREAM("base_trajectory trajectoryToSplineResponseMsg : equalArcLengthTimes[]=" << currentTime);
 
+
+		// Finds the index of the inital point that the current segment corresponds to
 		auto xIt = sample(trajectory[0], currentTime, xState);
+		int waypointIndex = xIt - trajectory[0].begin();
+		out_msg.waypointsIdx.push_back(waypointIndex);
+		ROS_ERROR_STREAM("FINDEME(((" << waypointIndex);
+
 		if (xIt == trajectory[0].cend())
 		{
 			ROS_ERROR_STREAM("base_trajectory trajectoryToSplineResponseMsg : could not sample xState at time " << currentTime);
