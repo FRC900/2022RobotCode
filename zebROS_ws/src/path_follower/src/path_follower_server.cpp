@@ -251,18 +251,13 @@ class PathAction
 				
 				geometry_msgs::Pose next_waypoint = path_follower_.run(distance_travelled, current_index);
 				
-				ROS_INFO_STREAM("FEEDBACK_DEBUG ");
+				
 				int current_waypoint = waypointsIdx[current_index];
-				ROS_INFO_STREAM("CURRENT WAYPOINT " << current_waypoint);
-				ROS_INFO_STREAM("CURRENT INDEX " << current_index);
-				ROS_INFO_STREAM("FINAL_DIST " << final_distace);
-				ROS_INFO_STREAM("DIST TRAVLLED " << distance_travelled);
 				feedback.current_waypoint = current_waypoint;
 
 				// gets total distance of the path, then finds how far we have traveled so far
 				feedback.percent_complete = (distance_travelled != 0) ? (distance_travelled / final_distace) : 0.0;
 
-				ROS_INFO("TOTAL PERCENT COMP %f", (distance_travelled != 0) ? (distance_travelled / final_distace) : 0.0);
 				// The path's have even spacing so if you find the total amount of path waypoints and then divide by which on you are on
 				// The result is pretty close to how far you are along to the next waypoint
 				// Can be off by at most by the total number of poses in the generated path / 100
@@ -271,23 +266,8 @@ class PathAction
     			iter high = std::upper_bound(waypointsIdx.begin(), waypointsIdx.end(), current_waypoint);
 				int lowidx = low - waypointsIdx.begin();
 				int highidx = high - waypointsIdx.begin();
-				//ROS_INFO_STREAM("Printing waypoints");
-				//for (auto i: waypointsIdx) {
-				//	ROS_INFO_STREAM(i);
-
-				//}
-				
-    				// int division
-					// [-1]
-					// 
-				ROS_INFO_STREAM("Highidx=" << highidx << " Lowidx=" << lowidx);
 				int waypoint_size = highidx - lowidx;
-				feedback.percent_next_waypoint = (current_index - lowidx) / waypoint_size;
-				ROS_INFO_STREAM("WAYPOINT SIZE " << waypoint_size);
-				
-				double waypoint_percent = double((current_index - lowidx)) / waypoint_size;
-				ROS_INFO("WAYPOINT PERCENT COMP %f", waypoint_percent);
-				ROS_INFO_STREAM("WAYPOINT CALC= (" << current_index << " - " << lowidx << " / " << waypoint_size << " )");
+				feedback.percent_next_waypoint = double((current_index - lowidx)) / waypoint_size;				
 				as_.publishFeedback(feedback);
 
 				
