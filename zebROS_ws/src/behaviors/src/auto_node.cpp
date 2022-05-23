@@ -51,6 +51,10 @@ ros::ServiceClient spline_gen_cli_;
 
 std::function<void()> preemptAll; // function to preempt all actions, set in main
 
+int old_waypoint = 0;
+double old_percent_complete = 0.0;
+double old_waypoint_percent = 0.0;
+
 //FUNCTIONS -------
 
 //server callback for stop autonomous execution
@@ -497,10 +501,45 @@ bool resetMaps(std_srvs::Empty::Request &/*req*/,
 // Called everytime feedback is published
 void feedbackCb(const path_follower_msgs::PathFeedbackConstPtr& feedback)
 {
-  ROS_ERROR_STREAM("GOT FEEDBACK!!!!!");
-  //ROS_ERROR_STREAM("FINDME!!!Got Feedback!! " << (feedback->percent_complete));
-  //ROS_ERROR_STREAM((feedback->percent_next_waypoint));
-  //ROS_ERROR_STREAM((feedback->current_waypoint));
+	ROS_INFO_STREAM("Got path_follower feedback!");
+
+
+	ROS_INFO("Total Percent complete %f", (feedback->percent_complete));
+	ROS_INFO_STREAM("Current Waypoint " << (feedback->old_waypoint));
+	ROS_INFO("Waypoint percent %f", (feedback->percent_next_waypoint));
+	
+	// Can also add diffrent conditions based on auto mode
+	// TODO, add parsing for responses based on feedback to auto_mode_config
+
+	// current_waypoint exists to compare against the old value and see if it has changed
+	int current_waypoint = feedback->old_waypoint;
+	double current_percent_complete = feedback->percent_complete;
+	double current_waypoint_percent = feedback->percent_next_waypoint;
+
+	ROS_INFO_STREAM("New waypoint is " << current_waypoint);
+	ROS_INFO_STREAM("Old waypoint is " << old_waypoint);
+
+	// Add conditions below when waypoint changes
+	// Checks if second waypoint
+	if (current_waypoint > old_waypoint) {
+		if (current_waypoint == 2) {
+			ROS_INFO_STREAM("Hit waypoint 2! Time to do stuff!");
+
+		}
+	}
+
+	
+	// Add conditions based on percent's and waypoint below
+	// Checks if it is the first time over 50% completed and on waypoint 1
+	if (current_waypoint_percent >= 0.5 && old_waypoint_percent < 0.5 && current_waypoint == 1) {
+		ROS_INFO_STREAM("50 percent done with first waypoint!");
+
+	} 
+
+
+	old_waypoint_percent = current_waypoint_percent;
+	old_percent_complete = current_percent_complete;
+	old_waypoint = current_waypoint;
 }
 
 int main(int argc, char** argv)
