@@ -498,14 +498,14 @@ void feedbackCb(const path_follower_msgs::PathFeedbackConstPtr& feedback)
 
 
 	ROS_INFO("Total Percent complete %f", (feedback->percent_complete));
-	ROS_INFO_STREAM("Current Waypoint " << (feedback->old_waypoint));
+	ROS_INFO_STREAM("Current Waypoint " << (feedback->current_waypoint));
 	ROS_INFO("Waypoint percent %f", (feedback->percent_next_waypoint));
 	
 	// Can also add diffrent conditions based on auto mode
 	// TODO, add parsing for responses based on feedback to auto_mode_config
 
 	// current_waypoint exists to compare against the old value and see if it has changed
-	int current_waypoint = feedback->old_waypoint;
+	int current_waypoint = feedback->current_waypoint;
 	double current_percent_complete = feedback->percent_complete;
 	double current_waypoint_percent = feedback->percent_next_waypoint;
 
