@@ -457,13 +457,6 @@ bool waitForAutoStart(ros::NodeHandle nh)
 							premade_paths[auto_steps[j]] = spline_gen_srv.response.path;
 							premade_waypoints[auto_steps[j]] = spline_gen_srv.response.waypoints;
 							waypointsIdxs[auto_steps[j]] = spline_gen_srv.response.waypointsIdx;
-							ROS_INFO_STREAM("AUTO_MODE_DEBUG");
-							
-							ROS_INFO_STREAM(spline_gen_srv.response.waypoints);
-							for (int xx = 0; xx < spline_gen_srv.response.waypointsIdx.size(); xx++) {
-								ROS_INFO_STREAM(spline_gen_srv.response.waypointsIdx[xx]);
-
-							}
 							
 						}
 					}

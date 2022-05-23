@@ -1278,8 +1278,7 @@ void trajectoryToSplineResponseMsg(base_trajectory_msgs::GenerateSpline::Respons
 		auto xIt = sample(trajectory[0], currentTime, xState);
 		int waypointIndex = xIt - trajectory[0].begin();
 		out_msg.waypointsIdx.push_back(waypointIndex);
-		ROS_ERROR_STREAM("FINDEME(((" << waypointIndex);
-
+		
 		if (xIt == trajectory[0].cend())
 		{
 			ROS_ERROR_STREAM("base_trajectory trajectoryToSplineResponseMsg : could not sample xState at time " << currentTime);
