@@ -143,12 +143,25 @@ cd ~/2022RobotCode
 
 # Set up can0 network interface
 cd
-echo "auto can0" > can0
-echo "iface can0 inet manual" >> can0
-echo "  pre-up /sbin/ip link set can0 type can bitrate 1000000" >> can0
-echo "  up /sbin/ifconfig can0 up" >> can0
-echo "  down /sbin/ifconfig can0 down" >> can0
-sudo mv can0 /etc/network/interfaces.d
+#echo "auto can0" > can0
+#echo "iface can0 inet manual" >> can0
+#echo "  pre-up /sbin/ip link set can0 type can bitrate 1000000" >> can0
+#echo "  up /sbin/ifconfig can0 up" >> can0
+#echo "  down /sbin/ifconfig can0 down" >> can0
+#sudo mv can0 /etc/network/interfaces.d
+
+sudo curl -s --compressed -o /usr/share/keyrings/ctr-pubkey.gpg "https://deb.ctr-electronics.com/ctr-pubkey.gpg"
+sudo curl -s --compressed -o /etc/apt/sources.list.d/ctr.list "https://deb.ctr-electronics.com/ctr.list"
+sudo apt update
+sudo apt install canivore-usb
+
+sudo bash -c "echo \"[Match\"] >> /etc/systemd/network/80-can.network"
+sudo bash -c "echo \"Name=can\"* >> /etc/systemd/network/80-can.network"
+sudo bash -c "echo \\"" >> /etc/systemd/network/80-can.network"
+sudo bash -c "echo \"[CAN\"] >> /etc/systemd/network/80-can.network"
+sudo bash -c "echo \"BitRate=1000K\" >> /etc/systemd/network/80-can.network"
+sudo systemctl enable systemd-networkd
+sudo systemctl restart systemd-networkd
 
 sudo bash -c "echo \"# Modules for CAN interface\" >> /etc/modules"
 sudo bash -c "echo can >> /etc/modules"

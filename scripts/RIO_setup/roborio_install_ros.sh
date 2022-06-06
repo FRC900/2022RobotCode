@@ -35,7 +35,7 @@ ssh -p 22 admin@$1 'opkg install python3-setuptools python3-pycrypto python3-pyc
 ssh -p 22 admin@$1 'opkg clean'
 ssh -p 22 admin@$1 'opkg install python3-pkgutil python3-dateutil python3-nose python3-pydoc'
 ssh -p 22 admin@$1 'opkg clean'
-ssh -p 22 admin@$1 'opkg install libcurl4 lz4'
+ssh -p 22 admin@$1 'opkg install libcurl4 lz4 libboost-thread1.66.0 libboost-chrono1.66.0 libboost-date-time1.66.0 libboost-atomic1.66.0'
 ssh -p 22 admin@$1 'opkg clean'
 ssh -p 22 admin@$1 'opkg install libeigen libbz2 libxml2 libgnutls-bin libgnutls-openssl27'
 ssh -p 22 admin@$1 'opkg clean'
@@ -76,15 +76,15 @@ ssh -p 22 admin@$1 'cd / && tar -xjf ~/roscore_roborio.tar.bz2'
 ssh -p 22 admin@$1 'rm ~/roscore_roborio.tar.bz2'
 cd /home/ubuntu/wpilib/2022/roborio/arm-frc2022-linux-gnueabi/usr/local/lib
 ssh -p 22 admin@$1 scp libboost_atomic.so.1.72 libboost_chrono.so.1.72 libboost_program_options.so.1.72 libboost_regex.so.1.72 libboost_system.so.1.72 libboost_filesystem.so.1.72 libboost_thread.so.1.72 libboost_date_time.so.1.72 admin@$1:/usr/lib
-ssh -p 22 admin@$1 ln -sf libboost_atomic.so.1.72 libboost_atomic.so.1.72.0
-ssh -p 22 admin@$1 ln -sf libboost_chrono.so.1.72 libboost_chrono.so.1.72.0
-ssh -p 22 admin@$1 ln -sf libboost_program_options.so.1.72 libboost_program_options.so.1.72.0
-ssh -p 22 admin@$1 ln -sf libboost_regex.so.1.72 libboost_regex.so.1.72.0
-ssh -p 22 admin@$1 ln -sf libboost_system.so.1.72 libboost_system.so.1.72.0
-#ssh -p 22 admin@$1 ln -sf libboost_signals.so.1.72 libboost_signals.so.1.72.0
-ssh -p 22 admin@$1 ln -sf libboost_filesystem.so.1.72 libboost_filesystem.so.1.72.0
-ssh -p 22 admin@$1 ln -sf libboost_thread.so.1.72 libboost_thread.so.1.72.0
-ssh -p 22 admin@$1 ln -sf libboost_date_time.so.1.72 libboost_date_time.so.1.72.0
+ssh -p 22 admin@$1 ln -sf /usr/lib/libboost_atomic.so.1.72 /usr/lib/libboost_atomic.so.1.72.0
+ssh -p 22 admin@$1 ln -sf /usr/lib/libboost_chrono.so.1.72 /usr/lib/libboost_chrono.so.1.72.0
+ssh -p 22 admin@$1 ln -sf /usr/lib/libboost_program_options.so.1.72 /usr/lib/libboost_program_options.so.1.72.0
+ssh -p 22 admin@$1 ln -sf /usr/lib/libboost_regex.so.1.72 /usr/lib/libboost_regex.so.1.72.0
+ssh -p 22 admin@$1 ln -sf /usr/lib/libboost_system.so.1.72 /usr/lib/libboost_system.so.1.72.0
+#ssh -p 22 admin@$1 ln -sf /usr/lib/libboost_signals.so.1.72 /usr/lib/libboost_signals.so.1.72.0
+ssh -p 22 admin@$1 ln -sf /usr/lib/libboost_filesystem.so.1.72 /usr/lib/libboost_filesystem.so.1.72.0
+ssh -p 22 admin@$1 ln -sf /usr/lib/libboost_thread.so.1.72 /usr/lib/libboost_thread.so.1.72.0
+ssh -p 22 admin@$1 ln -sf /usr/lib/libboost_date_time.so.1.72 /usr/lib/libboost_date_time.so.1.72.0
 #scp -P 22 ~/2022RobotCode/os_detect.py admin@$1:/usr/lib/python2.7/site-packages/rospkg/
 
 #ssh -p 22 admin@$1 'opkg install python3-pyyaml'
