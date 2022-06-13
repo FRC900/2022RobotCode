@@ -25,45 +25,51 @@
 
 
 class AutoNode { 
+	protected:
+		ros::NodeHandle nh_;
+
 	public:
-	//VARIABLES ---------------------------------------------------------
+		AutoNode(const ros::NodeHandle &nh) : nh_(nh)
+		
+		//VARIABLES ---------------------------------------------------------
 	//SETUP --------------------------------------------------------------------------------------------
-	//create node
-	ros::init(argc, argv, "auto_node");
-	ros::NodeHandle nh;
-	
-	const std::map<std::string, std::string> service_connection_header{{"tcp_nodelay", "1"}};
-	spline_gen_cli_ = nh.serviceClient<base_trajectory_msgs::GenerateSpline>("/path_follower/base_trajectory/spline_gen", false, service_connection_header);
-	cmd_vel_pub = nh.advertise<geometry_msgs::Twist>("cmd_vel", 1);
-	brake_srv = nh.serviceClient<std_srvs::Empty>("/frcrobot_jetson/swerve_drive_controller/brake", false, service_connection_header);
+		const std::map<std::string, std::string> service_connection_header{{"tcp_nodelay", "1"}};
+		ros::ServiceClient spline_gen_cli_ = nh_.serviceClient<base_trajectory_msgs::GenerateSpline>("/path_follower/base_trajectory/spline_gen", false, service_connection_header);
+		ros::Publisher cmd_vel_pub = nh_.advertise<geometry_msgs::Twist>("cmd_vel", 1);
+		ros::ServiceClient brake_srv = nh_.serviceClient<std_srvs::Empty>("/frcrobot_jetson/swerve_drive_controller/brake", false, service_connection_header);
 
-	//subscribers
-	//rio match data (to know if we're in auto period)
-	ros::Subscriber match_data_sub = nh.subscribe("/frcrobot_rio/match_data", 1, matchDataCallback);
-	//dashboard (to get auto mode)
-	ros::Subscriber auto_mode_sub = nh.subscribe("auto_mode", 1, updateAutoMode); //TODO get correct topic name (namespace)
-	ros::Subscriber enable_auto_in_teleop_sub = nh.subscribe("/enable_auto_in_teleop", 1, enable_auto_in_teleop);
+		//subscribers
+		//rio match data (to know if we're in auto period)
+		ros::Subscriber match_data_sub = nh_.subscribe("/frcrobot_rio/match_data", 1, matchDataCallback);
+		//dashboard (to get auto mode)
+		ros::Subscriber auto_mode_sub = nh_.subscribe("auto_mode", 1, updateAutoMode); //TODO get correct topic name (namespace)
+		ros::Subscriber enable_auto_in_teleop_sub = nh_.subscribe("/enable_auto_in_teleop", 1, enable_auto_in_teleop);
 
-	// Used to pass in dynamic paths from other nodes
-	ros::ServiceServer path_finder = nh.advertiseService("dynamic_path", dynamic_path_storage);
+		// Used to pass in dynamic paths from other nodes
+		ros::ServiceServer path_finder = nh_.advertiseService("dynamic_path", dynamic_path_storage);
 
-	//auto state
-	auto_state_pub_thread = std::thread(publishAutoState, std::ref(nh));
-
-	//servers
-	ros::ServiceServer stop_auto_server = nh.advertiseService("stop_auto", stopAuto); //called by teleop node to stop auto execution during teleop if driver wants
-	ros::ServiceServer reset_maps = nh.advertiseService("reset_maps", resetMaps);
-
-	//actionlib clients
-	actionlib::SimpleActionClient<path_follower_msgs::PathAction> path_ac("/path_follower/path_follower_server", true); //TODO fix this path
-	actionlib::SimpleActionClient<behavior_actions::Shooting2022Action> shooting_ac("/shooting/shooting_server_2022", true);
-	actionlib::SimpleActionClient<behavior_actions::Intaking2022Action> intaking_ac("/intaking/intaking_server_2022", true);
-	preemptAll = [&path_ac, &shooting_ac, &intaking_ac](){ // must include all actions called
-		path_ac.cancelGoalsAtAndBeforeTime(ros::Time::now());
-		shooting_ac.cancelGoalsAtAndBeforeTime(ros::Time::now());
-		intaking_ac.cancelGoalsAtAndBeforeTime(ros::Time::now());
-	};
-
+		//auto state
+		std::thread auto_state_pub_thread = std::thread(publishAutoState, std::ref(nh_));
+		std::atomic<bool> publish_autostate{true};
+		//servers
+		ros::ServiceServer stop_auto_server = nh_.advertiseService("stop_auto", stopAuto); //called by teleop node to stop auto execution during teleop if driver wants
+		ros::ServiceServer reset_maps = nh_.advertiseService("reset_maps", resetMaps);
+		enum AutoStates {
+			NOT_READY,
+			READY,
+			RUNNING,
+			DONE,
+			ERROR
+		};
+		//actionlib clients
+		actionlib::SimpleActionClient<path_follower_msgs::PathAction> path_ac("/path_follower/path_follower_server", true); //TODO fix this path
+		actionlib::SimpleActionClient<behavior_actions::Shooting2022Action> shooting_ac("/shooting/shooting_server_2022", true);
+		actionlib::SimpleActionClient<behavior_actions::Intaking2022Action> intaking_ac("/intaking/intaking_server_2022", true);
+		preemptAll = [&path_ac, &shooting_ac, &intaking_ac](){ // must include all actions called
+			path_ac.cancelGoalsAtAndBeforeTime(ros::Time::now());
+			shooting_ac.cancelGoalsAtAndBeforeTime(ros::Time::now());
+			intaking_ac.cancelGoalsAtAndBeforeTime(ros::Time::now());
+		};
 	int auto_mode = -1; //-1 if nothing selected
 	std::vector<std::string> auto_steps; //stores string of action names to do, read from the auto mode array in the config file
 	bool enable_teleop = false;
@@ -71,13 +77,6 @@ class AutoNode {
 	bool auto_stopped = false; //set to true if driver stops auto (callback: stopAuto() ) - note: this node will keep doing actions during teleop if not finished and the driver doesn't stop auto
 	//All actions check if(auto_started && !auto_stopped) before proceeding.
 
-	enum AutoStates {
-		NOT_READY,
-		READY,
-		RUNNING,
-		DONE,
-		ERROR
-	};
 
 	std::atomic<int> auto_state(NOT_READY); //This state is published by the publish thread
 	std::map<std::string, nav_msgs::Path> premade_paths;
@@ -89,7 +88,7 @@ class AutoNode {
 	int old_waypoint = 0;
 	double old_percent_complete = 0.0;
 	double old_waypoint_percent = 0.0;
-
+	
 	//FUNCTIONS -------
 
 	//server callback for stop autonomous execution
@@ -374,8 +373,8 @@ class AutoNode {
 
 	//function to publish auto node state (run on a separate thread)
 	//this is read by the dashboard to display it to the driver
-	std::atomic<bool> publish_autostate{true};
-	void publishAutoState(ros::NodeHandle &nh)
+	
+	void publishAutoState(ros::NodeHandle &nh_)
 	{
 	#ifdef __linux__
 		// Run status thread at idle priority
@@ -387,7 +386,7 @@ class AutoNode {
 	#endif
 
 		//publish
-		ros::Publisher state_pub = nh.advertise<behavior_actions::AutoState>("auto_state", 1, true);
+		ros::Publisher state_pub = nh_.advertise<behavior_actions::AutoState>("auto_state", 1, true);
 
 		publish_autostate = true;
 		while(publish_autostate) {
@@ -414,7 +413,7 @@ class AutoNode {
 		std::string state;
 		while(!auto_stopped && ros::ok())
 		{
-			state = action_client->getState().toString();
+			state = action_client.getState().toString();
 
 			if(state == "PREEMPTED") {
 				ROS_ERROR_STREAM("Auto node - " << activity << " got preempted");
@@ -426,11 +425,11 @@ class AutoNode {
 			}
 			//check timeout - note: have to do this before checking if state is SUCCEEDED since timeouts are reported as SUCCEEDED
 			else if (ros::Time::now().toSec() - request_time > timeout || //timeout from what this file says
-					(state == "SUCCEEDED" && !action_client->getResult()->success)) //server times out by itself
+					(state == "SUCCEEDED" && !action_client.getResult()->success)) //server times out by itself
 			{
 				ROS_ERROR_STREAM("Auto node - " << activity << " timed out");
 				auto_stopped = true;
-				action_client->cancelGoalsAtAndBeforeTime(ros::Time::now());
+				action_client.cancelGoalsAtAndBeforeTime(ros::Time::now());
 			}
 			else if (state == "SUCCEEDED") { //must have succeeded since we already checked timeout possibility
 				ROS_WARN_STREAM("Auto node - " << activity << " succeeded");
@@ -438,7 +437,7 @@ class AutoNode {
 			}
 			else if (auto_stopped){
 				ROS_WARN_STREAM("Auto node - auto_stopped set");
-				action_client->cancelGoalsAtAndBeforeTime(ros::Time::now());
+				action_client.cancelGoalsAtAndBeforeTime(ros::Time::now());
 			}
 			else { //if didn't succeed and nothing went wrong, keep waiting
 				ros::spinOnce();
@@ -448,7 +447,7 @@ class AutoNode {
 	}
 
 
-	std::thread auto_state_pub_thread;
+
 	void shutdownNode(AutoStates state, const std::string &msg)
 	{
 		if (msg.length()) {
@@ -581,7 +580,7 @@ class AutoNode {
 		return true;
 	}
 
-	bool waitForAutoStart(ros::NodeHandle nh)
+	bool waitForAutoStart(ros::NodeHandle nh_)
 	{
 		ros::spinOnce();
 
@@ -601,11 +600,11 @@ class AutoNode {
 			//read sequence of actions from config
 			if (auto_mode >= 0)
 			{
-				if(nh.getParam("auto_mode_" + std::to_string(auto_mode), auto_steps))
+				if(nh_.getParam("auto_mode_" + std::to_string(auto_mode), auto_steps))
 				{
 					for (size_t j = 0; j < auto_steps.size(); j++) {
 						XmlRpc::XmlRpcValue action_data;
-						if(nh.getParam(auto_steps[j], action_data)) {
+						if(nh_.getParam(auto_steps[j], action_data)) {
 							if(action_data["type"] == "path") {
 								if (premade_paths.find(auto_steps[j]) != premade_paths.end()) {
 									continue;
@@ -745,9 +744,9 @@ class AutoNode {
 		ROS_INFO_STREAM("Got path_follower feedback!");
 
 
-		ROS_INFO("Total Percent complete %f", (feedback->percent_complete));
-		ROS_INFO_STREAM("Current Waypoint " << (feedback->current_waypoint));
-		ROS_INFO("Waypoint percent %f", (feedback->percent_next_waypoint));
+		//ROS_INFO("Total Percent complete %f", (feedback->percent_complete));
+		//ROS_INFO_STREAM("Current Waypoint " << (feedback->current_waypoint));
+		//ROS_INFO("Waypoint percent %f", (feedback->percent_next_waypoint));
 		
 		// Can also add diffrent conditions based on auto mode
 		// TODO, add parsing for responses based on feedback to auto_mode_config
@@ -757,8 +756,8 @@ class AutoNode {
 		double current_percent_complete = feedback->percent_complete;
 		double current_waypoint_percent = feedback->percent_next_waypoint;
 
-		ROS_INFO_STREAM("New waypoint is " << current_waypoint);
-		ROS_INFO_STREAM("Old waypoint is " << old_waypoint);
+		//ROS_INFO_STREAM("New waypoint is " << current_waypoint);
+		//ROS_INFO_STREAM("Old waypoint is " << old_waypoint);
 
 		// Add conditions below when waypoint changes
 		// Checks if second waypoint
@@ -818,7 +817,7 @@ class AutoNode {
 	bool intakefn(XmlRpc::XmlRpcValue action_data, std::string auto_step) {
 		
 		//for some reason this is necessary, even if the server has been up and running for a while
-		if(!intaking_ac->waitForServer(ros::Duration(5))){
+		if(!intaking_ac.waitForServer(ros::Duration(5))){
 			shutdownNode(ERROR,"Auto node - couldn't find intaking actionlib server");
 			return 1;
 		}
@@ -829,15 +828,15 @@ class AutoNode {
 			return 1;
 		}
 		if(action_data["goal"] == "stop") {
-			intaking_ac->cancelGoalsAtAndBeforeTime(ros::Time::now());
+			intaking_ac.cancelGoalsAtAndBeforeTime(ros::Time::now());
 		} else {
 			behavior_actions::Intaking2022Goal goal;
-			intaking_ac->sendGoal(goal);
+			intaking_ac.sendGoal(goal);
 		}
 	}
 
 	bool shootfn(XmlRpc::XmlRpcValue action_data, std::string auto_step) {
-		if(!shooting_ac->waitForServer(ros::Duration(5))){
+		if(!shooting_ac.waitForServer(ros::Duration(5))){
 			
 			shutdownNode(ERROR, "Auto node - couldn't find shooting actionlib server");
 			return false;
@@ -846,13 +845,13 @@ class AutoNode {
 		goal.num_cargo = 2;
 		goal.low_goal = false;
 
-		shooting_ac->sendGoal(goal);
+		shooting_ac.sendGoal(goal);
 		waitForActionlibServer(shooting_ac, 100, "shooting server");
 		return true;
 	}
 
 	bool pathfn(XmlRpc::XmlRpcValue action_data, std::string auto_step) {
-		if(!path_ac->waitForServer(ros::Duration(5))){
+		if(!path_ac.waitForServer(ros::Duration(5))){
 			shutdownNode(ERROR, "Couldn't find path server");
 			return false;
 		}
@@ -871,7 +870,7 @@ class AutoNode {
 			goal.waypoints = premade_waypoints[auto_step];
 			goal.waypointsIdx = waypointsIdxs[auto_step];
 			// Sends the goal and sets feedbackCb to be run when feedback is updated
-			path_ac->sendGoal(goal, NULL, NULL, &feedbackCb);
+			path_ac.sendGoal(goal, NULL, NULL, &feedbackCb);
 
 			waitForActionlibServer(path_ac, 100, "running path");
 			iteration_value --;
@@ -978,7 +977,7 @@ class AutoNode {
 	};
 
 
-	int init(int argc, char** argv)
+	int init()
 	{
 
 
@@ -993,7 +992,7 @@ class AutoNode {
 			ROS_INFO("Auto node - waiting for autonomous to start");
 
 			//wait for auto period to start
-			if (!waitForAutoStart(nh))
+			if (!waitForAutoStart(nh_))
 				continue;
 
 			//EXECUTE AUTONOMOUS ACTIONS --------------------------------------------------------------------------
@@ -1003,7 +1002,7 @@ class AutoNode {
 
 			std::vector<std::string> auto_steps; //stores string of action names to do, read from the auto mode array in the config file
 			//read sequence of actions from config
-			if(! nh.getParam("auto_mode_" + std::to_string(auto_mode), auto_steps)){
+			if(! nh_.getParam("auto_mode_" + std::to_string(auto_mode), auto_steps)){
 				shutdownNode(ERROR, "Couldn't read auto_mode_" + std::to_string(auto_mode) + " config value in auto node");
 				return 1;
 			}
@@ -1016,7 +1015,7 @@ class AutoNode {
 
 					//read data from config needed to carry out the action
 					XmlRpc::XmlRpcValue action_data;
-					if(! nh.getParam(auto_steps[i], action_data)){
+					if(! nh_.getParam(auto_steps[i], action_data)){
 						//shutdownNode(ERROR, "Auto node - Couldn't read data for '" + auto_steps[i] + "' auto action from config file");
 						//return 1;
 					}
@@ -1059,7 +1058,11 @@ class AutoNode {
 
 
 int main(int argc, char** argv) {
-	AutoNode autonode;
-	autonode.init(argc, argv)
+	//create node
+
+	ros::init(argc, argv, "auto_node");
+	ros::NodeHandle nh;
+	AutoNode autonode(nh);
+	autonode.init()
 	return 0;
 }
