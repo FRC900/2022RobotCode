@@ -30,10 +30,10 @@ elif [ -f /home/admin/rio_bashrc.sh ] ; then
 	/etc/init.d/nilvrt stop
 	# Force update to Rio time, hopefully will prevent
 	# time updates while robot code is running
-	/etc/init.d/ntpd stop
+	#/etc/init.d/ntpd stop
 	#ntpdate 10.9.0.8
-	ntpd -gq
-	/etc/init.d/ntpd restart
+	#ntpd -gq
+	#/etc/init.d/ntpd restart
 else
     echo "Unknown environment! Trying to proceed anyway using local environment."
     source /opt/ros/noetic/setup.bash
