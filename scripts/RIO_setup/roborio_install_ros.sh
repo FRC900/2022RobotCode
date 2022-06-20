@@ -110,7 +110,7 @@ ssh -p 22 admin@$1 'source /opt/ros/noetic/setup.bash && cd 2022RobotCode/zebROS
 #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!#
 ##################-----------------------------#################
 #Edit /etc/ntp.conf to be a copy of ntpClient in 2022RobotCode#
-scp -P 22 ~/2022RobotCode/scripts/RIO_setup/ntpClient.conf admin@$1:/etc/ntp.conf
+scp -P 22 ~/2022RobotCode/scripts/RIO_setup/ntp.conf admin@$1:/etc/ntp.conf
 
 # Copy wpilib to roborio
 ssh -p 22 admin@$1 mkdir wpilib
