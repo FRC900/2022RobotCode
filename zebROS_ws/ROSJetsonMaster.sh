@@ -30,8 +30,8 @@ elif [ -f /home/admin/rio_bashrc.sh ] ; then
 	/etc/init.d/nilvrt stop
 	# Update rio time and stop ntpd server to prevent
 	# time updates while robot code is running
-	/etc/init.d/ntpd stop
-	ntpd -gq
+	# /etc/init.d/ntpd stop
+	# ntpd -gq
 else
     echo "Unknown environment! Trying to proceed anyway using local environment."
     source /opt/ros/noetic/setup.bash
