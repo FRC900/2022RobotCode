@@ -139,7 +139,7 @@ sleep 5
 
 # Copy rio_bashrc.sh, ROSJetsonMaster.sh to /home/admin
 scp -P 22 ~/2022RobotCode/scripts/RIO_setup/rio_bashrc.sh admin@$1:.
-scp -P 22 ~/2022RobotCode/zebROS_ws/ROSJetsonMaster.sh admin@$1:.
+#scp -P 22 ~/2022RobotCode/zebROS_ws/ROSJetsonMaster.sh admin@$1:.
 
 # Set up prereqs for deploy script
 ssh -p 22 admin@$1 'mv ~/2022RobotCode ~/2022RobotCode.orig'
