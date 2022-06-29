@@ -99,15 +99,15 @@ class JoystickState
 			return true;
 		}
 
-		const std::vector<float>&   getAxises()  const { return axises_;  }
-		const std::vector<bool>&    getButtons() const { return buttons_; }
-		const std::vector<int>&     getPOVs()    const { return povs_;    }
-		const std::vector<int16_t>& getRawAxis() const { return raw_axises_;    }
+		const std::vector<float>&   getAxises()  const { return axises_;     }
+		const std::vector<bool>&    getButtons() const { return buttons_;    }
+		const std::vector<int>&     getPOVs()    const { return povs_;       }
+		const std::vector<int16_t>& getRawAxis() const { return raw_axises_; }
 
-		size_t getAxisCount(void)              const { return axises_.size();  };
-		size_t getButtonCount(void)            const { return buttons_.size(); };
-		size_t getPOVCount(void)               const { return povs_.size();    };
-		size_t getRawAxisCount(void)           const { return raw_axises_.size();    };
+		size_t getAxisCount(void)              const { return axises_.size();  	  };
+		size_t getButtonCount(void)            const { return buttons_.size(); 	  };
+		size_t getPOVCount(void)               const { return povs_.size();    	  };
+		size_t getRawAxisCount(void)           const { return raw_axises_.size(); };
 		// For these, don't flag an error, just return 0/false
 		// That gives a reasonable default when an
 		// axis / button / pov is missing

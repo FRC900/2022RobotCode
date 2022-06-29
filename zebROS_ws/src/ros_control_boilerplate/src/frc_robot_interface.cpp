@@ -74,6 +74,13 @@
 #include "hal/Power.h"                                // for HAL_GetVinVoltage
 #include "REVPDH.h"
 #include "tf2/LinearMath/Quaternion.h"                // for Quaternion
+#include <FRC_NetworkCommunication/FRCComm.h>
+
+// global?
+struct HAL_JoystickAxesInt {
+  int16_t count;
+  int16_t axes[HAL_kMaxJoystickAxes];
+};
 
 // #define JOYSTICK_LOCK
 // #define MATCH_DATA_LOCK
@@ -792,6 +799,16 @@ void FRCRobotInterface::read(const ros::Time &time, const ros::Duration &period)
 					const auto pov_count = stick->GetPOVCount();
 					for (auto i = 0; i < pov_count; i++)
 						state.addPOV(stick->GetPOV(i));
+					
+					HAL_JoystickAxesInt axesInt;
+					int retVal = FRC_NetworkCommunication_getJoystickAxes(
+      							 joystick_ids_[joystick], reinterpret_cast<JoystickAxes_t*>(&axesInt),
+      							 HAL_kMaxJoystickAxes);
+					 for (int32_t i = 0; i < axesInt.count; i++) {
+    					int8_t value = axesInt.axes[i];
+					for (auto i = 0; i < axis_count; i++)
+						state.addRawAxis();
+
 				}
 #ifdef JOYSTICK_LOCK
 				else
