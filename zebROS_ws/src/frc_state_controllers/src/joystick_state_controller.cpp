@@ -57,13 +57,30 @@ void JoystickStateController::update(const ros::Time &time, const ros::Duration 
 			auto &m = realtime_pub_->msg_;
 
 			m.header.stamp = time;
-
-			m.leftStickX         = js->getAxis(0);
-			m.leftStickY         = js->getAxis(1);
-			m.leftTrigger        = js->getAxis(2);
-			m.rightTrigger       = js->getAxis(3);
-			m.rightStickX        = js->getAxis(4);
-			m.rightStickY        = js->getAxis(5);
+			if (js->getRawAxisCount() >= 6) {
+				// axis 0 and 1 lftx 
+				// 2 and 3 lft y
+				// 4 and 5 rht x
+				// concatinates the two 8 bit values into 16 bits
+				int16_t lftx = (js->getRawAxis(0) << 8) | js->getRawAxis(1);
+				int16_t lfty = (js->getRawAxis(2) << 8) | js->getRawAxis(3);
+				int16_t rhtx = (js->getRawAxis(4) << 8) | js->getRawAxis(5);
+ 				// hopefully don't get messed up by int division
+				m.leftStickX = (lftx > 0) ? lftx / 32767.0 : lftx / 32768.0; 
+				m.leftStickY = (lfty > 0) ? lfty / 32767.0 : lfty / 32768.0; 
+				m.rightStickX = (rhtx > 0) ? rhtx / 32767.0 : rhtx / 32768.0; 
+				// who needs Y!
+				m.rightStickY = 0
+			}
+			else {
+				m.leftStickX = js->getAxis(0);
+				m.leftStickY = js->getAxis(1);
+				// TODO triggers encode as buttons 
+				m.leftTrigger        = js->getAxis(2);
+				m.rightTrigger       = js->getAxis(3);
+				m.rightStickX        = js->getAxis(4);
+				m.rightStickY        = js->getAxis(5);
+			}
 
 			m.buttonAButton      = js->getButton(0);
 			m.buttonBButton      = js->getButton(1);
