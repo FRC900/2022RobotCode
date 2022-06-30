@@ -62,9 +62,9 @@ void JoystickStateController::update(const ros::Time &time, const ros::Duration 
 				// 2 and 3 lft y
 				// 4 and 5 rht x
 				// concatinates the two 8 bit values into 16 bits
-				int16_t lftx = (js->getRawAxis(0) << 8) | js->getRawAxis(1);
-				int16_t lfty = (js->getRawAxis(2) << 8) | js->getRawAxis(3);
-				int16_t rhtx = (js->getRawAxis(4) << 8) | js->getRawAxis(5);
+				int16_t lftx = (((int16_t) js->getRawAxis(0)) << 8) | ((int16_t) js->getRawAxis(1));
+				int16_t lfty = (((int16_t) js->getRawAxis(2)) << 8) | ((int16_t) js->getRawAxis(3));
+				int16_t rhtx = (((int16_t) js->getRawAxis(4)) << 8) | ((int16_t) js->getRawAxis(5));
  				// hopefully don't get messed up by int division
 				m.leftStickX = (lftx > 0) ? lftx / 32767.0 : lftx / 32768.0; 
 				m.leftStickY = (lfty > 0) ? lfty / 32767.0 : lfty / 32768.0; 
