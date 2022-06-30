@@ -46,7 +46,7 @@ class JoystickState
 		void   addAxis(float axis)      { axises_.push_back(axis);     }
 		void   addButton(bool button)   { buttons_.push_back(button);  }
 		void   addPOV(int pov)          { povs_.push_back(pov);        }
-		void   addRawAxis(int16_t axis) { raw_axises_.push_back(axis); }
+		void   addRawAxis(int8_t axis) { raw_axises_.push_back(axis); }
 
 		bool setAxis(size_t index, float axis)
 		{
@@ -86,7 +86,7 @@ class JoystickState
 			return true;
 		}
 
-		bool setRawAxis(size_t index, int16_t axis)
+		bool setRawAxis(size_t index, int8_t axis)
 		{
 			if (index >= raw_axises_.size())
 			{
@@ -102,7 +102,7 @@ class JoystickState
 		const std::vector<float>&   getAxises()  const { return axises_;     }
 		const std::vector<bool>&    getButtons() const { return buttons_;    }
 		const std::vector<int>&     getPOVs()    const { return povs_;       }
-		const std::vector<int16_t>& getRawAxis() const { return raw_axises_; }
+		const std::vector<int8_t>& getRawAxis() const { return raw_axises_; }
 
 		size_t getAxisCount(void)              const { return axises_.size();  	  };
 		size_t getButtonCount(void)            const { return buttons_.size(); 	  };
@@ -135,7 +135,7 @@ class JoystickState
 			}
 			return povs_[index];
 		}
-		int16_t getRawAxis(size_t index) const
+		int8_t getRawAxis(size_t index) const
 		{
 			if (index >= raw_axises_.size())
 			{
@@ -153,7 +153,7 @@ class JoystickState
 		std::vector<float> axises_;
 		std::vector<bool>  buttons_;
 		std::vector<int>   povs_;
-		std::vector<int16_t> raw_axises_;
+		std::vector<int8_t> raw_axises_;
 };
 
 typedef StateHandle<const JoystickState> JoystickStateHandle;
