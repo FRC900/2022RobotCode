@@ -30,7 +30,7 @@ class JoystickState
 				axises_     = other.axises_;
 				buttons_    = other.buttons_;
 				povs_       = other.povs_;
-				raw_axises_ = other.raw_axises_
+				raw_axises_ = other.raw_axises_;
 			}
 			return *this;
 		}

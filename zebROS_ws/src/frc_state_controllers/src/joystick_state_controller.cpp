@@ -70,7 +70,7 @@ void JoystickStateController::update(const ros::Time &time, const ros::Duration 
 				m.leftStickY = (lfty > 0) ? lfty / 32767.0 : lfty / 32768.0; 
 				m.rightStickX = (rhtx > 0) ? rhtx / 32767.0 : rhtx / 32768.0; 
 				// who needs Y!
-				m.rightStickY = 0
+				m.rightStickY = 0;
 			}
 			else {
 				m.leftStickX = js->getAxis(0);
