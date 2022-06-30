@@ -266,9 +266,10 @@ wpi::detail::type_error wpi::detail::type_error::create(int,std::string_view , s
 
 
 #include <FRC_NetworkCommunication/FRCComm.h>
-struct JoystickAxes_t {
-	uint16_t count;
-	int16_t axes[1];
-};
 
-int FRC_NetworkCommunication_getJoystickAxes(uint8_t joystickNum, struct JoystickAxes_t *axes, uint8_t maxAxes); {axes.count = 0;}
+
+int FRC_NetworkCommunication_getJoystickAxes(uint8_t joystickNum, struct JoystickAxes_t *axes, uint8_t maxAxes) 
+{	
+	axes->count = 0;
+	return 1;
+}
