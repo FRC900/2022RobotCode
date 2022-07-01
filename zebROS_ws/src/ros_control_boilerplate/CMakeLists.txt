@@ -151,8 +151,6 @@ set (REV_USER_LIBS
 # Used to find HALInitializer from wpilib internal repo
 include_directories(${ALLWPILIB}/hal/src/main/native/athena)
 include_directories(${ALLWPILIB}/hal/src/main/native/include)
-# Used for FRC_NetworkCommunication/FRCComm.h
-include_directories(../../../ni-libraries/src/include)
 
 # Used to find main frc/*.h, frc2/*.h, hal/*.h and wpi/*.h
 include_directories(${ALLWPILIB}/wpilibc/src/main/native/include)
