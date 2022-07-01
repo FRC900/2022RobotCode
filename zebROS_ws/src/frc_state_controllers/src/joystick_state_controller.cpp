@@ -1,5 +1,6 @@
 #include "frc_state_controllers/joystick_state_controller.h"
-
+#include "frc_state_controllers/bits16.h"
+#include <atomic>
 namespace joystick_state_controller
 {
 
@@ -8,6 +9,7 @@ bool JoystickStateController::init(hardware_interface::JoystickStateInterface *h
 								ros::NodeHandle						&controller_nh)
 {
 	ROS_INFO_STREAM_NAMED("joystick_state_controller", "init is running");
+	
 	std::string name;
 	if (!controller_nh.getParam("name", name))
 	{
@@ -33,6 +35,8 @@ bool JoystickStateController::init(hardware_interface::JoystickStateInterface *h
 	if (!controller_nh.getParam("publish_rate", publish_rate_))
 		ROS_WARN_STREAM("Could not read publish_rate in Joystick state controller, using default " << publish_rate_);
 
+	ros::ServiceClient client = n.serviceClient<frc_state_controllers::bits16>("use_16_bits_server");
+	atomic<bool> use16bits = false;
 	return true;
 }
 
@@ -52,12 +56,21 @@ void JoystickStateController::update(const ros::Time &time, const ros::Duration 
 		if (realtime_pub_->trylock())
 		{
 			last_publish_time_ = time;
-
+			frc_state_controllers::bits16 srv;
+			srv.request.update = false;
+			// won't be used
+			srv.request.bits16 = false;
+			if (client.call(srv) == false)
+			{
+				ROS_INFO_STREAM("16 bit service call failed, defaulting to 8 bits");
+			}
+		
+			use16bits = srv.response.bits16
 			const auto &js = joystick_state_;
 			auto &m = realtime_pub_->msg_;
 
 			m.header.stamp = time;
-			if (js->getRawAxisCount() >= 6) {
+			if (js->getRawAxisCount() >= 6 && use16bits) {
 				// axis 0 and 1 lftx 
 				// 2 and 3 lft y
 				// 4 and 5 rht x
@@ -72,6 +85,7 @@ void JoystickStateController::update(const ros::Time &time, const ros::Duration 
 				// who needs Y!
 				m.rightStickY = 0;
 			}
+			// need to fix joystick on other side, will need to update this
 			else {
 				m.leftStickX = js->getAxis(0);
 				m.leftStickY = js->getAxis(1);
