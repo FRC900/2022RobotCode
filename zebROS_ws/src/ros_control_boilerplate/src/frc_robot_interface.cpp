@@ -76,7 +76,6 @@
 #include "tf2/LinearMath/Quaternion.h"                // for Quaternion
 #include <FRC_NetworkCommunication/FRCComm.h>
 
-// global?
 struct HAL_JoystickAxesInt {
   int16_t count;
   int16_t axes[HAL_kMaxJoystickAxes];
