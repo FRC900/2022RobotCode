@@ -76,7 +76,7 @@ void update(const ros::Time &time, const ros::Duration &period) override
 			m.buttonBButton      = false;
 			m.buttonXButton      = false;
 			m.buttonYButton      = false;
-			m.bumperLeftButton   = false;
+			m.bumperLeftButton   = js->getAxis(2) > 0.5; // hack - activate slow mode on z-axis push?
 			m.bumperRightButton  = false;
 			m.buttonBackButton   = false;
 			m.buttonStartButton  = false;
@@ -87,7 +87,7 @@ void update(const ros::Time &time, const ros::Duration &period) override
 			m.buttonBPress       = false;
 			m.buttonXPress       = false;
 			m.buttonYPress       = false;
-			m.bumperLeftPress    = false;
+			m.bumperLeftPress    = !prev_left_bumper_ && m.bumperLeftButton;
 			m.bumperRightPress   = false;
 			m.buttonBackPress    = false;
 			m.buttonStartPress   = false;
@@ -98,7 +98,7 @@ void update(const ros::Time &time, const ros::Duration &period) override
 			m.buttonBRelease     = false;
 			m.buttonXRelease     = false;
 			m.buttonYRelease     = false;
-			m.bumperLeftRelease  = false;
+			m.bumperLeftRelease  = prev_left_bumper_ && !m.bumperLeftButton;
 			m.bumperRightRelease = false;
 			m.buttonBackRelease  = false;
 			m.buttonStartRelease = false;
@@ -122,6 +122,8 @@ void update(const ros::Time &time, const ros::Duration &period) override
 			m.directionRightRelease = false;
 
 			realtime_pub_->unlockAndPublish();
+
+			prev_left_bumper_ = m.bumperLeftButton;
 		}
 	}
 }
@@ -134,6 +136,7 @@ private:
 		std::shared_ptr<realtime_tools::RealtimePublisher<frc_msgs::JoystickState>> realtime_pub_;
 		ros::Time last_publish_time_;
 		double publish_rate_{50};
+		bool prev_left_bumper_{false};
 }; // class
 
 } // namespace
