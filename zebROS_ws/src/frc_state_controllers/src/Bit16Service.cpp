@@ -3,7 +3,7 @@
 
 #include "frc_state_controllers/bits16.h"
 
-atomic<bool> bits16 = false;
+std::atomic<bool> bits16 = false;
 
 bool use16bits(frc_state_controllers::bits16::Request  &req,
          frc_state_controllers::bits16::Response &res)
