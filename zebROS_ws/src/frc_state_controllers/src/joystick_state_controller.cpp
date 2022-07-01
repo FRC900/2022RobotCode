@@ -35,7 +35,7 @@ bool JoystickStateController::init(hardware_interface::JoystickStateInterface *h
 
 	if (!controller_nh.getParam("publish_rate", publish_rate_))
 		ROS_WARN_STREAM("Could not read publish_rate in Joystick state controller, using default " << publish_rate_);
-	
+	// dosn't work, update function below does not see these variables
 	ros::ServiceClient client = root_nh.serviceClient<frc_state_controllers::bits16>("use_16_bits_server");
 	std::atomic<bool> use16bits = false;
 	return true;
