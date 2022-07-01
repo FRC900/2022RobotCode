@@ -1,7 +1,25 @@
 #include "frc_state_controllers/joystick_state_controller.h"
-#include "frc_state_controllers/bits16.h"
-
+#include <std_srvs/SetBool.h>
 #include <atomic>
+
+std::atomic<bool> use16bits = false;
+
+bool use16bitsCB(std_srvs::SetBool::Request &req, std_srvs::SetBool::Response &res)
+{
+	if (req.data) 
+	{
+		use16bits = true;
+	}
+	else 
+	{
+		use16bits = false;
+	}
+
+	res.success = true;
+	res.message = "";
+	return true;
+}
+
 namespace joystick_state_controller
 {
 
@@ -35,9 +53,9 @@ bool JoystickStateController::init(hardware_interface::JoystickStateInterface *h
 
 	if (!controller_nh.getParam("publish_rate", publish_rate_))
 		ROS_WARN_STREAM("Could not read publish_rate in Joystick state controller, using default " << publish_rate_);
-	// dosn't work, update function below does not see these variables
-	ros::ServiceClient client = root_nh.serviceClient<frc_state_controllers::bits16>("use_16_bits_server");
-	std::atomic<bool> use16bits = false;
+
+	ros::ServiceServer service = root_nh.advertiseService("use_16_bits_server", use16bitsCB);
+	
 	return true;
 }
 
@@ -57,20 +75,13 @@ void JoystickStateController::update(const ros::Time &time, const ros::Duration 
 		if (realtime_pub_->trylock())
 		{
 			last_publish_time_ = time;
-			frc_state_controllers::bits16 srv;
-			srv.request.update = false;
-			// won't be used
-			srv.request.bits16 = false;
-			if (client.call(srv) == false)
-			{
-				ROS_INFO_STREAM("16 bit service call failed, defaulting to 8 bits");
-			}
-		
-			use16bits = srv.response.bits16
+					
 			const auto &js = joystick_state_;
 			auto &m = realtime_pub_->msg_;
 
 			m.header.stamp = time;
+			ROS_INFO_STREAM("USE 16 bits=" << use16bits);
+			// Still don't want out of bounds reads so keep the getRawAxisCount
 			if (js->getRawAxisCount() >= 6 && use16bits) {
 				// axis 0 and 1 lftx 
 				// 2 and 3 lft y

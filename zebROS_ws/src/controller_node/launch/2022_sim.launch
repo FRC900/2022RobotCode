@@ -112,7 +112,5 @@
 			<remap from="terabee" to="terabee_y" />
 		</node>
 	</group>
-	<group ns="use16bits">
-		<node name="Bit16Service" pkg="frc_state_controllers" type="Bit16Service" output="screen"/>
-	</group>
+
 </launch>
