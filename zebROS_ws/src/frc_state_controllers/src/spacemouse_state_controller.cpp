@@ -65,8 +65,8 @@ void update(const ros::Time &time, const ros::Duration &period) override
 
 			m.header.stamp = time;
 
-			m.leftStickX         = js->getAxis(0);
-			m.leftStickY         = js->getAxis(1);
+			m.leftStickX         = -js->getAxis(1);
+			m.leftStickY         = js->getAxis(0);
 			m.leftTrigger        = 0;
 			m.rightTrigger       = 0;
 			m.rightStickX        = js->getAxis(5);
@@ -76,7 +76,7 @@ void update(const ros::Time &time, const ros::Duration &period) override
 			m.buttonBButton      = false;
 			m.buttonXButton      = false;
 			m.buttonYButton      = false;
-			m.bumperLeftButton   = js->getAxis(2) > 0.5; // hack - activate slow mode on z-axis push?
+			m.bumperLeftButton   = js->getAxis(2) < 0.75; // hack - default to slow mode on z-axis push?
 			m.bumperRightButton  = false;
 			m.buttonBackButton   = false;
 			m.buttonStartButton  = false;
