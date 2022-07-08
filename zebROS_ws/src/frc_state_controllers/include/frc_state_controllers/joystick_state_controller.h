@@ -1,5 +1,9 @@
-#pragma once
+#ifndef INC_JOYSTICK_STATE_CONTROLLER_H_
+#define INC_JOYSTICK_STATE_CONTROLLER_H_
 
+#include <std_srvs/SetBool.h>
+#include <atomic>
+ 
 #include <controller_interface/controller.h>
 #include <hardware_interface/joint_state_interface.h>
 #include <realtime_tools/realtime_buffer.h>
@@ -21,11 +25,15 @@ class JoystickStateController: public controller_interface::Controller<hardware_
 		void stopping(const ros::Time &time) override;
 
 	private:
+		bool use16bitsCB(std_srvs::SetBool::Request &req, std_srvs::SetBool::Response &res);
 		hardware_interface::JoystickStateHandle joystick_state_;
-		std::shared_ptr<realtime_tools::RealtimePublisher<frc_msgs::JoystickState> > realtime_pub_;
+		std::shared_ptr<realtime_tools::RealtimePublisher<frc_msgs::JoystickState>> realtime_pub_;
 		ros::Time last_publish_time_;
 		double publish_rate_{50};
 		frc_msgs::JoystickState prev_joystick_msg_;
+		std::atomic<bool> use16bits_{true};
+		ros::ServiceServer service_;
 }; //class
 }
 
+#endif

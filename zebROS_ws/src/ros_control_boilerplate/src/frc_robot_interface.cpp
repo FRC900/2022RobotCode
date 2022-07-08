@@ -798,15 +798,16 @@ void FRCRobotInterface::read(const ros::Time &time, const ros::Duration &period)
 					const auto pov_count = stick->GetPOVCount();
 					for (auto i = 0; i < pov_count; i++)
 						state.addPOV(stick->GetPOV(i));
-					
-					// wpilib struct: Declared near top 
+
+					// wpilib struct: Declared near top
 					HAL_JoystickAxesInt axesInt;
 					int retVal = FRC_NetworkCommunication_getJoystickAxes(
-      							 joystick_ids_[joystick], reinterpret_cast<JoystickAxes_t*>(&axesInt),
-      							 HAL_kMaxJoystickAxes);
+									joystick_ids_[joystick], reinterpret_cast<JoystickAxes_t*>(&axesInt),
+									HAL_kMaxJoystickAxes);
 					for (auto i = 0; i < axesInt.count; i++) {
-    					int8_t value = axesInt.axes[i];
-						state.addRawAxis(value); 
+						uint8_t value = axesInt.axes[i];
+						//ROS_INFO_STREAM("Stick=" << joystick_ids_[joystick] << " axis=" << i << " value=" << (((unsigned int)value) &0xff));
+						state.addRawAxis(value);
 					}
 				}
 #ifdef JOYSTICK_LOCK
