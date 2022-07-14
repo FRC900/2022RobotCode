@@ -68,13 +68,19 @@ void JoystickStateController::update(const ros::Time &time, const ros::Duration 
 				// 4 and 1 lft y
 				// 5 and 2 rht x
 				// concatinates the two 8 bit values into 16 bits
-#if 0
-				ROS_INFO_STREAM("js->getRawAxis(0) = " << (((unsigned int)js->getRawAxis(0)) & 0xff) <<
-						" js->getRawAxis(1) = " << (((unsigned int)js->getRawAxis(1)) & 0xff) <<
-						" js->getRawAxis(2) = " << (((unsigned int)js->getRawAxis(2)) & 0xff) <<
-						" js->getRawAxis(3) = " << (((unsigned int)js->getRawAxis(3)) & 0xff) <<
-						" js->getRawAxis(4) = " << (((unsigned int)js->getRawAxis(4)) & 0xff) <<
-						" js->getRawAxis(5) = " << (((unsigned int)js->getRawAxis(5)) & 0xff));
+#if 1
+				ROS_INFO_STREAM("js->getRawAxis(0) = " << std::hex << (((unsigned int)js->getRawAxis(0)) & 0xff) <<
+						" (1) = " << (((unsigned int)js->getRawAxis(1)) & 0xff) <<
+						" (2) = " << (((unsigned int)js->getRawAxis(2)) & 0xff) <<
+						" (3) = " << (((unsigned int)js->getRawAxis(3)) & 0xff) <<
+						" (4) = " << (((unsigned int)js->getRawAxis(4)) & 0xff) <<
+						" (5) = " << (((unsigned int)js->getRawAxis(5)) & 0xff));
+				ROS_INFO_STREAM("js->getAxis(0) = " << js->getAxis(0) <<
+						" (1) = " << js->getAxis(1) <<
+						" (2) = " << js->getAxis(2) <<
+						" (3) = " << js->getAxis(3) <<
+						" (4) = " << js->getAxis(4) <<
+						" (5) = " << js->getAxis(5) );
 #endif
 				int16_t lftx = (((uint16_t) js->getRawAxis(0)) << 8) | ((uint16_t) js->getRawAxis(3));
 				int16_t lfty = (((uint16_t) js->getRawAxis(1)) << 8) | ((uint16_t) js->getRawAxis(4));

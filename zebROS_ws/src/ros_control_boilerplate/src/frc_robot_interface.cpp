@@ -806,7 +806,7 @@ void FRCRobotInterface::read(const ros::Time &time, const ros::Duration &period)
 									HAL_kMaxJoystickAxes);
 					for (auto i = 0; i < axesInt.count; i++) {
 						uint8_t value = axesInt.axes[i];
-						//ROS_INFO_STREAM("Stick=" << joystick_ids_[joystick] << " axis=" << i << " value=" << (((unsigned int)value) &0xff));
+						//ROS_INFO_STREAM("Stick=" << joystick_ids_[joystick] << " axis=" << i << " value=" << std::hex << (((unsigned int)value) &0xff));
 						state.addRawAxis(value);
 					}
 				}
