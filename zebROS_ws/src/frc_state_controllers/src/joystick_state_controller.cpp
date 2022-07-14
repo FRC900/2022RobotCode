@@ -76,9 +76,9 @@ void JoystickStateController::update(const ros::Time &time, const ros::Duration 
 						" js->getRawAxis(4) = " << (((unsigned int)js->getRawAxis(4)) & 0xff) <<
 						" js->getRawAxis(5) = " << (((unsigned int)js->getRawAxis(5)) & 0xff));
 #endif
-				int16_t lftx = (((uint16_t) js->getRawAxis(3)) << 8) | ((uint16_t) js->getRawAxis(0));
-				int16_t lfty = (((uint16_t) js->getRawAxis(4)) << 8) | ((uint16_t) js->getRawAxis(1));
-				int16_t rhtx = (((uint16_t) js->getRawAxis(5)) << 8) | ((uint16_t) js->getRawAxis(2));
+				int16_t lftx = (((uint16_t) js->getRawAxis(0)) << 8) | ((uint16_t) js->getRawAxis(3));
+				int16_t lfty = (((uint16_t) js->getRawAxis(1)) << 8) | ((uint16_t) js->getRawAxis(4));
+				int16_t rhtx = (((uint16_t) js->getRawAxis(2)) << 8) | ((uint16_t) js->getRawAxis(5));
 				// hopefully don't get messed up by int division
 				m.leftStickX = (lftx > 0) ? lftx / 32767.0 : lftx / 32768.0;
 				m.leftStickY = (lfty > 0) ? lfty / 32767.0 : lfty / 32768.0;
@@ -107,7 +107,7 @@ void JoystickStateController::update(const ros::Time &time, const ros::Duration 
 			m.buttonStartButton  = js->getButton(7);
 			m.stickLeftButton    = js->getButton(8);
 			m.stickRightButton   = js->getButton(9);
-
+			
 			m.buttonAPress       = !prev_joystick_msg_.buttonAButton     && m.buttonAButton;
 			m.buttonBPress       = !prev_joystick_msg_.buttonBButton     && m.buttonBButton;
 			m.buttonXPress       = !prev_joystick_msg_.buttonXButton     && m.buttonXButton;
