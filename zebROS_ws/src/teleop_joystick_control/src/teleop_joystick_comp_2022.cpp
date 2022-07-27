@@ -4,7 +4,6 @@
 
 #include "ros/ros.h"
 #include "frc_msgs/JoystickState.h"
-#include "sensor_msgs/JointState.h"
 #include "geometry_msgs/Twist.h"
 #include <string>
 #include <cmath>
@@ -22,7 +21,6 @@
 
 #include <vector>
 #include "teleop_joystick_control/RobotOrient.h"
-#include "teleop_joystick_control/SnapStrafingAngle.h"
 
 #include "frc_msgs/ButtonBoxState.h"
 #include "frc_msgs/MatchSpecificData.h"
@@ -51,7 +49,6 @@ ros::ServiceClient BrakeSrv;
 bool diagnostics_mode = false;
 
 double climber_align_angle{0.0};
-double snap_strafing_angle{0.0};
 
 frc_msgs::ButtonBoxState button_box;
 
@@ -296,13 +293,6 @@ bool orientCallback(teleop_joystick_control::RobotOrient::Request& req,
 	return true;
 }
 
-bool snapStrafingAngleCallback(teleop_joystick_control::SnapStrafingAngle::Request& req,
-		teleop_joystick_control::SnapStrafingAngle::Response&/* res*/)
-{
-	snap_strafing_angle = req.angle;
-	return true;
-}
-
 void dynamicArmUpright() {
 	std_msgs::Float64 msg;
 	msg.data = 1.0;
@@ -316,7 +306,6 @@ void dynamicArmTilted() {
 }
 
 bool sendRobotZero = false;
-bool snappingToAngle = false;
 
 void buttonBoxCallback(const ros::MessageEvent<frc_msgs::ButtonBoxState const>& event)
 {
@@ -679,7 +668,6 @@ void evaluateCommands(const ros::MessageEvent<frc_msgs::JoystickState const>& ev
 
 		static ros::Time last_header_stamp = joystick_states_array[0].header.stamp;
 
-		teleop_cmd_vel->updateRateLimit(config);
 		const StrafeSpeeds strafe_speeds = teleop_cmd_vel->generateCmdVel(joystick_states_array[0].leftStickX, joystick_states_array[0].leftStickY, imu_angle, joystick_states_array[0].header.stamp, config);
 		// Rotate the robot in response to a joystick request.
 		const double rotation_increment = teleop_cmd_vel->generateAngleIncrement(joystick_states_array[0].rightStickX, joystick_states_array[0].header.stamp, config);
@@ -700,7 +688,7 @@ void evaluateCommands(const ros::MessageEvent<frc_msgs::JoystickState const>& ev
 			// TODO : add a robot_orientation_driver->isRobotRotating?
 			// If x and y inputs are 0 and the PID controls have settled on a final orientation,
 			// trigger brake mode in the swerve controller
-			if ((strafe_speeds.x_ == 0) && (strafe_speeds.y_ == 0) && (fabs(rotation_velocity) < 0.001)) // TODO : config item
+			if ((strafe_speeds.x_ == 0) && (strafe_speeds.y_ == 0) && (fabs(rotation_velocity) < config.rotation_epsilon))
 			{
 				// Only send this once and then stop publishing
 				// This will let other, lower priority cmd_vel messages
@@ -971,7 +959,7 @@ void evaluateCommands(const ros::MessageEvent<frc_msgs::JoystickState const>& ev
 		else
 		{
 			// Drive in diagnostic mode unconditionally
-	#if 0
+#if 0
 			//Joystick1 Diagnostics: leftStickY
 			if(abs(joystick_states_array[0].leftStickY) > config.stick_threshold)
 			{
@@ -1214,11 +1202,6 @@ void evaluateCommands(const ros::MessageEvent<frc_msgs::JoystickState const>& ev
 	}
 }
 
-void jointStateCallback(const sensor_msgs::JointState &joint_state)
-{
-	// TODO - remove this if not used
-}
-
 void matchStateCallback(const frc_msgs::MatchSpecificData &msg)
 {
 	// TODO : if in diagnostic mode, zero all outputs on the
@@ -1288,6 +1271,10 @@ int main(int argc, char **argv)
 	{
 		ROS_ERROR("Could not read rotation_axis_scale in teleop_joystick_comp");
 	}
+	if(!n_params.getParam("rotation_epsilon", config.rotation_epsilon))
+	{
+		ROS_ERROR("Could not read rotation_epsilon in teleop_joystick_comp");
+	}
 	if(!n_params.getParam("drive_rate_limit_time", config.drive_rate_limit_time))
 	{
 		ROS_ERROR("Could not read drive_rate_limit_time in teleop_joystick_comp");
@@ -1344,7 +1331,6 @@ int main(int argc, char **argv)
 
 	JoystickRobotVel = n.advertise<geometry_msgs::Twist>("swerve_drive_controller/cmd_vel", 1);
 	ros::Subscriber imu_heading = n.subscribe("/imu/zeroed_imu", 1, &imuCallback);
-	ros::Subscriber joint_states_sub = n.subscribe("/frcrobot_jetson/joint_states", 1, &jointStateCallback);
 
 	ros::Subscriber match_state_sub = n.subscribe("/frcrobot_rio/match_data", 1, matchStateCallback);
 	ros::ServiceServer robot_orient_service = n.advertiseService("robot_orient", orientCallback);
@@ -1377,8 +1363,6 @@ int main(int argc, char **argv)
 	if (!distance_ac->waitForServer(ros::Duration(1))) {
 		ROS_ERROR("**HOLD DISTANCE LIKELY WON'T WORK*** Wait (1 sec) timed out, for hold distance action in teleop_joystick_comp.cpp");
 	}
-
-	ros::ServiceServer snap_strafing_angle_service = n.advertiseService("snap_strafing_angle", snapStrafingAngleCallback);
 
 	indexer_straight_pub = n.advertise<std_msgs::Float64>("/frcrobot_jetson/indexer_straight_controller/command", 1, true);
 	indexer_arc_pub = n.advertise<std_msgs::Float64>("/frcrobot_jetson/indexer_arc_controller/command", 1, true);
