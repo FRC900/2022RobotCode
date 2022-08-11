@@ -1,13 +1,17 @@
 <?xml version="1.0"?>
 <launch>
 	<arg name="hw_or_sim" default="hw" />
-	<arg name="primary_imu" default="ADI" />
+	<arg name="primary_imu" default="PICO" />
 	<group if="$(eval arg('hw_or_sim')=='hw')">
 		<node if="$(eval arg('primary_imu')=='NAVX')" name="navx_publisher" pkg="navx_publisher" type="navx_publisher_node" output="screen">
 			<param name="device" value="/dev/NAVX"/>
 		</node>
 		<include if="$(eval arg('primary_imu')=='ADI')" file="$(find controller_node)/launch/adis16470.launch">
 			<arg name="device" value="/dev/ADI" />
+			<arg name="publish_tf" value="false" />
+		</include>
+		<include if="$(eval arg('primary_imu')=='PICO')" file="$(find controller_node)/launch/adis16470_pico.launch">
+			<arg name="device" value="/dev/PICO" />
 			<arg name="publish_tf" value="false" />
 		</include>
 	</group>
