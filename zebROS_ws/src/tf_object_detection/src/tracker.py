@@ -371,7 +371,6 @@ if __name__ == '__main__':
         pbtext = f.read()
     # Gets all of the object ids
     ids = re.findall("'(.*)'", pbtext)
-    print(ids)
     trackerDict = {}
     for i in ids:
         # Likley better options for config, these are find for now though
