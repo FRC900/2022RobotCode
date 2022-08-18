@@ -252,27 +252,9 @@ class Sort(object):
       return np.concatenate(ret)
     return np.empty((0,5))
 
-def parse_args():
-    """Parse input arguments."""
-    parser = argparse.ArgumentParser(description='SORT demo')
-    parser.add_argument('--display', dest='display', help='Display online tracker output (slow) [False]',action='store_true')
-    parser.add_argument("--seq_path", help="Path to detections.", type=str, default='data')
-    parser.add_argument("--phase", help="Subdirectory in seq_path.", type=str, default='train')
-    parser.add_argument("--max_age", 
-                        help="Maximum number of frames to keep alive a track without associated detections.", 
-                        type=int, default=1)
-    parser.add_argument("--min_hits", 
-                        help="Minimum number of associated detections before track is initialised.", 
-                        type=int, default=3)
-    parser.add_argument("--iou_threshold", help="Minimum IOU for match.", type=float, default=0.3)
-    args = parser.parse_args()
-    return args
-
-
 # Formats top left and bottom right to work with the update function of Sort
     #Params:
     # dets - a numpy array of detections in the format [[x1,y1,x2,y2,score],[x1,y1,x2,y2,score],...]
-
 def unpackTLBR(TL:Point32, BR:Point32, score):
   x1 = TL.x
   x2 = BR.x
