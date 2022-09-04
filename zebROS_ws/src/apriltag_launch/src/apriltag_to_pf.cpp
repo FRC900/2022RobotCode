@@ -51,6 +51,7 @@ int main(int argc, char** argv)
 
 	ros::NodeHandle n;
 	Apriltag2PF apriltagtoPF(n);
+    /*
     static tf2_ros::StaticTransformBroadcaster static_broadcaster;
     geometry_msgs::TransformStamped static_transformStamped;
 
@@ -66,6 +67,7 @@ int main(int argc, char** argv)
     static_transformStamped.transform.rotation.z = 0;
     static_transformStamped.transform.rotation.w = 1;
     static_broadcaster.sendTransform(static_transformStamped);
-	ros::spin();
+	*/
+    ros::spin();
 	return 0;
 }
