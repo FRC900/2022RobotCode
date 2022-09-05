@@ -41,4 +41,13 @@
       <rosparam command="load" file="$(find tf_object_detection)/config/pub_video_config.yaml" />
     </node>
   </group>
+  <arg name="cam_image_topic" default="left/image_rect_gray" />
+	<arg name="cam_info_topic" default="left/camera_info" />
+	<arg name="output_frame" default="/zed_ar_left_camera_frame" />
+
+	<include file="$(find apriltag_launch)/launch/apriltag_continuous_detection.launch">
+		<arg name="camera_name"            value="$(arg zed_name)" />
+		<arg name="image_topic"            value="$(arg cam_image_topic)" />
+	</include>
+
 </launch>
