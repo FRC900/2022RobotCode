@@ -51,23 +51,7 @@ int main(int argc, char** argv)
 
 	ros::NodeHandle n;
 	Apriltag2PF apriltagtoPF(n);
-    /*
-    static tf2_ros::StaticTransformBroadcaster static_broadcaster;
-    geometry_msgs::TransformStamped static_transformStamped;
 
-    static_transformStamped.header.stamp = ros::Time::now();
-    static_transformStamped.header.frame_id = "usb_cam";
-    static_transformStamped.child_frame_id = "map";
-    static_transformStamped.transform.translation.x = 0;
-    static_transformStamped.transform.translation.y = 0;
-    static_transformStamped.transform.translation.z = 0;
-
-    static_transformStamped.transform.rotation.x = 0;
-    static_transformStamped.transform.rotation.y = 0;
-    static_transformStamped.transform.rotation.z = 0;
-    static_transformStamped.transform.rotation.w = 1;
-    static_broadcaster.sendTransform(static_transformStamped);
-	*/
     ros::spin();
 	return 0;
 }

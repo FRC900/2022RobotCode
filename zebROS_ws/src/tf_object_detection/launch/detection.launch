@@ -49,5 +49,6 @@
 		<arg name="camera_name"            value="$(arg zed_name)" />
 		<arg name="image_topic"            value="$(arg cam_image_topic)" />
 	</include>
-
+  <node pkg="apriltag_launch" name="apriltag_to_pf" type="apriltag_to_pf" output="screen">
+    </node>
 </launch>
