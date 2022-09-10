@@ -4,9 +4,9 @@
 define normal_camera fiducial
 (
 	range_min 0.0
-	range_max 10.0
-	range_max_id 10.0
-	fov 359
+	range_max 7.0
+	range_max_id 7.0
+	fov 100
 	ignore_zloc 1
 	size [ 0.2 0.2 0.2 ]
 	color "purple"

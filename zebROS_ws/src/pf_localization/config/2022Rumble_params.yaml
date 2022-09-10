@@ -20,7 +20,11 @@ noise_stdev:
   rotation: 0.01
 
 # Found from https://docs.google.com/document/d/1-2Ebfz2yhGaKKjmjrVtmT4BOiicFtyhzod6RbWLc5N0/view#
+# "tagID" in family Tag36h11
 beacons:
+  # For sim, can't use 0
+  - [-0.004, 7.579, "111"]
+
   - [-0.004, 7.579, "0"]
   - [3.233, 5.487, "1"]
   - [3.068 , 5.331, "2"]
