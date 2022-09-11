@@ -131,18 +131,16 @@ class CudaApriltagDetector
 	public:
 		CudaApriltagDetector(ros::NodeHandle &n)
 			:
-        it_(new image_transport::ImageTransport(n))
+        sub_(n.subscribe("image_rect", 2, &CudaApriltagDetector::imageCallback, this))
 			, pub_(n.advertise<apriltag_ros::AprilTagDetectionArray>("cuda_tag_detections", 1))
 		
     {
-      n.param<std::string>("transport_hint", transport_hint, "raw");
-      sub_ = it_->subscribe("image_rect", 1,
-                          &CudaApriltagDetector::imageCallback, this,
-                          image_transport::TransportHints(transport_hint));
+      // code can go here
       
 		}
 
   void imageCallback (const sensor_msgs::ImageConstPtr& image_rect) {
+      ROS_ERROR_STREAM("CALLBACK IN!! ");
       // Seems like this should be a paramater
       float fx = 388.239;
       float fy = 388.239;
@@ -155,7 +153,7 @@ class CudaApriltagDetector
     if (pub_.getNumSubscribers() == 0 &&
         sub_.getNumPublishers() == 0)
     {
-      // ROS_INFO_STREAM("No subscribers and no tf publishing, skip processing.");
+      ROS_INFO_STREAM("No subscribers and no tf publishing, skip processing.");
       return;
     }
 
@@ -205,7 +203,7 @@ class CudaApriltagDetector
 
 
     // PUBLISH IMAGES HERE
-    //tag_detections_publisher_.publish(    );
+    //pub_.publish(    );
 
     // 
   }
@@ -213,9 +211,8 @@ class CudaApriltagDetector
 	private:
     
 		ros::Publisher pub_;
-    std::string transport_hint;
-    std::shared_ptr<image_transport::ImageTransport> it_;
-    image_transport::Subscriber sub_;
+    ros::Subscriber sub_;
+
 
 };
 
@@ -223,10 +220,9 @@ int main(int argc, char **argv)
 {
   ros::init(argc, argv, "cuda_apriltag_ros");
   ros::NodeHandle nh;
-  //Might need to use private node handle?
-  //ros::NodeHandle& pnh = getPrivateNodeHandle();
 
-	/*
+	/* old code 
+
   it_ = std::shared_ptr<image_transport::ImageTransport>(
       new image_transport::ImageTransport(nh));
   

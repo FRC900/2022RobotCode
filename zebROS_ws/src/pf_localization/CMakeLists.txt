@@ -121,6 +121,7 @@ catkin_package(
 ## Your package locations should be listed before other locations
 include_directories(
   include
+  ${OpenCV_INCLUDE_DIRS}
   ${catkin_INCLUDE_DIRS}
   ../../../common
 )
