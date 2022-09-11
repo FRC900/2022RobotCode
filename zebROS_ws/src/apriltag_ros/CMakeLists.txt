@@ -59,6 +59,7 @@ set(CUDA_MIN_VERSION "10.2")
 
 execute_process(COMMAND uname -m COMMAND tr -d '\n' OUTPUT_VARIABLE ARCHITECTURE)
 message( STATUS "Architecture: ${ARCHITECTURE}" )
+
 catkin_package(
   INCLUDE_DIRS include
   CATKIN_DEPENDS
@@ -105,10 +106,17 @@ MESSAGE("CWD : ${CMAKE_CURRENT_SOURCE_DIR}")
 
 add_executable(cuda_continuous_detector src/cuda_continuous_detector.cpp)
 
-add_compile_options("$<$<COMPILE_LANGUAGE:CUDA>:-arch=sm_61>")
+add_compile_options("$<$<COMPILE_LANGUAGE:CUDA>:-arch=sm_52>")
+add_compile_options("$<$<COMPILE_LANGUAGE:CUDA>:-gencode=arch=compute_52,code=sm_52>")
+add_compile_options("$<$<COMPILE_LANGUAGE:CUDA>:-gencode=arch=compute_60,code=sm_60>")
 add_compile_options("$<$<COMPILE_LANGUAGE:CUDA>:-gencode=arch=compute_61,code=sm_61>")
-add_compile_options("$<$<COMPILE_LANGUAGE:CUDA>:-gencode=arch=compute_62,code=sm_62>")
-add_compile_options("$<$<COMPILE_LANGUAGE:CUDA>:-gencode=arch=compute_72,code=sm_72>")
+add_compile_options("$<$<COMPILE_LANGUAGE:CUDA>:-gencode=arch=compute_70,code=sm_70>")
+add_compile_options("$<$<COMPILE_LANGUAGE:CUDA>:-gencode=arch=compute_75,code=sm_75>")
+add_compile_options("$<$<COMPILE_LANGUAGE:CUDA>:-gencode=arch=compute_80,code=sm_80>")
+add_compile_options("$<$<COMPILE_LANGUAGE:CUDA>:-gencode=arch=compute_86,code=sm_86>")
+add_compile_options("$<$<COMPILE_LANGUAGE:CUDA>:-gencode=arch=compute_86,code=compute_86>")
+
+
 add_compile_options("$<$<COMPILE_LANGUAGE:CUDA>:-Xcompiler=-std=gnu++11>")
 add_compile_options("$<$<COMPILE_LANGUAGE:CUDA>:-Xcompiler=-O3>")
 
@@ -121,10 +129,10 @@ target_link_libraries(cuda_continuous_detector
   nvapriltags
   ${CUDA_LIBRARIES}
 )
+MESSAGE("INSTALL : ${CMAKE_DESTINATION}")
 
 install(TARGETS cuda_continuous_detector
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib
   RUNTIME DESTINATION bin
 )
-

@@ -131,18 +131,18 @@ class CudaApriltagDetector
 	public:
 		CudaApriltagDetector(ros::NodeHandle &n)
 			:
-        sub_(n.subscribe("image_rect", 2, &CudaApriltagDetector::imageCallback, this))
+        sub_(n.subscribe("/usb_cam/image_raw", 2, &CudaApriltagDetector::imageCallback, this))
 			, pub_(n.advertise<apriltag_ros::AprilTagDetectionArray>("cuda_tag_detections", 1))
 		
     {
       // code can go here
-      
+      // a comment to force rebuild againaaaaaaaaaaaaa
 		}
 
   void imageCallback (const sensor_msgs::ImageConstPtr& image_rect) {
-      ROS_ERROR_STREAM("CALLBACK IN!! ");
+      ROS_ERROR_STREAM("CALLBACK IN!!!!! ");
       // Seems like this should be a paramater
-      float fx = 388.239;
+      float fx = 388.2391;
       float fy = 388.239;
       float ppx = 317.285;
       float ppy = 245.185;
