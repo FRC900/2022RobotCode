@@ -126,26 +126,32 @@ struct AprilTagsImpl {
     }
 };
 
+sensor_msgs::CameraInfo caminfo;
+bool caminfovalid {false};
+
+// Capture camera info published about the camera - needed for screen to world to work
+void camera_info_callback(const sensor_msgs::CameraInfoConstPtr &info)
+{
+	caminfo = *info;
+	caminfovalid = true;
+}
+
 class CudaApriltagDetector
 {
 	public:
 		CudaApriltagDetector(ros::NodeHandle &n)
-			:
-        sub_(n.subscribe("/usb_cam/image_raw", 2, &CudaApriltagDetector::imageCallback, this))
+			:   //what should the camera topic be on the robot?
+        sub_(n.subscribe("/zed_objdetect/rgb/image_rect_color", 2, &CudaApriltagDetector::imageCallback, this))
 			, pub_(n.advertise<apriltag_ros::AprilTagDetectionArray>("cuda_tag_detections", 1))
+      , impl_(std::make_unique<AprilTagsImpl>())
 		
     {
       // code can go here
       // a comment to force rebuild againaaaaaaaaaaaaa
 		}
 
-  void imageCallback (const sensor_msgs::ImageConstPtr& image_rect) {
-      ROS_ERROR_STREAM("CALLBACK IN!!!!! ");
-      // Seems like this should be a paramater
-      float fx = 388.2391;
-      float fy = 388.239;
-      float ppx = 317.285;
-      float ppy = 245.185;
+  void imageCallback (const sensor_msgs::ImageConstPtr &image_rect) {
+    ROS_ERROR_STREAM("CALLBACK IN!!!!! ");
 
     // Lazy updates:
     // When there are no subscribers _and_ when tf is not published,
@@ -156,30 +162,25 @@ class CudaApriltagDetector
       ROS_INFO_STREAM("No subscribers and no tf publishing, skip processing.");
       return;
     }
-
-    cv_bridge::CvImageConstPtr cv_ptr;
+    cv::Mat img;
     // Convert ROS's sensor_msgs::Image to cv_bridge::CvImagePtr in order to run processing
     try
     {
-      cv_ptr = cv_bridge::toCvCopy(image_rect, image_rect->encoding);
+      cv::Mat img = cv_bridge::toCvShare(image_rect, "rgba8")->image;
     }
     catch (cv_bridge::Exception& e)
     {
       ROS_ERROR("cv_bridge exception: %s", e.what());
       return;
     }
-    cv::Mat img = cv_ptr->image;
 
-    std::unique_ptr<AprilTagsImpl> impl_ = std::make_unique<AprilTagsImpl>();
+     if (impl_->april_tags_handle == nullptr) {
     impl_->initialize(img.cols, img.rows,
-              img.total() * img.elemSize(),  img.step,
-              fx,fy,ppx,ppy,
-              0.5,
-              256);
-
-
-    const auto start = std::chrono::system_clock::now();
-
+                                  img.total() * img.elemSize(),  img.step,
+                                  float(caminfo.R[0]), float(caminfo.R[5]), float(caminfo.R[2]), float(caminfo.R[6]),
+                                  0.5,
+                                  256);
+     }
     const cudaError_t cuda_error =
             cudaMemcpyAsync(impl_->input_image_buffer, (uchar4 *)img.ptr<unsigned char>(0),
               impl_->input_image_buffer_size, cudaMemcpyHostToDevice, impl_->main_stream);
@@ -198,29 +199,29 @@ class CudaApriltagDetector
         throw std::runtime_error("Failed to run AprilTags detector (error code " +
                                   std::to_string(error) + ")");
     }
-    const auto end = std::chrono::system_clock::now();
-
-
+    
 
     // PUBLISH IMAGES HERE
-    //pub_.publish(    );
+    //pub_.publish(  1  );
 
     // 
   }
 
 	private:
-    
+  // I need to combine two 
 		ros::Publisher pub_;
     ros::Subscriber sub_;
-
-
+    std::unique_ptr<AprilTagsImpl> impl_;
 };
 
 int main(int argc, char **argv)
 {
   ros::init(argc, argv, "cuda_apriltag_ros");
   ros::NodeHandle nh;
+  ros::Subscriber camera_info_sub_ = nh.subscribe("/zed_objdetect/rgb/camera_info", 2, camera_info_callback);
 
+  
+  
 	/* old code 
 
   it_ = std::shared_ptr<image_transport::ImageTransport>(

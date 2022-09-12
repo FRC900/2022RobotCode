@@ -65,6 +65,7 @@ namespace goal_detection
 
 				if (!no_depth)
 				{
+					
 					ROS_INFO("starting goal detection using ZED");
 					frame_sub_ = std::make_unique<image_transport::SubscriberFilter>(it, "/zed_goal/left/image_rect_color", sub_rate);
 					depth_sub_ = std::make_unique<image_transport::SubscriberFilter>(it, "/zed_goal/depth/depth_registered", sub_rate);
