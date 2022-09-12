@@ -4,6 +4,14 @@ string[]                               point_frame_id
 PathOffsetLimit[]                      path_offset_limit
 bool                                   optimize_final_velocity
 Constraint[]                           constraints
+
+int8 ROTATE_MODE_VALUE=0
+int8 ROTATE_MODE_FIXED_COORDINATE=1
+int8 ROTATE_MODE_NEXT_WAYPOINT=2
+int8 ROTATE_MODE_CONSTANT_VELOCITY=3
+
+int8[]                                 rotate_mode
+geometry_msgs/PointStamped[]           rotate_data
 ---
 Coefs[]       orient_coefs
 Coefs[]       x_coefs
