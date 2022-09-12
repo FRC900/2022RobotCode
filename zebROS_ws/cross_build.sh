@@ -14,6 +14,7 @@ fi
 catkin config --profile cross -x _isolated --install --skiplist \
 	ar_track_alvar \
 	apriltag_launch \
+    apriltag_ros \
 	base_trajectory \
 	color_spin \
 	controllers_2019 \
