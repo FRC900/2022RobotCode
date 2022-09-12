@@ -1,6 +1,7 @@
 #ifndef INC_SAMPLE_TRAJECTORY_
 #define INC_SAMPLE_TRAJECTORY_
 
+#include "geometry_msgs/PointStamped.h"
 #include "spline_util/spline_util.h"
 
 enum class SampleTrajectoryType
@@ -29,7 +30,9 @@ class SampleTrajectory
 					std::vector<SegmentState<T>> &yStates,
 					std::vector<SegmentState<T>> &thetaStates,
 					const XYTTrajectory<T> &trajectory,
-					const ArcLengthTrajectory<T> &arcLengthTrajectory);
+					const ArcLengthTrajectory<T> &arcLengthTrajectory,
+					const std::vector<int8_t> &rotateMode,
+					const std::vector<geometry_msgs::PointStamped> &rotateData);
 
 
 		void setDistBetweenArcLengths(double distBetweenArcLength);

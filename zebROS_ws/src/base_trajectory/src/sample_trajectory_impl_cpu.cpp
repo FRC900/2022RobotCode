@@ -16,10 +16,12 @@ bool SampleTrajectoryImplCpu<T>::sample(std::vector<T> &equalArcLengthTimes,
 										std::vector<SegmentState<T>> &yStates,
 										std::vector<SegmentState<T>> &tStates,
 										const XYTTrajectory<T> &trajectory,
-										const ArcLengthTrajectory<T> &arcLengthTrajectory)
+										const ArcLengthTrajectory<T> &arcLengthTrajectory,
+										const std::vector<int8_t> &rotateMode,
+										const std::vector<geometry_msgs::PointStamped> &rotateData)
 {
 	return subdivideLength(equalArcLengthTimes, equalArcLengthPositions, arcLengthTrajectory) &&
-		sampleEqualArcLengths(xStates, yStates, tStates, equalArcLengthTimes, trajectory);
+		sampleEqualArcLengths(xStates, yStates, tStates, equalArcLengthTimes, trajectory, rotateMode, rotateData);
 }
 
 template <class T>
@@ -113,11 +115,42 @@ bool SampleTrajectoryImplCpu<T>::subdivideLength(std::vector<T> &equalArcLengthT
 }
 
 template <class T>
+SegmentState<T> generateRotationState(
+		const T t, // t is arbTime
+		const std::vector<SegmentState<T>> &xStates,
+		const std::vector<SegmentState<T>> &yStates)
+{
+	static SegmentState<T> tState;
+	const auto seg = arcLengthTimeToSegTime(equalArcLengthTimes, i);
+	switch(rotate_mode)
+	{
+		case base_trajectory_msgs::GenerateSpline::Request::ROTATE_MODE_SPLINE:
+			auto tIt = trajectory[2].cbegin() + seg;
+			if (tIt >= trajectory[2].cend())
+			{
+				ROS_ERROR_STREAM("base_trajectory : evaluateTrajectory could not sample tState at time " << t << ", seg = " << seg << ", trajectory[2].size() = " << trajectory[2].size());
+				return false;
+			}
+			tIt->sample(t, tState);
+			break;
+		case base_trajectory_msgs::GenerateSpline::Request::ROTATE_MODE_FIXED_COORDINATE:
+			break;
+		case base_trajectory_msgs::GenerateSpline::Request::ROTATE_NEXT_WAYPOINT:
+			break;
+		case base_trajectory_msgs::GenerateSpline::Request::ROTATE_MODE_CONSTANT_VELOCITY:
+			break;
+	}
+	return tState;
+}
+
+template <class T>
 bool SampleTrajectoryImplCpu<T>::sampleEqualArcLengths(std::vector<SegmentState<T>> &xStates,
 													   std::vector<SegmentState<T>> &yStates,
 													   std::vector<SegmentState<T>> &tStates, // thetaState == rotation state
 													   const std::vector<T> &equalArcLengthTimes,
-													   const XYTTrajectory<T> &trajectory)
+													   const XYTTrajectory<T> &trajectory,
+													   const std::vector<int8_t> &rotateMode,
+													   const std::vector<geometry_msgs::PointStamped> &rotateData)
 {
 	xStates.resize(equalArcLengthTimes.size());
 	yStates.resize(equalArcLengthTimes.size());

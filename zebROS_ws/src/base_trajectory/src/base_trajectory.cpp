@@ -962,7 +962,8 @@ bool evaluateTrajectory(T &cost,
 	static std::vector<SegmentState<T>> tStates;
 	if (!sampleTrajectory.sample(equalArcLengthTimes, equalArcLengthPositions,
 								 xStates, yStates, tStates,
-								 trajectory, arcLengthTrajectory))
+								 trajectory, arcLengthTrajectory,
+								 rotateMode, rotateData))
 	{
 		ROS_ERROR_STREAM("evaluateTrajectory :: sample() failed");
 		return false;

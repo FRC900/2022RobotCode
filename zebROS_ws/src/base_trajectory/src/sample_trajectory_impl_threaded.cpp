@@ -20,7 +20,9 @@ bool SampleTrajectoryImplThreaded<T>::sample(std::vector<T> &equalArcLengthTimes
 										std::vector<SegmentState<T>> &yStates,
 										std::vector<SegmentState<T>> &tStates,
 										const XYTTrajectory<T> &trajectory,
-										const ArcLengthTrajectory<T> &arcLengthTrajectory)
+										const ArcLengthTrajectory<T> &arcLengthTrajectory,
+										const std::vector<int8_t> &rotateMode,
+										const std::vector<geometry_msgs::PointStamped> &rotateData)
 {
 	return subdivideLength(equalArcLengthTimes, equalArcLengthPositions, arcLengthTrajectory) &&
 		sampleEqualArcLengths(xStates, yStates, tStates, equalArcLengthTimes, trajectory);

@@ -17,7 +17,9 @@ class SampleTrajectoryImplThreaded : public SampleTrajectoryImpl<T>
 					std::vector<SegmentState<T>> &yStates,
 					std::vector<SegmentState<T>> &tStates,
 					const XYTTrajectory<T> &trajectory,
-					const ArcLengthTrajectory<T> &arcLengthTrajectory) override;
+					const ArcLengthTrajectory<T> &arcLengthTrajectory,
+						const std::vector<int8_t> &rotateMode,
+						const std::vector<geometry_msgs::PointStamped> &rotateData) override;
 	private:
 		bool subdivideLength(std::vector<T> &equalArcLengthTimes,
 							 std::vector<T> &equalArcLengthPositions,
