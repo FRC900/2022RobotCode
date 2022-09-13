@@ -49,7 +49,11 @@
 #include <opencv2/core/core.hpp>
 #include <image_transport/image_transport.h>
 #include <sensor_msgs/image_encodings.h>
-#include <tf/transform_broadcaster.h>
+#include <tf2_ros/transform_broadcaster.h>
+#include <geometry_msgs/TransformStamped.h>
+#include <geometry_msgs/Transform.h>
+#include <tf2/LinearMath/Quaternion.h>
+#include <tf2/LinearMath/Matrix3x3.h>
 #include "apriltag_ros/AprilTagDetectionArray.h"
 
 struct AprilTagsImpl {
@@ -149,9 +153,36 @@ class CudaApriltagDetector
       // code can go here
       // a comment to force rebuild againaaaaaaaaaaaaa
 		}
+  geometry_msgs::Transform ToTransformMsg(const nvAprilTagsID_t & detection)
+  {
+  
+  geometry_msgs::Transform t;
+  t.translation.x = detection.translation[0];
+  t.translation.y = detection.translation[1];
+  t.translation.z = detection.translation[2];
 
+  // 
+  auto o = detection.orientation;
+  auto matrix = tf2::Matrix3x3();
+  matrix.setValue(o[0], o[3], o[6], o[1], o[4], o[7], o[2], o[5], o[8]);
+  tf2::Quaternion q;
+  matrix.getRotation(q);
+
+
+  // Rotation matrix from nvAprilTags is column major
+  //const Eigen::Map<const Eigen::Matrix<float, 3, 3, Eigen::ColMajor>>
+  //orientation(detection.orientation);
+  //const Eigen::Quaternion<float> q(orientation);
+
+  t.rotation.w = q.w();
+  t.rotation.x = q.x();
+  t.rotation.y = q.y();
+  t.rotation.z = q.z();
+
+  return t;
+  }
   void imageCallback (const sensor_msgs::ImageConstPtr &image_rect) {
-    ROS_ERROR_STREAM("CALLBACK IN!!!!! ");
+    
 
     // Lazy updates:
     // When there are no subscribers _and_ when tf is not published,
@@ -166,7 +197,7 @@ class CudaApriltagDetector
     // Convert ROS's sensor_msgs::Image to cv_bridge::CvImagePtr in order to run processing
     try
     {
-      cv::Mat img = cv_bridge::toCvShare(image_rect, "rgba8")->image;
+      img = cv_bridge::toCvShare(image_rect, "rgba8")->image;
     }
     catch (cv_bridge::Exception& e)
     {
@@ -181,6 +212,8 @@ class CudaApriltagDetector
                                   0.5,
                                   256);
      }
+
+     ROS_ERROR_STREAM("CUDA Apriltag callback ");
     const cudaError_t cuda_error =
             cudaMemcpyAsync(impl_->input_image_buffer, (uchar4 *)img.ptr<unsigned char>(0),
               impl_->input_image_buffer_size, cudaMemcpyHostToDevice, impl_->main_stream);
@@ -190,16 +223,70 @@ class CudaApriltagDetector
                 "Could not memcpy to device CUDA memory (error code " +
                 std::to_string(cuda_error) + ")");
     }
+    
 
     uint32_t num_detections;
     const int error = nvAprilTagsDetect(
             impl_->april_tags_handle, &(impl_->input_image), impl_->tags.data(),
             &num_detections, impl_->max_tags, impl_->main_stream);
+
+
     if (error != 0) {
         throw std::runtime_error("Failed to run AprilTags detector (error code " +
                                   std::to_string(error) + ")");
     }
     
+
+     //apriltag_ros::AprilTagDetectionArray msg_detections;
+      //msg_detections.header = msg_img->header;
+      static tf2_ros::TransformBroadcaster br;
+      for (uint32_t i = 0; i < num_detections; i++) {
+        const nvAprilTagsID_t & detection = impl_->tags[i];
+        /*
+        // detection
+        apriltag_ros::AprilTagDetection msg_detection;
+        msg_detection.family = tag_family_;
+        msg_detection.id = detection.id;
+
+        // corners
+        for (int corner_idx = 0; corner_idx < 4; corner_idx++) {
+          msg_detection.corners.data()[corner_idx].x =
+            detection.corners[corner_idx].x;
+          msg_detection.corners.data()[corner_idx].y =
+            detection.corners[corner_idx].y;
+        }
+        
+        // center
+        const float slope_1 = (detection.corners[2].y - detection.corners[0].y) /
+          (detection.corners[2].x - detection.corners[0].x);
+        const float slope_2 = (detection.corners[3].y - detection.corners[1].y) /
+          (detection.corners[3].x - detection.corners[1].x);
+        const float intercept_1 = detection.corners[0].y -
+          (slope_1 * detection.corners[0].x);
+        const float intercept_2 = detection.corners[3].y -
+          (slope_2 * detection.corners[3].x);
+        msg_detection.center.x = (intercept_2 - intercept_1) / (slope_1 - slope_2);
+        msg_detection.center.y = (slope_2 * intercept_1 - slope_1 * intercept_2) /
+          (slope_2 - slope_1);
+*/
+        // Timestamped Pose3 transform
+        geometry_msgs::TransformStamped tf;
+        tf.header = image_rect->header;
+        tf.child_frame_id = std::to_string(detection.id);
+        tf.transform = ToTransformMsg(detection);
+        br.sendTransform(tf);
+
+        
+        /* Pose
+        msg_detection.pose.pose.pose.position.x = tf.transform.translation.x;
+        msg_detection.pose.pose.pose.position.y = tf.transform.translation.y;
+        msg_detection.pose.pose.pose.position.z = tf.transform.translation.z;
+        msg_detection.pose.pose.pose.orientation = tf.transform.rotation;
+        msg_detections.detections.push_back(msg_detection);
+    */      
+      }
+
+      //pub_.publish(msg_detections);
 
     // PUBLISH IMAGES HERE
     //pub_.publish(  1  );
