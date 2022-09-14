@@ -11,7 +11,6 @@ project(apriltag_ros LANGUAGES C CXX CUDA)
 include("../cmake_modules/CMakeOpt.cmake")
 find_package(catkin REQUIRED COMPONENTS
   angles
-  ar_track_alvar_msgs
   rospy
   roscpp
   field_obj

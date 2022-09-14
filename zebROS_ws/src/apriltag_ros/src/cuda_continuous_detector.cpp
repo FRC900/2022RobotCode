@@ -161,6 +161,7 @@ class CudaApriltagDetector
   t.translation.y = detection.translation[1];
   t.translation.z = detection.translation[2];
 
+
   // 
   auto o = detection.orientation;
   auto matrix = tf2::Matrix3x3();
@@ -179,11 +180,18 @@ class CudaApriltagDetector
   t.rotation.y = q.y();
   t.rotation.z = q.z();
 
+  ROS_INFO_STREAM("t.translation = " << t.translation << " t.rotation = " << t.rotation);
+
   return t;
   }
   void imageCallback (const sensor_msgs::ImageConstPtr &image_rect) {
     
 
+	  if (!caminfovalid)
+	  {
+		  ROS_WARN_STREAM("Waiting for camera info");
+		  return;
+	  }
     // Lazy updates:
     // When there are no subscribers _and_ when tf is not published,
     // skip detection.
@@ -208,8 +216,8 @@ class CudaApriltagDetector
      if (impl_->april_tags_handle == nullptr) {
     impl_->initialize(img.cols, img.rows,
                                   img.total() * img.elemSize(),  img.step,
-                                  float(caminfo.R[0]), float(caminfo.R[5]), float(caminfo.R[2]), float(caminfo.R[6]),
-                                  0.5,
+                                  float(caminfo.P[0]), float(caminfo.P[5]), float(caminfo.P[2]), float(caminfo.P[6]),
+                                  0.2,
                                   256);
      }
 
@@ -242,6 +250,12 @@ class CudaApriltagDetector
       static tf2_ros::TransformBroadcaster br;
       for (uint32_t i = 0; i < num_detections; i++) {
         const nvAprilTagsID_t & detection = impl_->tags[i];
+		ROS_INFO_STREAM("corners0 = " << detection.corners[0].x << " " << detection.corners[0].y);
+		ROS_INFO_STREAM("corners1 = " << detection.corners[1].x << " " << detection.corners[1].y);
+		ROS_INFO_STREAM("corners2 = " << detection.corners[2].x << " " << detection.corners[2].y);
+		ROS_INFO_STREAM("corners3 = " << detection.corners[3].x << " " << detection.corners[3].y);
+		ROS_INFO_STREAM("translation = " << detection.translation[0] << " " << detection.translation[1] << " " << detection.translation[2]);
+		ROS_INFO_STREAM("orientation = " << detection.orientation[0] << " " << detection.orientation[1] << " " << detection.orientation[2] << " " << detection.orientation[3] << " " << detection.orientation[4] << " " << detection.orientation[5]  << " " << detection.orientation[6]  << " " << detection.orientation[7]  << " " << detection.orientation[8] );
         /*
         // detection
         apriltag_ros::AprilTagDetection msg_detection;
@@ -270,6 +284,7 @@ class CudaApriltagDetector
           (slope_2 - slope_1);
 */
         // Timestamped Pose3 transform
+		ROS_INFO_STREAM("Transforming tag ID " << detection.id << " header = " << image_rect->header << " ");
         geometry_msgs::TransformStamped tf;
         tf.header = image_rect->header;
         tf.child_frame_id = std::to_string(detection.id);
@@ -296,8 +311,8 @@ class CudaApriltagDetector
 
 	private:
   // I need to combine two 
-		ros::Publisher pub_;
     ros::Subscriber sub_;
+	ros::Publisher pub_;
     std::unique_ptr<AprilTagsImpl> impl_;
 };
 
