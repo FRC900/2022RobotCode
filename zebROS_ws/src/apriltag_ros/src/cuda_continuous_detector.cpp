@@ -153,8 +153,7 @@ class CudaApriltagDetector
       // code can go here
       // a comment to force rebuild againaaaaaaaaaaaaa
 		}
-  geometry_msgs::Transform ToTransformMsg(const nvAprilTagsID_t & detection)
-  {
+  geometry_msgs::Transform ToTransformMsg(const nvAprilTagsID_t & detection) {
   
   geometry_msgs::Transform t;
   t.translation.x = detection.translation[0];
@@ -181,9 +180,10 @@ class CudaApriltagDetector
   t.rotation.z = q.z();
 
   ROS_INFO_STREAM("t.translation = " << t.translation << " t.rotation = " << t.rotation);
-
   return t;
-  }
+
+}
+
   void imageCallback (const sensor_msgs::ImageConstPtr &image_rect) {
     
 
@@ -250,13 +250,13 @@ class CudaApriltagDetector
       static tf2_ros::TransformBroadcaster br;
       for (uint32_t i = 0; i < num_detections; i++) {
         const nvAprilTagsID_t & detection = impl_->tags[i];
-		ROS_INFO_STREAM("corners0 = " << detection.corners[0].x << " " << detection.corners[0].y);
-		ROS_INFO_STREAM("corners1 = " << detection.corners[1].x << " " << detection.corners[1].y);
-		ROS_INFO_STREAM("corners2 = " << detection.corners[2].x << " " << detection.corners[2].y);
-		ROS_INFO_STREAM("corners3 = " << detection.corners[3].x << " " << detection.corners[3].y);
-		ROS_INFO_STREAM("translation = " << detection.translation[0] << " " << detection.translation[1] << " " << detection.translation[2]);
-		ROS_INFO_STREAM("orientation = " << detection.orientation[0] << " " << detection.orientation[1] << " " << detection.orientation[2] << " " << detection.orientation[3] << " " << detection.orientation[4] << " " << detection.orientation[5]  << " " << detection.orientation[6]  << " " << detection.orientation[7]  << " " << detection.orientation[8] );
-        /*
+        ROS_INFO_STREAM("corners0 = " << detection.corners[0].x << " " << detection.corners[0].y);
+        ROS_INFO_STREAM("corners1 = " << detection.corners[1].x << " " << detection.corners[1].y);
+        ROS_INFO_STREAM("corners2 = " << detection.corners[2].x << " " << detection.corners[2].y);
+        ROS_INFO_STREAM("corners3 = " << detection.corners[3].x << " " << detection.corners[3].y);
+        ROS_INFO_STREAM("translation = " << detection.translation[0] << " " << detection.translation[1] << " " << detection.translation[2]);
+        ROS_INFO_STREAM("orientation = " << detection.orientation[0] << " " << detection.orientation[1] << " " << detection.orientation[2] << " " << detection.orientation[3] << " " << detection.orientation[4] << " " << detection.orientation[5]  << " " << detection.orientation[6]  << " " << detection.orientation[7]  << " " << detection.orientation[8] );
+            
         // detection
         apriltag_ros::AprilTagDetection msg_detection;
         msg_detection.family = tag_family_;
@@ -282,37 +282,31 @@ class CudaApriltagDetector
         msg_detection.center.x = (intercept_2 - intercept_1) / (slope_1 - slope_2);
         msg_detection.center.y = (slope_2 * intercept_1 - slope_1 * intercept_2) /
           (slope_2 - slope_1);
-*/
+
         // Timestamped Pose3 transform
-		ROS_INFO_STREAM("Transforming tag ID " << detection.id << " header = " << image_rect->header << " ");
+		    ROS_INFO_STREAM("Transforming tag ID " << detection.id << " header = " << image_rect->header << " ");
         geometry_msgs::TransformStamped tf;
         tf.header = image_rect->header;
         tf.child_frame_id = std::to_string(detection.id);
         tf.transform = ToTransformMsg(detection);
         br.sendTransform(tf);
 
-        
-        /* Pose
         msg_detection.pose.pose.pose.position.x = tf.transform.translation.x;
         msg_detection.pose.pose.pose.position.y = tf.transform.translation.y;
         msg_detection.pose.pose.pose.position.z = tf.transform.translation.z;
         msg_detection.pose.pose.pose.orientation = tf.transform.rotation;
         msg_detections.detections.push_back(msg_detection);
-    */      
+          
       }
 
-      //pub_.publish(msg_detections);
+      pub.publish(msg_detections);
 
-    // PUBLISH IMAGES HERE
-    //pub_.publish(  1  );
-
-    // 
   }
 
 	private:
   // I need to combine two 
     ros::Subscriber sub_;
-	ros::Publisher pub_;
+	  ros::Publisher pub_;
     std::unique_ptr<AprilTagsImpl> impl_;
 };
 
@@ -322,32 +316,6 @@ int main(int argc, char **argv)
   ros::NodeHandle nh;
   ros::Subscriber camera_info_sub_ = nh.subscribe("/zed_objdetect/rgb/camera_info", 2, camera_info_callback);
 
-  
-  
-	/* old code 
-
-  it_ = std::shared_ptr<image_transport::ImageTransport>(
-      new image_transport::ImageTransport(nh));
-  
-  
-  std::string transport_hint;
-  pnh.param<std::string>("transport_hint", transport_hint, "raw");
-
-  camera_image_subscriber_ =
-      it_->subscribeCamera("image_rect", 1,
-                          &ContinuousDetector::imageCallback, this,
-                          image_transport::TransportHints(transport_hint));
-  tag_detections_publisher_ =
-      nh.advertise<AprilTagDetectionArray>("cuda_tag_detections", 1);
-
-
-  
-  add debug option      
-  if (draw_tag_detections_image_)
-  {
-    tag_detections_image_publisher_ = it_->advertise("tag_detections_image", 1);
-  }
-  */
   CudaApriltagDetector detection_node(nh);
 
   ros::spin();
