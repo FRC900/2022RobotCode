@@ -1,3 +1,4 @@
+/*
 #include <ros/ros.h>
 #include <cuda_apriltag_ros/AprilTagDetectionArray.h>
 #include "field_obj/Detection.h"
@@ -55,3 +56,4 @@ int main(int argc, char** argv)
     ros::spin();
 	return 0;
 }
+*/
