@@ -25,7 +25,7 @@ elif [ -f /home/admin/rio_bashrc.sh ] ; then
     source /home/admin/rio_bashrc.sh
     export ROS_IP=10.9.0.2
     export LD_LIBRARY_PATH=/home/admin/wpilib:$LD_LIBRARY_PATH
-    swapon /dev/sda5
+    swapon /dev/sda5 > /dev/null
 	ulimit -r unlimited
 	/etc/init.d/nilvrt stop
 	killall PhoenixDiagnosticsProgram
@@ -33,8 +33,8 @@ elif [ -f /home/admin/rio_bashrc.sh ] ; then
 	# time updates while robot code is running
 	/etc/init.d/ntpd stop
 	#ntpdate 10.9.0.8
-	#ntpd -gq
-	#/etc/init.d/ntpd restart
+	ntpd -gqx
+	/etc/init.d/ntpd restart
 else
     echo "Unknown environment! Trying to proceed anyway using local environment."
     source /opt/ros/noetic/setup.bash
