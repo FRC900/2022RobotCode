@@ -114,7 +114,9 @@ check_clockdiff() {
         echo -e "\e[1m\e[31mError\e[0m : Clock difference greater than 10 minutes."
         echo "    Local time: `date`"
         echo "    Time on $2: $REMOTE_TIME"
-        exit 1
+		echo "    Setting remote time to current host local time"
+		echo ubuntu | ssh -tt $1 sudo date -s @$(date -u +"%s")
+		echo ubuntu | ssh -tt $1 sudo hwclock -w
     fi
 }
 
@@ -130,6 +132,7 @@ do
     check_clockdiff "$i" "Jetson.$i"
 done
 echo "Time synchronized."
+exit 1
 
 echo "Killing code on remotes "
 for i in "${JETSON_ADDR[@]}"
