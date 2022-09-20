@@ -31,9 +31,9 @@ elif [ -f /home/admin/rio_bashrc.sh ] ; then
 	killall PhoenixDiagnosticsProgram
 	# Force update to Rio time, hopefully will prevent
 	# time updates while robot code is running
-	/etc/init.d/ntpd stop
+	#/etc/init.d/ntpd stop
 	#ntpdate 10.9.0.8
-	ntpd -gqx
+	#ntpd -gqx
 	/etc/init.d/ntpd restart
 else
     echo "Unknown environment! Trying to proceed anyway using local environment."
