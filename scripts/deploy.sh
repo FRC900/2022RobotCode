@@ -132,7 +132,6 @@ do
     check_clockdiff "$i" "Jetson.$i"
 done
 echo "Time synchronized."
-exit 1
 
 echo "Killing code on remotes "
 for i in "${JETSON_ADDR[@]}"
