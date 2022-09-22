@@ -1,0 +1,12 @@
+<launch>
+  <arg name="launch_prefix" default="" /> <!-- set to value="gdbserver localhost:10000" for remote debugging -->
+
+  <group ns="cuda_apriltag">
+  <!-- Set parameters -->
+  <rosparam command="load" file="$(find cuda_apriltag_ros)/config/settings.yaml"/>
+  
+  <node pkg="cuda_apriltag_ros" type="cuda_continuous_detector" name="cuda_continuous_detector" output="screen">
+
+  </node>
+  </group>
+</launch>

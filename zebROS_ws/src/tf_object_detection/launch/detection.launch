@@ -53,6 +53,8 @@
 	-->
   <node pkg="apriltag_launch" name="apriltag_to_pf_node" type="apriltag_to_pf" output="screen">
     </node>
-  <node pkg="apriltag_ros" name="cuda_continuous_detector" type="cuda_continuous_detector" output="screen">
-    </node>
+  
+  <!-- Launch apriltags-->
+  <include file="$(find cuda_apriltag_ros)/launch/cuda_continuous_detection.launch">
+	</include>
 </launch>

@@ -1,28 +1,15 @@
 <?xml version="1.0"?>
 <package>
-  <name>apriltag_ros</name>
-  <version>3.2.1</version>
+  <name>cuda_apriltag_ros</name>
+  <version>1.0.0</version>
   <description>
-    A ROS wrapper of the AprilTag 3 visual fiducial detection
-    algorithm. Provides full access to the core AprilTag 3 algorithm's
-    customizations and makes the tag detection image and detected tags' poses
-    available over ROS topics (including tf). The core AprilTag 3 algorithm is
-    extended to allow the detection of tag bundles and a bundle calibration
-    script is provided (bundle detection is more accurate than single tag
-    detection). Continuous (camera image stream) and single image detector nodes
-    are available.
+    Hacking together the ros2 nvidia_isaac_ros apriltags package to work with ros1
   </description>
 
-  <maintainer email="danylo.malyuta@gmail.com">Danylo Malyuta</maintainer>
-  <maintainer email="w.merkt+oss@gmail.com">Wolfgang Merkt</maintainer>
+  <author>Christopher Holley</author>
+  <maintainer email="programmers@team900.org">FRC Team 900 Programmers</maintainer>
+  <license>GPL</license>
 
-  <author>Danylo Malyuta</author>
-
-  <license>BSD</license>
-
-  <url type="website">http://www.ros.org/wiki/apriltag_ros</url>
-  <url type="bugtracker">https://github.com/AprilRobotics/apriltag_ros/issues</url>
-  <url type="repository">https://github.com/AprilRobotics/apriltag_ros</url>
 
   <buildtool_depend>catkin</buildtool_depend>
 
@@ -36,7 +23,6 @@
   <build_depend>std_msgs</build_depend>
   <build_depend>cv_bridge</build_depend>
   <build_depend>tf</build_depend>
-  <build_depend>nodelet</build_depend>
   <build_depend>pluginlib</build_depend>
   <build_depend>eigen</build_depend>
   <build_depend>libopencv-dev</build_depend>
@@ -52,12 +38,8 @@
   <run_depend>message_runtime</run_depend>
   <run_depend>std_msgs</run_depend>
   <run_depend>cv_bridge</run_depend>
-  <run_depend>nodelet</run_depend>
   <run_depend>pluginlib</run_depend>
   <run_depend>eigen</run_depend>
   <run_depend>libopencv-dev</run_depend>
 
-  <export>
-    <nodelet plugin="${prefix}/nodelet_plugins.xml" />
-  </export>
 </package>

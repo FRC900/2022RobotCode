@@ -7,7 +7,7 @@
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 cmake_minimum_required(VERSION 3.5)
-project(apriltag_ros LANGUAGES C CXX CUDA)
+project(cuda_apriltag_ros LANGUAGES C CXX CUDA)
 include("../cmake_modules/CMakeOpt.cmake")
 find_package(catkin REQUIRED COMPONENTS
   angles
@@ -66,7 +66,6 @@ catkin_package(
     geometry_msgs
     image_transport
     message_runtime
-    nodelet
     pluginlib
     roscpp
     sensor_msgs
@@ -91,7 +90,7 @@ include_directories( ${OpenCV_INCLUDE_DIRS} )
 include_directories(nvapriltags)
 add_library(nvapriltags STATIC IMPORTED)
 if( ${ARCHITECTURE} STREQUAL "x86_64" )
-  set_property(TARGET nvapriltags PROPERTY IMPORTED_LOCATION ${CMAKE_CURRENT_SOURCE_DIR}/nvapriltags/lib_x86_64/libapril_tagging.a)
+  set_property(TARGET nvapriltags PROPERTY IMPORTED_LOCATION ${CMAKE_CURRENT_SOURCE_DIR}/nvapriltags/lib_x86_64_cuda_11_4/libapril_tagging.a)
 elseif( ${ARCHITECTURE} STREQUAL "aarch64" )
   set_property(TARGET nvapriltags PROPERTY IMPORTED_LOCATION ${CMAKE_CURRENT_SOURCE_DIR}/nvapriltags/lib_aarch64_jetpack44/libapril_tagging.a)
 endif()

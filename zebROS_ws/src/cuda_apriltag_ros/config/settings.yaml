@@ -1,0 +1,5 @@
+image_topic: "/usb_cam/image_raw"
+camera_info: "/usb_cam/camera_info"
+pub_topic: "/tag_detections"
+tag_size: 0.042 # In meters of a side of the rectangle
+

@@ -25,7 +25,7 @@ class Apriltag2PF
 			{
                 field_obj::Object object;
                 // m.id is vector, could be more than 1 element when using tag bundles
-                object.id = std::to_string(m.id);
+                object.id = std::to_string(m.id[0]);
                 object.location = m.pose.pose.pose.position;
                 object.angle = atan2(object.location.y, object.location.x) * 180. / M_PI;
                 
