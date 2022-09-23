@@ -132,7 +132,6 @@ struct AprilTagsImpl {
 
 sensor_msgs::CameraInfo caminfo;
 bool caminfovalid {false};
-std::set<int> tag_ids({0, 1, 2, 3, 4, 5});
 // Capture camera info published about the camera - needed for screen to world to work
 void camera_info_callback(const sensor_msgs::CameraInfoConstPtr &info)
 {
@@ -143,11 +142,12 @@ void camera_info_callback(const sensor_msgs::CameraInfoConstPtr &info)
 class CudaApriltagDetector
 {
 	public:
-		CudaApriltagDetector(ros::NodeHandle &n, const std::string &sub_topic, const std::string &pub_topic, const int &tag_size)
+		CudaApriltagDetector(ros::NodeHandle &n, const std::string &sub_topic, const std::string &pub_topic, const double tag_size, const std::vector<int> &tag_id_vector)
 			:   //what should the camera topic be on the robot?
-        sub_(n.subscribe(sub_topic, 2, &CudaApriltagDetector::imageCallback, this))
-			, pub_(n.advertise<cuda_apriltag_ros::AprilTagDetectionArray>(pub_topic, 1))
+        sub_(n.subscribe(sub_topic, 1, &CudaApriltagDetector::imageCallback, this))
+			, pub_(n.advertise<cuda_apriltag_ros::AprilTagDetectionArray>(pub_topic, 2))
       , impl_(std::make_unique<AprilTagsImpl>())
+		, tag_ids_{tag_id_vector.cbegin(), tag_id_vector.cend()}
 		
     {
       tag_size_ = tag_size;
@@ -179,7 +179,7 @@ geometry_msgs::Transform ToTransformMsg(const nvAprilTagsID_t & detection) {
   t.rotation.y = q.y();
   t.rotation.z = q.z();
 
-  ROS_INFO_STREAM("t.translation = " << t.translation << " t.rotation = " << t.rotation);
+  //ROS_INFO_STREAM("t.translation = " << t.translation << " t.rotation = " << t.rotation);
   return t;
 
 }
@@ -194,6 +194,8 @@ geometry_msgs::Transform ToTransformMsg(const nvAprilTagsID_t & detection) {
     // Lazy updates:
     // When there are no subscribers _and_ when tf is not published,
     // skip detection.
+	// TODO : remove sub_ check, since if we're getting the callback the subscriber 
+	//        has a publisher
     if (pub_.getNumSubscribers() == 0 &&
         sub_.getNumPublishers() == 0)
     {
@@ -216,11 +218,11 @@ geometry_msgs::Transform ToTransformMsg(const nvAprilTagsID_t & detection) {
     impl_->initialize(img.cols, img.rows,
                                   img.total() * img.elemSize(),  img.step,
                                   float(caminfo.P[0]), float(caminfo.P[5]), float(caminfo.P[2]), float(caminfo.P[6]),
-                                  0.042,
+                                  tag_size_,
                                   40);
      }
 
-     ROS_ERROR_STREAM("CUDA Apriltag callback ");
+  //   ROS_ERROR_STREAM("CUDA Apriltag callback ");
     const cudaError_t cuda_error =
             cudaMemcpyAsync(impl_->input_image_buffer, (uchar4 *)img.ptr<unsigned char>(0),
               impl_->input_image_buffer_size, cudaMemcpyHostToDevice, impl_->main_stream);
@@ -246,24 +248,25 @@ geometry_msgs::Transform ToTransformMsg(const nvAprilTagsID_t & detection) {
 
       cuda_apriltag_ros::AprilTagDetectionArray msg_detections;
       msg_detections.header = image_rect->header;
-      static tf2_ros::TransformBroadcaster br;
       for (uint32_t i = 0; i < num_detections; i++) {
         const nvAprilTagsID_t & detection = impl_->tags[i];
         cuda_apriltag_ros::AprilTagDetection msg_detection;
         msg_detection.family = tag_family_;
         msg_detection.id = detection.id;
 
-        if (tag_ids.count(detection.id) != 1) {
+        if (tag_ids_.count(detection.id) != 1) {
           ROS_WARN_STREAM("Skipping tag with ID=" << detection.id);
           continue;
         }
 
+#if 0
         ROS_INFO_STREAM("corners0 = " << detection.corners[0].x << " " << detection.corners[0].y);
         ROS_INFO_STREAM("corners1 = " << detection.corners[1].x << " " << detection.corners[1].y);
         ROS_INFO_STREAM("corners2 = " << detection.corners[2].x << " " << detection.corners[2].y);
         ROS_INFO_STREAM("corners3 = " << detection.corners[3].x << " " << detection.corners[3].y);
         ROS_INFO_STREAM("translation = " << detection.translation[0] << " " << detection.translation[1] << " " << detection.translation[2]);
         ROS_INFO_STREAM("orientation = " << detection.orientation[0] << " " << detection.orientation[1] << " " << detection.orientation[2] << " " << detection.orientation[3] << " " << detection.orientation[4] << " " << detection.orientation[5]  << " " << detection.orientation[6]  << " " << detection.orientation[7]  << " " << detection.orientation[8] );
+#endif
             
         // detection
 
@@ -290,19 +293,18 @@ geometry_msgs::Transform ToTransformMsg(const nvAprilTagsID_t & detection) {
           (slope_2 - slope_1);
 
         // Timestamped Pose3 transform
-		    ROS_INFO_STREAM("Transforming tag ID " << detection.id << " header = " << image_rect->header << " ");
+		//ROS_INFO_STREAM("Transforming tag ID " << detection.id << " header = " << image_rect->header << " ");
         geometry_msgs::TransformStamped tf;
         tf.header = image_rect->header;
         tf.child_frame_id = tag_family_ + std::to_string(detection.id);
         tf.transform = ToTransformMsg(detection);
-        br.sendTransform(tf);
+        br_.sendTransform(tf);
 
         msg_detection.pose.pose.pose.position.x = tf.transform.translation.x;
         msg_detection.pose.pose.pose.position.y = tf.transform.translation.y;
         msg_detection.pose.pose.pose.position.z = tf.transform.translation.z;
         msg_detection.pose.pose.pose.orientation = tf.transform.rotation;
         msg_detections.detections.push_back(msg_detection);
-          
       }
 
       pub_.publish(msg_detections);
@@ -314,8 +316,12 @@ geometry_msgs::Transform ToTransformMsg(const nvAprilTagsID_t & detection) {
     ros::Subscriber sub_;
 	  ros::Publisher pub_;
     std::unique_ptr<AprilTagsImpl> impl_;
-    int tag_size_;
+    double tag_size_;
     std::string tag_family_ = "36h11";
+	tf2_ros::TransformBroadcaster br_;
+// Todo : make a config item, encode full list of field tags
+//std::set<int> tag_ids({0, 1, 2, 3, 4, 5, 11, 17, 51});
+	std::set<int> tag_ids_;
 };
 
 int main(int argc, char **argv)
@@ -324,7 +330,7 @@ int main(int argc, char **argv)
   ros::NodeHandle nh;
   
   std::string image_topic, pub_topic, camera_info;
-  int tag_size;
+  double tag_size;
 
   if (!nh.getParam("tag_size", tag_size)) {
     ROS_ERROR("tag_size not specified");
@@ -342,14 +348,17 @@ int main(int argc, char **argv)
     ROS_ERROR("camera_info not specified");
     return -1;
   }
+  std::vector<int> tag_ids;
+  if (!nh.getParam("tag_ids", tag_ids)) {
+    ROS_ERROR("tag_ids not specified");
+    return -1;
+  }
 
-  ros::Subscriber camera_info_sub_ = nh.subscribe(camera_info, 2, camera_info_callback);
 
-  CudaApriltagDetector detection_node(nh, image_topic, pub_topic, tag_size);
+  ros::Subscriber camera_info_sub_ = nh.subscribe(camera_info, 1, camera_info_callback);
+
+  CudaApriltagDetector detection_node(nh, image_topic, pub_topic, tag_size, tag_ids);
 
   ros::spin();
   return 0;
 }
-
-
-

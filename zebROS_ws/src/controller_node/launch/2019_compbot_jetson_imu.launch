@@ -2,6 +2,7 @@
 <launch>
 	<arg name="hw_or_sim" default="hw" />
 	<arg name="primary_imu" default="PICO" />
+	<arg name="zed_name" default="zed_objdetect" />
 	<group if="$(eval arg('hw_or_sim')=='hw')">
 		<node if="$(eval arg('primary_imu')=='NAVX')" name="navx_publisher" pkg="navx_publisher" type="navx_publisher_node" output="screen">
 			<param name="device" value="/dev/NAVX"/>
@@ -15,7 +16,9 @@
 			<arg name="publish_tf" value="false" />
 		</include>
 	</group>
+	<!-- Assume ZED camera is launched somewhere else -->
 	<node name="imu_zero" pkg="imu_zero" type="imu_zero_node" output="screen">
 		<remap if="$(eval arg('primary_imu')=='NAVX')" from="imu/data" to="navx/data" />
+		<remap if="$(eval arg('primary_imu')=='ZED')" from="imu/data" to="/$(arg zed_name)/imu/data" />
 	</node>
 </launch>

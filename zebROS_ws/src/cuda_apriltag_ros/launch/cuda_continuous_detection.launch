@@ -1,12 +1,14 @@
-<launch>
-  <arg name="launch_prefix" default="" /> <!-- set to value="gdbserver localhost:10000" for remote debugging -->
+<?xml version="1.0"?>
 
+<launch>
   <group ns="cuda_apriltag">
   <!-- Set parameters -->
   <rosparam command="load" file="$(find cuda_apriltag_ros)/config/settings.yaml"/>
   
   <node pkg="cuda_apriltag_ros" type="cuda_continuous_detector" name="cuda_continuous_detector" output="screen">
 
+	  <remap from="/usb_cam/image_raw" to="/zed_objdetect/left/image_rect_color"/>
+	  <remap from="/usb_cam/camera_info" to="/zed_objdetect/left/camera_info"/>
   </node>
   </group>
 </launch>

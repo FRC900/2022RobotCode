@@ -1,5 +1,5 @@
 #include <ros/ros.h>
-#include <apriltag_ros/AprilTagDetectionArray.h>
+#include <cuda_apriltag_ros/AprilTagDetectionArray.h>
 #include "field_obj/Detection.h"
 #include <tf2_ros/static_transform_broadcaster.h>
 #include <geometry_msgs/TransformStamped.h>
@@ -8,14 +8,14 @@ class Apriltag2PF
 {
 	public:
 		Apriltag2PF(ros::NodeHandle &n)
-			: sub_(n.subscribe("/tag_detections", 2, &Apriltag2PF::cmdVelCallback, this))
+			: sub_(n.subscribe("/tag_detections", 1, &Apriltag2PF::cmdVelCallback, this))
 			, pub_(n.advertise<field_obj::Detection>("goal_detect_msg", 2))
 
 		{
 		}
 
 		// Translate ar_track_alvar marker msg into our custom goal detection message
-		void cmdVelCallback(const apriltag_ros::AprilTagDetectionArray &msgIn)
+		void cmdVelCallback(const cuda_apriltag_ros::AprilTagDetectionArray &msgIn)
 		{   
 
             //ROS_INFO_STREAM("CALLBACK!!!!!!!");
@@ -25,7 +25,7 @@ class Apriltag2PF
 			{
                 field_obj::Object object;
                 // m.id is vector, could be more than 1 element when using tag bundles
-                object.id = std::to_string(m.id[0]);
+                object.id = std::to_string(m.id);
                 object.location = m.pose.pose.pose.position;
                 object.angle = atan2(object.location.y, object.location.x) * 180. / M_PI;
                 

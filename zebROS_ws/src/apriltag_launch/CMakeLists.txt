@@ -11,7 +11,7 @@ include("../cmake_modules/CMakeOpt.cmake")
 find_package(catkin REQUIRED)
 
 find_package(catkin REQUIRED COMPONENTS
-  apriltag_ros
+  cuda_apriltag_ros
   field_obj
   geometry_msgs
   nav_msgs
