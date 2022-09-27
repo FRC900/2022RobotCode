@@ -8,6 +8,12 @@
 #include "trajectory_msgs/JointTrajectoryPoint.h"
 #include <tf2_ros/transform_listener.h>
 #include <geometry_msgs/TransformStamped.h>
+#include <geometry_msgs/PoseStamped.h>
+#include <tf2/LinearMath/Quaternion.h>
+#include <tf2/LinearMath/Matrix3x3.h>
+#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
+#include <std_msgs/Float64.h>
+#include <sensor_msgs/Imu.h>
 
 using Point = std::array<double, 3>;
 
@@ -21,6 +27,23 @@ tf2_ros::TransformListener *tfListener;
 tf2_ros::Buffer *tfBuffer;
 
 double maximumZ = 1.0;
+
+double imu_angle = M_PI / 2.0;
+
+void imuCallback(const sensor_msgs::Imu &imuState)
+{
+	ROS_INFO_STREAM_THROTTLE(1, "game_piece_path_gen : IMU is working");
+	const tf2::Quaternion imuQuat(imuState.orientation.x, imuState.orientation.y, imuState.orientation.z, imuState.orientation.w);
+	double roll;
+	double pitch;
+	double yaw;
+	tf2::Matrix3x3(imuQuat).getRPY(roll, pitch, yaw);
+
+	if (yaw == yaw) // ignore NaN results
+	{
+		imu_angle = -yaw;
+	}
+}
 
 // Callback function to retrieve the most recent object detection message
 void objectDetectCallback(field_obj::DetectionConstPtr msg)
@@ -125,12 +148,16 @@ bool genPath(behavior_actions::GamePiecePickup::Request &req, behavior_actions::
 	const size_t objects_num = std::min((int)(lastObjectDetection.objects.size()), (int)(req.max_objects));
 	ROS_INFO_STREAM("game_piece_path_gen : objects_num: " << objects_num);
 
+	if (objects_num == 0) {
+		res.success = false;
+		res.message = "no objects detected";
+		return false;
+	}
+
 	geometry_msgs::TransformStamped cameraToRobotTransform = tfBuffer->lookupTransform(lastObjectDetection.header.frame_id, "base_link", ros::Time(0));
 
 	// If not finding the optimal cargo, uncomment the print below.
 	// ROS_INFO_STREAM("Using position: " << cameraToMapTransform.transform.translation.x << ", " << cameraToMapTransform.transform.translation.y);
-
-	Line l = Line(0, 0, req.endpoint.position.x - cameraToRobotTransform.transform.translation.x, req.endpoint.position.y - cameraToRobotTransform.transform.translation.y);
 
 	std::vector<Point> points; // List of all points
 	points.push_back({0, 0, 0}); // First point is always {0,0,0} and not transformed, robot current position
@@ -140,13 +167,14 @@ bool genPath(behavior_actions::GamePiecePickup::Request &req, behavior_actions::
 
 	for (size_t i = 0; i < lastObjectDetection.objects.size(); i++) // filter out selected object detections
 	{
+		ros::spinOnce();
 		if ((lastObjectDetection.objects[i].id == req.object_id) && (lastObjectDetection.objects[i].location.z <= maximumZ))
 		{
-			objectPoints.push_back({lastObjectDetection.objects[i].location.x, lastObjectDetection.objects[i].location.y, 0});
+			objectPoints.push_back({lastObjectDetection.objects[i].location.x, lastObjectDetection.objects[i].location.y, lastObjectDetection.objects[i].angle * M_PI / 180.0});
 		}
 		if ((lastObjectDetection.objects[i].id == req.secondary_object_id) && (lastObjectDetection.objects[i].location.z <= maximumZ))
 		{
-			secondaryObjectPoints.push_back({lastObjectDetection.objects[i].location.x, lastObjectDetection.objects[i].location.y, 0});
+			secondaryObjectPoints.push_back({lastObjectDetection.objects[i].location.x, lastObjectDetection.objects[i].location.y, lastObjectDetection.objects[i].angle * M_PI / 180.0});
 		}
 	}
 
@@ -169,6 +197,26 @@ bool genPath(behavior_actions::GamePiecePickup::Request &req, behavior_actions::
 	for (const Point &s : secondaryObjectsToRemove) {
 		secondaryObjectPoints.erase(std::remove(secondaryObjectPoints.begin(), secondaryObjectPoints.end(), s), secondaryObjectPoints.end());
 	}
+
+	if (req.end_at_last_object) {
+		Point closest = {0, 0, 0};
+		double dist = std::numeric_limits<double>::max();
+		for (size_t i = 0; i < std::min(objectPoints.size(), (size_t)req.max_objects); i++) {
+			Point current_closest;
+			for (const Point &p : objectPoints) {
+				if (hypot((closest[0] - p[0]), (closest[1] - p[1])) < dist) {
+					dist = hypot((closest[0] - p[0]), (closest[1] - p[1]));
+					current_closest = p;
+				}
+			}
+			closest = current_closest;
+		}
+		req.endpoint.position.x = closest[0];
+		req.endpoint.position.y = closest[1];
+		req.endpoint.orientation.z = 0;
+	}
+
+	Line l = Line(0, 0, req.endpoint.position.x - cameraToRobotTransform.transform.translation.x, req.endpoint.position.y - cameraToRobotTransform.transform.translation.y);
 
 	std::sort(objectPoints.begin(), objectPoints.end(), [&l](Point a, Point b) {
 		return pointToLineSegmentDistance(l, a[0], a[1]) < pointToLineSegmentDistance(l, b[0], b[1]); // sort objects by closest to line
@@ -206,7 +254,9 @@ bool genPath(behavior_actions::GamePiecePickup::Request &req, behavior_actions::
 		return false;
 	}
 
-	points.push_back({req.endpoint.position.x, req.endpoint.position.y, req.endpoint.orientation.z});
+	if (!req.end_at_last_object) {
+		points.push_back({req.endpoint.position.x, req.endpoint.position.y, req.endpoint.orientation.z});
+	}
 
 	// For each secondary point, find the primaryPoint-primaryPoint line segment it is closest to.
 	// If the distance to the closest line segment is less than the limit, add the point between those two points.
@@ -234,7 +284,7 @@ bool genPath(behavior_actions::GamePiecePickup::Request &req, behavior_actions::
 			return la.lengthSquared() < lb.lengthSquared(); // sort objects by distance to point 1
 		});
 		for (const Point &p : lineAndPoints.second) {
-			if (secondaryObjects > req.secondary_max_objects) {
+			if (secondaryObjects >= req.secondary_max_objects) {
 				break;
 			}
 			auto it = std::find(points.begin(), points.end(), lineAndPoints.first.second);
@@ -242,8 +292,9 @@ bool genPath(behavior_actions::GamePiecePickup::Request &req, behavior_actions::
 			ROS_INFO_STREAM("game_piece_path_gen: adding secondary game piece at " << p[0] << "," << p[1] << " relative to " << lastObjectDetection.header.frame_id);
 			points.insert(it, p);
 			secondaryObjectIndices.push_back(std::find(points.begin(), points.end(), p)-points.begin());
+			secondaryObjects++;
 		}
-		if (secondaryObjects > req.secondary_max_objects) {
+		if (secondaryObjects >= req.secondary_max_objects) {
 			break;
 		}
 	}
@@ -272,7 +323,7 @@ bool genPath(behavior_actions::GamePiecePickup::Request &req, behavior_actions::
 			spline_gen_srv.request.path_offset_limit.push_back(path_offset_limit);
 			point_index++;
 		}
-		else if (i == (points_num - 1))
+		else if (i == (points_num - 1) && !req.end_at_last_object)
 		{
 			spline_gen_srv.request.points[point_index] = generateTrajectoryPoint(points[i][0], points[i][1], points[i][2]);
 			spline_gen_srv.request.point_frame_id[point_index] = "base_link";
@@ -346,6 +397,7 @@ int main(int argc, char **argv)
 
 	ros::Subscriber powercellSubscriber = nh.subscribe("/tf_object_detection/object_detection_world", 1, objectDetectCallback);
 	ros::ServiceServer svc = nh.advertiseService("game_piece_path_gen", genPath);
+	ros::Subscriber imu_heading = nh.subscribe("/imu/zeroed_imu", 1, &imuCallback);
 
 	const std::map<std::string, std::string> service_connection_header{ {"tcp_nodelay", "1"} };
 	spline_gen_cli = nh.serviceClient<base_trajectory_msgs::GenerateSpline>("/path_follower/base_trajectory/spline_gen", false, service_connection_header);

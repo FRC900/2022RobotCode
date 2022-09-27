@@ -1,0 +1,20 @@
+# goal
+# if go_to_hub is true, endpoint will be ignored and the robot will navigate to the best point on the hub.
+geometry_msgs/PoseStamped endpoint
+bool go_to_hub
+bool end_at_last_cargo
+bool hit_opponent_cargo
+uint8 max_cargo
+---
+# result
+bool timed_out
+bool success
+---
+# feedback
+uint8 START_INTAKE=0
+uint8 GENERATE_PATH=1
+uint8 FOLLOW_PATH=2
+uint8 STOP_INTAKE=3
+uint8 DONE=4
+uint8 current_action
+float64 percentage_done

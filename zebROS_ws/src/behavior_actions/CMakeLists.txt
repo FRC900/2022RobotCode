@@ -70,6 +70,7 @@ add_action_files(
     FILES
     Path.action
 	Intake.action
+  PathIntake.action
 	#Place.action
 	Climb2022.action
   Shooter2022.action

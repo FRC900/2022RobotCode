@@ -31,6 +31,8 @@ find_package(catkin REQUIRED COMPONENTS
   talon_controller_msgs
   #teraranger_array
   tf2_ros
+  tf2
+  tf2_geometry_msgs
 )
 
 include_directories(
@@ -156,6 +158,10 @@ add_dependencies(game_piece_path_server ${${PROJECT_NAME}_EXPORTED_TARGETS} ${ca
 add_executable(2022_shooting_server_node src/2022_shooting_server.cpp)
 target_link_libraries(2022_shooting_server_node ${catkin_LIBRARIES})
 add_dependencies(2022_shooting_server_node ${behaviors_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+
+add_executable(path_intake_actionlib_server src/path_intake_actionlib_server.cpp)
+target_link_libraries(path_intake_actionlib_server ${catkin_LIBRARIES})
+add_dependencies(path_intake_actionlib_server ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 add_executable(2022_climb_server_node src/2022_climb_server.cpp)
 target_link_libraries(2022_climb_server_node ${catkin_LIBRARIES})

@@ -8,11 +8,12 @@
 	<arg name="run_path_follower" default="True" />
 	<arg name="run_hold_position" default="True" />
 	<arg name="run_hold_distance" default="True" />
-
+	<arg name="run_cargo_pickup" default="False" />
+	<arg name="field" default="rapid_react" /> <!-- could be "lightweight" for performance -->
 	<!--  ************** Global Parameters ***************  -->
 	<param name="/use_sim_time" value="true"/>
 	<!--  ************** Stage Simulator ***************  -->
-	<node pkg="stage_ros" type="stageros" name="stageros" args="$(find controller_node)/stage/2022_rapid_react.world" output="screen">
+	<node pkg="stage_ros" type="stageros" name="stageros" args="$(find controller_node)/stage/2022_$(arg field).world" output="screen">
 		<remap from="base_scan" to="scan"/>
 		<remap from="odom" to="/frcrobot_jetson/swerve_drive_controller/odom"/>
 	</node>
@@ -112,4 +113,8 @@
 			<remap from="terabee" to="terabee_y" />
 		</node>
 	</group>
+
+	<include file="$(find behaviors)/launch/2022_cargopickup.launch" if="$(eval arg('run_cargo_pickup'))"/>
+
+	<include file="$(find tf_object_detection)/launch/detection.launch"/>
 </launch>
