@@ -39,7 +39,7 @@ class JoystickState
 		void   clearAxises(void)      { axises_.clear();    }
 		void   clearButtons(void)     { buttons_.clear();   }
 		void   clearPOVs(void)        { povs_.clear();      }
-		void   clearRawAxises(void)	  { raw_axises_.clear();}
+		void   clearRawAxises(void)   { raw_axises_.clear();}
 		void   clear(void)            { clearAxises(); clearButtons(); clearPOVs(); clearRawAxises();}
 
 		void   addAxis(float axis)      { axises_.push_back(axis);     }
