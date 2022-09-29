@@ -319,8 +319,6 @@ geometry_msgs::Transform ToTransformMsg(const nvAprilTagsID_t & detection) {
     double tag_size_;
     std::string tag_family_ = "36h11";
 	tf2_ros::TransformBroadcaster br_;
-// Todo : make a config item, encode full list of field tags
-//std::set<int> tag_ids({0, 1, 2, 3, 4, 5, 11, 17, 51});
 	std::set<int> tag_ids_;
 };
 

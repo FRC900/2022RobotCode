@@ -1,4 +1,4 @@
-/*
+
 #include <ros/ros.h>
 #include <cuda_apriltag_ros/AprilTagDetectionArray.h>
 #include "field_obj/Detection.h"
@@ -9,8 +9,8 @@ class Apriltag2PF
 {
 	public:
 		Apriltag2PF(ros::NodeHandle &n)
-			: sub_(n.subscribe("/tag_detections", 1, &Apriltag2PF::cmdVelCallback, this))
-			, pub_(n.advertise<field_obj::Detection>("goal_detect_msg", 2))
+			: sub_(n.subscribe("/cuda_tag_detections", 1, &Apriltag2PF::cmdVelCallback, this))
+			, pub_(n.advertise<field_obj::Detection>("/goal_detection/goal_detect_msg", 2))
 
 		{
 		}
@@ -19,7 +19,6 @@ class Apriltag2PF
 		void cmdVelCallback(const cuda_apriltag_ros::AprilTagDetectionArray &msgIn)
 		{   
 
-            //ROS_INFO_STREAM("CALLBACK!!!!!!!");
             field_obj::Detection msgOut;
             msgOut.header = msgIn.header;
             for (const auto &m : msgIn.detections)
@@ -56,4 +55,3 @@ int main(int argc, char** argv)
     ros::spin();
 	return 0;
 }
-*/
