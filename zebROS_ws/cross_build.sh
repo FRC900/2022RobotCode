@@ -21,6 +21,7 @@ catkin config --profile cross -x _isolated --install --skiplist \
 	controllers_2019_msgs \
 	controllers_2020 \
 	controllers_2020_msgs \
+	cuda_apriltag_ros \
 	demo_tf_node \
 	fake_sensors \
 	goal_detection \
