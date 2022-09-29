@@ -1,6 +1,5 @@
 #include "frc_state_controllers/joystick_state_controller.h"
 
-
 namespace joystick_state_controller
 {
 
@@ -35,7 +34,7 @@ bool JoystickStateController::init(hardware_interface::JoystickStateInterface *h
 	if (!controller_nh.getParam("publish_rate", publish_rate_))
 		ROS_WARN_STREAM("Could not read publish_rate in Joystick state controller, using default " << publish_rate_);
 
-	service_ = root_nh.advertiseService("use_16_bits_server", &JoystickStateController::use16bitsCB, this);
+	//service_ = root_nh.advertiseService("use_16_bits_server", &JoystickStateController::use16bitsCB, this);
 
 	return true;
 }
@@ -61,6 +60,7 @@ void JoystickStateController::update(const ros::Time &time, const ros::Duration 
 			auto &m = realtime_pub_->msg_;
 
 			m.header.stamp = time;
+#if 0
 			//ROS_INFO_STREAM("USE 16 bits=" << use16bits_);
 			// Still don't want out of bounds reads so keep the getRawAxisCount
 			if (js->getRawAxisCount() >= 6 && use16bits_) {
@@ -93,7 +93,9 @@ void JoystickStateController::update(const ros::Time &time, const ros::Duration 
 				m.rightStickY = 0;
 			}
 			// need to fix joystick on other side, will need to update this
-			else {
+			else
+#endif
+			{
 				m.leftStickX = js->getAxis(0);
 				m.leftStickY = js->getAxis(1);
 				// TODO triggers encode as buttons
@@ -113,7 +115,7 @@ void JoystickStateController::update(const ros::Time &time, const ros::Duration 
 			m.buttonStartButton  = js->getButton(7);
 			m.stickLeftButton    = js->getButton(8);
 			m.stickRightButton   = js->getButton(9);
-			
+
 			m.buttonAPress       = !prev_joystick_msg_.buttonAButton     && m.buttonAButton;
 			m.buttonBPress       = !prev_joystick_msg_.buttonBButton     && m.buttonBButton;
 			m.buttonXPress       = !prev_joystick_msg_.buttonXButton     && m.buttonXButton;
@@ -199,6 +201,7 @@ void JoystickStateController::update(const ros::Time &time, const ros::Duration 
 void JoystickStateController::stopping(const ros::Time & )
 {}
 
+#if 0
 bool JoystickStateController::use16bitsCB(std_srvs::SetBool::Request &req, std_srvs::SetBool::Response &res)
 {
 	if (req.data)
@@ -214,6 +217,8 @@ bool JoystickStateController::use16bitsCB(std_srvs::SetBool::Request &req, std_s
 	res.message = "";
 	return true;
 }
+#endif
 } // namespace
 
+#include <pluginlib/class_list_macros.h>
 PLUGINLIB_EXPORT_CLASS(joystick_state_controller::JoystickStateController, controller_interface::ControllerBase)

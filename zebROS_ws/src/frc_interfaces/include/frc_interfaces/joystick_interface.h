@@ -1,7 +1,6 @@
 #ifndef INC_JOYSTICK_INTERFACE_H_
 #define INC_JOYSTICK_INTERFACE_H_
 
-#include <cstdint>
 #include <string>
 #include <vector>
 
@@ -104,9 +103,9 @@ class JoystickState
 		const std::vector<int>&     getPOVs()    const { return povs_;       }
 		const std::vector<uint8_t>& getRawAxis() const { return raw_axises_; }
 
-		size_t getAxisCount(void)              const { return axises_.size();  	  };
-		size_t getButtonCount(void)            const { return buttons_.size(); 	  };
-		size_t getPOVCount(void)               const { return povs_.size();    	  };
+		size_t getAxisCount(void)              const { return axises_.size();	  };
+		size_t getButtonCount(void)            const { return buttons_.size();	  };
+		size_t getPOVCount(void)               const { return povs_.size();		  };
 		size_t getRawAxisCount(void)           const { return raw_axises_.size(); };
 		// For these, don't flag an error, just return 0/false
 		// That gives a reasonable default when an
@@ -145,14 +144,14 @@ class JoystickState
 		}
 
 	private:
-		const size_t       id_;
-		const std::string  name_;
+		const size_t         id_;
+		const std::string    name_;
 		// Store these as a raw vector mimicing the WPI HAL view
 		// of joysticks. State controllers are responsible for translating
 		// them to our joystick / button box / whatever message types
-		std::vector<float> axises_;
-		std::vector<bool>  buttons_;
-		std::vector<int>   povs_;
+		std::vector<float>   axises_;
+		std::vector<bool>    buttons_;
+		std::vector<int>     povs_;
 		std::vector<uint8_t> raw_axises_;
 };
 
