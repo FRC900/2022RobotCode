@@ -1278,7 +1278,7 @@ void trajectoryToSplineResponseMsg(base_trajectory_msgs::GenerateSpline::Respons
 		auto xIt = sample(trajectory[0], currentTime, xState);
 		int waypointIndex = xIt - trajectory[0].begin();
 		out_msg.waypointsIdx.push_back(waypointIndex);
-		
+
 		if (xIt == trajectory[0].cend())
 		{
 			ROS_ERROR_STREAM("base_trajectory trajectoryToSplineResponseMsg : could not sample xState at time " << currentTime);
@@ -1927,7 +1927,7 @@ bool callback(base_trajectory_msgs::GenerateSpline::Request &msg,
 	// might not need to add header at all
 	input_waypoints.header = header;
 	for (size_t i = 1; i < msg.points.size(); i++)
-	{	
+	{
 		geometry_msgs::PoseStamped input_pose;
 		input_pose.header = header;
 		input_pose.pose.position.x = msg.points[i].positions[0];
@@ -1970,7 +1970,7 @@ bool callback(base_trajectory_msgs::GenerateSpline::Request &msg,
 		}
 	}
 
-	out_msg.waypoints = input_waypoints; 
+	out_msg.waypoints = input_waypoints;
 	// Need to also transform kinematic constraints from whatever frame they're
 	// specified in into the path frame.
 	kinematicConstraints.resetConstraints();
