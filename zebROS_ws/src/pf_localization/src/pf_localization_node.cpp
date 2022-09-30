@@ -176,6 +176,7 @@ void cmdCallback(const geometry_msgs::TwistStamped::ConstPtr& msg){
   double x_vel = msg->twist.linear.x;
   double y_vel = msg->twist.linear.y;
 
+  // TODO - use the average of the previous and current velocity?
   double delta_x = x_vel * timestep;
   double delta_y = y_vel * timestep;
 
