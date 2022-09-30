@@ -1,6 +1,6 @@
 image_topic: "/usb_cam/image_raw"
 camera_info: "/usb_cam/camera_info"
-pub_topic: "/tag_detections"
+pub_topic: "/cuda_tag_detections"
 #tag_size: 0.042 # In meters of a side of the rectangle
 tag_size: 0.16 # In meters of a side of the rectangle
 # Code will filter out any tags not in this list

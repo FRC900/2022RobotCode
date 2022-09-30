@@ -154,9 +154,10 @@ void goalCallback(const field_obj::Detection::ConstPtr& msg, const bool bearingO
   geometry_msgs::Point location;
   for(const field_obj::Object& p : msg->objects) {
 	tf2::doTransform(p.location, location,zed_to_baselink);
+  ROS_INFO_STREAM("PF callback x=" << location.x << " Y=" << location.y << " ID=" << p.id);
     if(bearingOnly) {
       measurement.push_back(std::make_shared<BearingBeacon>(location.x, location.y, p.id));
-    } else {
+    } else { 
       measurement.push_back(std::make_shared<PositionBeacon>(location.x, location.y, p.id));
     }
   }
