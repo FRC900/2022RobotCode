@@ -57,7 +57,6 @@ void rotCallback(const sensor_msgs::Imu::ConstPtr& msg) {
   tf2::convert(msg -> orientation, raw);
   tf2::Matrix3x3(raw).getRPY(roll, pitch, yaw);
   pf->set_rotation(yaw);
-  ROS_INFO_STREAM("rotCallback called with yaw=" << yaw);
   #ifdef EXTREME_VERBOSE
   ROS_INFO("rotCallback called");
   #endif
@@ -155,7 +154,6 @@ void goalCallback(const field_obj::Detection::ConstPtr& msg, const bool bearingO
   geometry_msgs::Point location;
   for(const field_obj::Object& p : msg->objects) {
 	tf2::doTransform(p.location, location,zed_to_baselink);
-  ROS_INFO_STREAM("PF callback x=" << location.x << " Y=" << location.y << " ID=" << p.id);
     if(bearingOnly) {
       measurement.push_back(std::make_shared<BearingBeacon>(location.x, location.y, p.id));
     } else { 
@@ -182,7 +180,6 @@ void cmdCallback(const geometry_msgs::TwistStamped::ConstPtr& msg){
   double delta_y = y_vel * timestep;
 
   last_cmd_vel = msg->header.stamp;
-  ROS_INFO_STREAM("cmdCallback called d_x=" << delta_x << " d_y=" << delta_y);
   // TODO - check return code
   pf->motion_update(delta_x, delta_y, 0);
   if ((ros::Time::now() - last_measurement).toSec() < noise_delta_t) {
