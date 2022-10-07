@@ -157,7 +157,9 @@ def run_inference_for_single_image(msg):
     clss = []
     detection = TFDetection()
     detection.header = msg.header
-    detection.header.frame_id = detection.header.frame_id.replace("_optical_frame", "_frame")
+    # Will end transformed to optical frame in screen to world
+    # detection.header.frame_id = detection.header.frame_id.replace("_optical_frame", "_frame")
+    
     # Converts numpy array to list becuase extracting indviual items from a list is faster than numpy array
     # Might be a more optimized way but this takes negligible time
     output = output.tolist()
