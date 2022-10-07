@@ -2,7 +2,7 @@
 <package format="2">
   <name>apriltag_launch</name>
   <version>0.0.0</version>
-  <description>The fake_sensors package</description>
+  <description>The apriltag_launch package</description>
 
   <!-- One maintainer tag required, multiple allowed, one person per tag -->
   <!-- Example:  -->
