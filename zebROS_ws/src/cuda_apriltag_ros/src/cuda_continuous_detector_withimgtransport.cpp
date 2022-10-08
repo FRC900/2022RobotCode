@@ -1,3 +1,8 @@
+// @TODO 
+// This version of cuda_continous_detector is out of date, but uses image transport which is faster
+// Use image trans
+
+
 /**
  * Copyright (c) 2017, California Institute of Technology.
  * All rights reserved.
