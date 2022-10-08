@@ -20,7 +20,7 @@ struct BeaconBase {
 	const std::string type_;
 	BeaconBase(const std::string &type) : type_(type) {}
 	// Get the distance from this beacon (a detected field object) to a list of
-	// measureed beacon locations (the rel vector, for camera-relative measurements).  Returns
+	// measured beacon locations (the rel vector, for camera-relative measurements).  Returns
 	// a vector with a distance value, each one corresponding to the distance from
 	// this map beacon to a measured beacon position
 	virtual std::vector<double> distances(const std::vector<PositionBeacon>& rel) const = 0;
