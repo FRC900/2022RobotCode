@@ -101,7 +101,10 @@ void callback(const field_obj::TFDetectionConstPtr &objDetectionMsg, const senso
 			transformStamped.header.stamp = out_msg.header.stamp;
 			transformStamped.header.frame_id = out_msg.header.frame_id;
 			std::stringstream child_frame;
-			child_frame << "obj_";
+			// tf gets messed up if a transform name starts with a number
+  			if (isdigit(out_msg.objects[i].id[0])) {
+				child_frame << "obj_";
+			}
 			child_frame << out_msg.objects[i].id;
 			child_frame << "_";
 			child_frame << i;

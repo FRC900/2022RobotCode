@@ -2,8 +2,6 @@
 #include <ros/ros.h>
 #include <cuda_apriltag_ros/AprilTagDetectionArray.h>
 #include "field_obj/Detection.h"
-#include <tf2_ros/static_transform_broadcaster.h>
-#include <geometry_msgs/TransformStamped.h>
 
 class Apriltag2PF
 {

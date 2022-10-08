@@ -64,7 +64,7 @@ omnidir_robot
   name "robot"
 )
 
-
+# stage doesn't like tag with fiducial_return 0, so it is 111 here
 objdet_target ( pose [ 0.004 7.579 2.5 0 ] fiducial_return 111 color "cyan")
 objdet_target ( pose [ 3.233 5.487 2.5 0 ] fiducial_return 1 color "cyan")
 objdet_target ( pose [ 3.068 5.331 2.5 0 ] fiducial_return 2 color "cyan")
