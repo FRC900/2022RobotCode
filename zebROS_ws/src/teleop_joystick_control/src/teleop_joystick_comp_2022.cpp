@@ -377,6 +377,11 @@ void buttonBoxCallback(const ros::MessageEvent<frc_msgs::ButtonBoxState const>& 
 	}
 	if(button_box.leftRedRelease)
 	{
+		//TODO - think if we want the robot to stop rotating when
+		//the button is released and hold at that orientation vs
+		//having the button press be enough to snap it to the desired
+		//angle no matter how long the button is held
+		robot_orientation_driver->stopRotation();
 		ROS_INFO_STREAM("Stopping snapping to angle for climb!");
 		sendRobotZero = false;
 	}
@@ -681,7 +686,7 @@ void evaluateCommands(const ros::MessageEvent<frc_msgs::JoystickState const>& ev
 		if (robot_orientation_driver->mostRecentCommandIsFromTeleop())
 		{
 			const double rotation_velocity = robot_orientation_driver->getOrientationVelocityPIDOutput();
-			// TODO : add a robot_orientation_driver->isRobotRotating?
+			// TODO : add a robot_orientation_driver->isRobotRotating to replace the last conditional?
 			// If x and y inputs are 0 and the PID controls have settled on a final orientation,
 			// trigger brake mode in the swerve controller
 			if ((strafe_speeds.x_ == 0) && (strafe_speeds.y_ == 0) && (fabs(rotation_velocity) < config.rotation_epsilon))
@@ -748,6 +753,11 @@ void evaluateCommands(const ros::MessageEvent<frc_msgs::JoystickState const>& ev
 			}
 			if(joystick_states_array[0].buttonARelease)
 			{
+				//TODO - think if we want the robot to stop rotating when
+				//the button is released and hold at that orientation vs
+				//having the button press be enough to snap it to the desired
+				//angle no matter how long the button is held
+				robot_orientation_driver->stopRotation();
 				teleop_cmd_vel->restoreRobotOrient();
 				ROS_INFO_STREAM("Stopping snapping to nearest cargo and disabling robot relative driving mode!");
 				sendRobotZero = false;
@@ -766,6 +776,11 @@ void evaluateCommands(const ros::MessageEvent<frc_msgs::JoystickState const>& ev
 			}
 			if(joystick_states_array[0].buttonBRelease)
 			{
+				//TODO - think if we want the robot to stop rotating when
+				//the button is released and hold at that orientation vs
+				//having the button press be enough to snap it to the desired
+				//angle no matter how long the button is held
+				robot_orientation_driver->stopRotation();
 				ROS_INFO_STREAM("Stopping snapping to angle for shooting!");
 				sendRobotZero = false;
 			}
