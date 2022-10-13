@@ -1,0 +1,2 @@
+source ~/2022RobotCode/zebROS_ws/devel/setup.bash
+cd ~/2022RobotCode/zebROS_ws/src/beginner_tutorials/scripts
