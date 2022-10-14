@@ -6,9 +6,9 @@ from std_msgs.msg import String
 def talker():
     pub = rospy.Publisher('first_node', String, queue_size=10)
     rospy.init_node('talker', anonymous=True)
-    rate = rospy.Rate(10)
+    rate = rospy.Rate(1)
     while not rospy.is_shutdown():
-        hello_str = " message_from_first_node_talker_function "
+        hello_str = "message from first node topic {} "
         rospy.loginfo(hello_str)
         pub.publish(hello_str)
         rate.sleep()

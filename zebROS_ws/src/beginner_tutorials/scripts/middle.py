@@ -8,8 +8,8 @@ def callback(data):
     pub = rospy.Publisher('second_node', String, queue_size=10)
     rate = rospy.Rate(10)
     append = (data.data)
-    rospy.loginfo(append + " second_node_add_on")
-    pub.publish(append + " second_node_add_on")
+    rospy.loginfo(append + "appended message from second node Publisher")
+    pub.publish(append + "appended message from second node Publisher: ")
 
 def listener():
     rospy.init_node('listener', anonymous=True)
