@@ -75,15 +75,15 @@ beacons:
   - 4.665
   - '53'
 field_dims:
-  x_max: 6.0
-  x_min: 0.0
-  y_max: 6.0
-  y_min: 0.0
+  x_max: 9.0
+  x_min: -9.0
+  y_max: 9.0
+  y_min: -9.0
 init_dims:
-  x_max: 6.0
-  x_min: 0.0
-  y_max: 6.0
-  y_min: 0.0
+  x_max: 9.0
+  x_min: -9.0
+  y_max: 9.0
+  y_min: -9.0
 map_frame_id: map
 noise_delta_t: 1.0
 noise_stdev:
