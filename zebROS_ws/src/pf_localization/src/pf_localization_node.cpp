@@ -212,7 +212,7 @@ int main(int argc, char **argv) {
   double tmp_tolerance = 0.1;
 
   std::vector<PositionBeacon> beacons;
-
+  //ros::topic::waitForMessage() 	
   if (!nh_.getParam("noise_delta_t", noise_delta_t)) {
     ROS_ERROR("noise_delta_t not specified");
     return -1;
