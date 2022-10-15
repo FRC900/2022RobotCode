@@ -1,9 +1,6 @@
 beacons:
 - - -8.233
   - 3.465
-  - '111'
-- - -8.233
-  - 3.465
   - '0'
 - - -4.996
   - 1.373
@@ -15,7 +12,7 @@ beacons:
   - 0.945
   - '3'
 - - -8.225
-  - -4.11
+  - -0.938
   - '4'
 - - -8.108
   - -2.396
@@ -84,11 +81,10 @@ init_dims:
   x_min: -9.0
   y_max: 9.0
   y_min: -9.0
-map_frame_id: map1
+map_frame_id: map
 noise_delta_t: 1.0
 noise_stdev:
   position: 0.01
   rotation: 0.01
 num_particles: 100
-#odom_frame_id: zed_objdet_odom
-odom_frame_id: 'odom'
+odom_frame_id: zed_objdet_odom
