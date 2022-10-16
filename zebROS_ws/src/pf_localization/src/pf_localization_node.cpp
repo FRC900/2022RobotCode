@@ -51,319 +51,351 @@ ros::Time last_measurement;
 double rot = 0;
 double noise_delta_t = 0;  // if the time since the last measurement is greater than this, positional noise will not be applied
 std::unique_ptr<ParticleFilter> pf;
-void rotCallback(const sensor_msgs::Imu::ConstPtr& msg) {
-  double roll, pitch, yaw;
-  tf2::Quaternion raw;
-  tf2::convert(msg -> orientation, raw);
-  tf2::Matrix3x3(raw).getRPY(roll, pitch, yaw);
-  pf->set_rotation(yaw);
-  #ifdef EXTREME_VERBOSE
-  ROS_INFO("rotCallback called");
-  #endif
+void rotCallback(const sensor_msgs::Imu::ConstPtr &msg)
+{
+    double roll, pitch, yaw;
+    tf2::Quaternion raw;
+    tf2::convert(msg -> orientation, raw);
+    tf2::Matrix3x3(raw).getRPY(roll, pitch, yaw);
+    pf->set_rotation(yaw);
+#ifdef EXTREME_VERBOSE
+    ROS_INFO("rotCallback called");
+#endif
 }
 
 void publish_prediction(const ros::TimerEvent &/*event*/)
 {
-  const geometry_msgs::PoseWithCovariance prediction = pf->predict();
-  geometry_msgs::PoseWithCovarianceStamped predictionStamped;
+    const geometry_msgs::PoseWithCovariance prediction = pf->predict();
+    geometry_msgs::PoseWithCovarianceStamped predictionStamped;
 
-  predictionStamped.pose = prediction;
-  predictionStamped.header.stamp = ros::Time::now();
-  predictionStamped.header.frame_id = map_frame_id;
+    predictionStamped.pose = prediction;
+    predictionStamped.header.stamp = ros::Time::now();
+    predictionStamped.header.frame_id = map_frame_id;
 
-  pub.publish(predictionStamped);
+    pub.publish(predictionStamped);
 
-  // Publish map->odom transform describing this position
-  const tf2::Quaternion q(prediction.pose.orientation.x,
-    prediction.pose.orientation.y,
-    prediction.pose.orientation.z,
-    prediction.pose.orientation.w);
+    // Publish map->odom transform describing this position
+    const tf2::Quaternion q(prediction.pose.orientation.x,
+                            prediction.pose.orientation.y,
+                            prediction.pose.orientation.z,
+                            prediction.pose.orientation.w);
 
-  tf2::Vector3 pos(prediction.pose.position.x,
-    prediction.pose.position.y,
-    0.0);
+    tf2::Vector3 pos(prediction.pose.position.x,
+                     prediction.pose.position.y,
+                     0.0);
 
-  const double tmp = pos.getX() + pos.getY() + pos.getZ() + q.getX() + q.getY() + q.getZ() + q.getW();
-  if (!std::isnan(tmp) && !std::isinf(tmp))
-  {
-    geometry_msgs::PoseStamped odom_to_map;
-    try
+    const double tmp = pos.getX() + pos.getY() + pos.getZ() + q.getX() + q.getY() + q.getZ() + q.getW();
+    if (!std::isnan(tmp) && !std::isinf(tmp))
     {
-      // Subtract out odom->base_link from calculated prediction map->base_link,
-      // leaving a map->odom transform to broadcast
-      // Borrowed from similar code in
-      // https://github.com/ros-planning/navigation/blob/noetic-devel/amcl/src/amcl_node.cpp
-      tf2::Transform tmp_tf(q, pos);
+        geometry_msgs::PoseStamped odom_to_map;
+        try
+        {
+            // Subtract out odom->base_link from calculated prediction map->base_link,
+            // leaving a map->odom transform to broadcast
+            // Borrowed from similar code in
+            // https://github.com/ros-planning/navigation/blob/noetic-devel/amcl/src/amcl_node.cpp
+            tf2::Transform tmp_tf(q, pos);
 
-      geometry_msgs::PoseStamped baselink_to_map;
-      baselink_to_map.header.frame_id = "base_link";
-      baselink_to_map.header.stamp = last_cmd_vel;
-      tf2::toMsg(tmp_tf.inverse(), baselink_to_map.pose);
+            geometry_msgs::PoseStamped baselink_to_map;
+            baselink_to_map.header.frame_id = "base_link";
+            baselink_to_map.header.stamp = last_cmd_vel;
+            tf2::toMsg(tmp_tf.inverse(), baselink_to_map.pose);
 
-      // baselink_to_map transformed from base_link to odom == odom->map
-      tf_buffer_.transform(baselink_to_map, odom_to_map, odom_frame_id, ros::Duration(0.02));
+            // baselink_to_map transformed from base_link to odom == odom->map
+            tf_buffer_.transform(baselink_to_map, odom_to_map, odom_frame_id, ros::Duration(0.02));
 
-      geometry_msgs::TransformStamped transformStamped;
+            geometry_msgs::TransformStamped transformStamped;
 
-      transformStamped.header.stamp = last_cmd_vel + tf_tolerance;
-      transformStamped.header.frame_id = map_frame_id;
-      transformStamped.child_frame_id = odom_frame_id;
+            transformStamped.header.stamp = last_cmd_vel + tf_tolerance;
+            transformStamped.header.frame_id = map_frame_id;
+            transformStamped.child_frame_id = odom_frame_id;
 
-      // Computed transform is odom->map, but need to invert
-      // it to publish map->odom instead
-      tf2::Transform odom_to_map_tf;
-      tf2::convert(odom_to_map.pose, odom_to_map_tf);
-      tf2::convert(odom_to_map_tf.inverse(), transformStamped.transform);
+            // Computed transform is odom->map, but need to invert
+            // it to publish map->odom instead
+            tf2::Transform odom_to_map_tf;
+            tf2::convert(odom_to_map.pose, odom_to_map_tf);
+            tf2::convert(odom_to_map_tf.inverse(), transformStamped.transform);
 
-      tfbr->sendTransform(transformStamped);
+            tfbr->sendTransform(transformStamped);
+        }
+        catch (const tf2::TransformException &ex)
+        {
+            ROS_ERROR_STREAM_THROTTLE(5, "pf_localization : transform from base_link to " << odom_frame_id << " failed in map->odom broadcaser : " << ex.what());
+        }
     }
-    catch (const tf2::TransformException &ex)
+
+    if (pub_debug.getNumSubscribers() > 0)
     {
-      ROS_ERROR_STREAM_THROTTLE(5, "pf_localization : transform from base_link to " << odom_frame_id << " failed in map->odom broadcaser : " << ex.what());
+        geometry_msgs::PoseArray debug;
+
+        for (const Particle &p : pf->get_particles())
+        {
+            debug.poses.push_back(p.poseFrom2D(p.x_, p.y_, p.rot_));
+        }
+
+        debug.header.frame_id = map_frame_id;
+        debug.header.stamp = ros::Time::now();
+        pub_debug.publish(debug);
     }
-  }
-
-  if(pub_debug.getNumSubscribers() > 0){
-    geometry_msgs::PoseArray debug;
-
-    for (const Particle& p : pf->get_particles()) {
-      debug.poses.push_back(p.poseFrom2D(p.x_, p.y_, p.rot_));
-    }
-
-    debug.header.frame_id = map_frame_id;
-    debug.header.stamp = ros::Time::now();
-    pub_debug.publish(debug);
-  }
 }
 
 // Extra arg here allows for switching between bearing only vs. 2d x,y position
 // detection messages based on how the subscribe call is defined
-void goalCallback(const field_obj::Detection::ConstPtr& msg, const bool bearingOnly){
-  // TODO - just transform all of the detection coords to base_link here,
-  // remove the need to do so inside the particle filter
-  geometry_msgs::TransformStamped zed_to_baselink;
-  try {
-    zed_to_baselink = tf_buffer_.lookupTransform("base_link", msg->header.frame_id, ros::Time::now(), ros::Duration(0.02));
-  }
-  catch (const tf2::TransformException &ex) {
-	ROS_ERROR_STREAM_THROTTLE(5, "PF localization not running - fix base_link to " << msg->header.frame_id << " transform");
-    return;
-  }
-
-  std::vector<std::shared_ptr<BeaconBase>> measurement;
-  geometry_msgs::Point location;
-  for(const field_obj::Object& p : msg->objects) {
-	tf2::doTransform(p.location, location,zed_to_baselink);
-    if(bearingOnly) {
-      measurement.push_back(std::make_shared<BearingBeacon>(location.x, location.y, p.id));
-    } else { 
-      measurement.push_back(std::make_shared<PositionBeacon>(location.x, location.y, p.id));
+void goalCallback(const field_obj::Detection::ConstPtr &msg, const bool bearingOnly)
+{
+    // TODO - just transform all of the detection coords to base_link here,
+    // remove the need to do so inside the particle filter
+    geometry_msgs::TransformStamped zed_to_baselink;
+    try
+    {
+        zed_to_baselink = tf_buffer_.lookupTransform("base_link", msg->header.frame_id, ros::Time::now(), ros::Duration(0.02));
     }
-  }
+    catch (const tf2::TransformException &ex)
+    {
+        ROS_ERROR_STREAM_THROTTLE(5, "PF localization not running - fix base_link to " << msg->header.frame_id << " transform");
+        return;
+    }
 
-  if (pf->assign_weights(measurement)) {
-    pf->resample();
-    last_measurement = ros::Time::now();
-  }
+    std::vector<std::shared_ptr<BeaconBase>> measurement;
+    geometry_msgs::Point location;
+    for (const field_obj::Object &p : msg->objects)
+    {
+        tf2::doTransform(p.location, location, zed_to_baselink);
+        if (bearingOnly)
+        {
+            measurement.push_back(std::make_shared<BearingBeacon>(location.x, location.y, p.id));
+        }
+        else
+        {
+            measurement.push_back(std::make_shared<PositionBeacon>(location.x, location.y, p.id));
+        }
+    }
 
-  #ifdef EXTREME_VERBOSE
-  ROS_INFO("goalCallback called");
-  #endif
+    if (pf->assign_weights(measurement))
+    {
+        pf->resample();
+        last_measurement = ros::Time::now();
+    }
+
+#ifdef EXTREME_VERBOSE
+    ROS_INFO("goalCallback called");
+#endif
 }
 
-void cmdCallback(const geometry_msgs::TwistStamped::ConstPtr& msg){
-  double timestep = (msg->header.stamp - last_cmd_vel).toSec();
-  double x_vel = msg->twist.linear.x;
-  double y_vel = msg->twist.linear.y;
+void cmdCallback(const geometry_msgs::TwistStamped::ConstPtr &msg)
+{
+    double timestep = (msg->header.stamp - last_cmd_vel).toSec();
+    double x_vel = msg->twist.linear.x;
+    double y_vel = msg->twist.linear.y;
 
-  double delta_x = x_vel * timestep;
-  double delta_y = y_vel * timestep;
+    double delta_x = x_vel * timestep;
+    double delta_y = y_vel * timestep;
 
-  last_cmd_vel = msg->header.stamp;
-  // TODO - check return code
-  pf->motion_update(delta_x, delta_y, 0);
-  if ((ros::Time::now() - last_measurement).toSec() < noise_delta_t) {
-    pf->noise_pos();
-    pf->noise_rot();
-  }
+    last_cmd_vel = msg->header.stamp;
+    // TODO - check return code
+    pf->motion_update(delta_x, delta_y, 0);
+    if ((ros::Time::now() - last_measurement).toSec() < noise_delta_t)
+    {
+        pf->noise_pos();
+        pf->noise_rot();
+    }
 
-  #ifdef EXTREME_VERBOSE
-  ROS_INFO("cmdCallback called");
-  #endif
+#ifdef EXTREME_VERBOSE
+    ROS_INFO("cmdCallback called");
+#endif
 }
 
 void matchCallback(const frc_msgs::MatchSpecificData::ConstPtr &MatchData)
 {
-  if (MatchData->allianceColor) // 1 = blue
-	{
-    ROS_INFO("Blue Alliance");
-		if (pf->allianceColorCheck(true)) {
-      pf->reinit();
-      ROS_WARN_STREAM("PF Alliance Color Changed to Blue... reinit");
+    if (MatchData->allianceColor) // 1 = blue
+    {
+        ROS_INFO("Blue Alliance");
+        if (pf->allianceColorCheck(true))
+        {
+            pf->reinit();
+            ROS_WARN_STREAM("PF Alliance Color Changed to Blue... reinit");
+        }
     }
-	}
-	else // 0 = red
-	{
-    ROS_INFO("Red Alliance");
-		// if true, means that beacons have changed so pf should reinit
-    if (pf->allianceColorCheck(false)) {
-      pf->reinit();
-      ROS_WARN_STREAM("PF Alliance Color Changed to Red... reinit");
+    else // 0 = red
+    {
+        ROS_INFO("Red Alliance");
+        // if true, means that beacons have changed so pf should reinit
+        if (pf->allianceColorCheck(false))
+        {
+            pf->reinit();
+            ROS_WARN_STREAM("PF Alliance Color Changed to Red... reinit");
+        }
     }
-	}
 }
 
-bool handle_re_init_pf(std_srvs::Empty::Request &req, std_srvs::Empty::Response &res){
-  pf->reinit();
-  return true;
+bool handle_re_init_pf(std_srvs::Empty::Request &req, std_srvs::Empty::Response &res)
+{
+    pf->reinit();
+    return true;
 }
 
-int main(int argc, char **argv) {
-  ros::init(argc, argv, "pf_localization_node");
-  ros::NodeHandle nh_;
-  tf2_ros::TransformListener tf_listener_(tf_buffer_);
+int main(int argc, char **argv)
+{
+    ros::init(argc, argv, "pf_localization_node");
+    ros::NodeHandle nh_;
+    tf2_ros::TransformListener tf_listener_(tf_buffer_);
 
-  #ifdef VERBOSE
-  ROS_INFO_STREAM(nh_.getNamespace());
-  #endif
+#ifdef VERBOSE
+    ROS_INFO_STREAM(nh_.getNamespace());
+#endif
 
-  XmlRpc::XmlRpcValue xml_beacons;
-  double f_x_min, f_x_max, f_y_min, f_y_max, i_x_min, i_x_max, i_y_min, i_y_max, p_stdev, r_stdev;
-  int num_particles;
-  double tmp_tolerance = 0.1;
+    XmlRpc::XmlRpcValue xml_beacons;
+    double f_x_min, f_x_max, f_y_min, f_y_max, i_x_min, i_x_max, i_y_min, i_y_max, p_stdev, r_stdev;
+    int num_particles;
+    double tmp_tolerance = 0.1;
 
-  std::vector<PositionBeacon> beacons;
-  std::vector<PositionBeacon> red_beacons;
-  std::vector<PositionBeacon> blue_beacons;
-  //ros::topic::waitForMessage() 	
-  if (!nh_.getParam("noise_delta_t", noise_delta_t)) {
-    ROS_ERROR("noise_delta_t not specified");
-    return -1;
-  }
+    std::vector<PositionBeacon> beacons;
+    std::vector<PositionBeacon> red_beacons;
+    std::vector<PositionBeacon> blue_beacons;
+    //ros::topic::waitForMessage()
+    if (!nh_.getParam("noise_delta_t", noise_delta_t))
+    {
+        ROS_ERROR("noise_delta_t not specified");
+        return -1;
+    }
 
-  if (!nh_.getParam("num_particles", num_particles)) {
-    ROS_ERROR("num_particles not specified");
-    return -1;
-  }
-  if (!nh_.getParam("beacons", xml_beacons)) {
-    ROS_ERROR("failed to load beacons");
-    return -1;
-  }
+    if (!nh_.getParam("num_particles", num_particles))
+    {
+        ROS_ERROR("num_particles not specified");
+        return -1;
+    }
+    if (!nh_.getParam("beacons", xml_beacons))
+    {
+        ROS_ERROR("failed to load beacons");
+        return -1;
+    }
 
-  if (!nh_.getParam("field_dims/x_min", f_x_min)) {
-    ROS_ERROR("field dimension not specified");
-    return -1;
-  }
-  if (!nh_.getParam("field_dims/x_max", f_x_max)) {
-    ROS_ERROR("field dimension not specified");
-    return -1;
-  }
-  if (!nh_.getParam("field_dims/y_min", f_y_min)) {
-    ROS_ERROR("field dimension not specified");
-    return -1;
-  }
-  if (!nh_.getParam("field_dims/y_max", f_y_max)) {
-    ROS_ERROR("field dimension not specified");
-    return -1;
-  }
+    if (!nh_.getParam("field_dims/x_min", f_x_min))
+    {
+        ROS_ERROR("field dimension not specified");
+        return -1;
+    }
+    if (!nh_.getParam("field_dims/x_max", f_x_max))
+    {
+        ROS_ERROR("field dimension not specified");
+        return -1;
+    }
+    if (!nh_.getParam("field_dims/y_min", f_y_min))
+    {
+        ROS_ERROR("field dimension not specified");
+        return -1;
+    }
+    if (!nh_.getParam("field_dims/y_max", f_y_max))
+    {
+        ROS_ERROR("field dimension not specified");
+        return -1;
+    }
 
-  ROS_INFO_STREAM("field dims assigned");
+    ROS_INFO_STREAM("field dims assigned");
 
-  if (!nh_.getParam("init_dims/x_min", i_x_min)) {
-    ROS_ERROR("particle initialization dimension not specified");
-    return -1;
-  }
-  if (!nh_.getParam("init_dims/x_max", i_x_max)) {
-    ROS_ERROR("particle initialization dimension not specified");
-    return -1;
-  }
-  if (!nh_.getParam("init_dims/y_min", i_y_min)) {
-    ROS_ERROR("particle initialization dimension not specified");
-    return -1;
-  }
-  if (!nh_.getParam("init_dims/y_max", i_y_max)) {
-    ROS_ERROR("particle initialization dimension not specified");
-    return -1;
-  }
+    if (!nh_.getParam("init_dims/x_min", i_x_min))
+    {
+        ROS_ERROR("particle initialization dimension not specified");
+        return -1;
+    }
+    if (!nh_.getParam("init_dims/x_max", i_x_max))
+    {
+        ROS_ERROR("particle initialization dimension not specified");
+        return -1;
+    }
+    if (!nh_.getParam("init_dims/y_min", i_y_min))
+    {
+        ROS_ERROR("particle initialization dimension not specified");
+        return -1;
+    }
+    if (!nh_.getParam("init_dims/y_max", i_y_max))
+    {
+        ROS_ERROR("particle initialization dimension not specified");
+        return -1;
+    }
 
-  ROS_INFO("initialization dims assigned");
+    ROS_INFO("initialization dims assigned");
 
-  if (!nh_.param("noise_stdev/position", p_stdev, 0.1)) {
-    ROS_WARN("no position stdev specified, using defalut");
-  }
-  if (!nh_.param("noise_stdev/rotation", r_stdev, 0.1)) {
-    ROS_WARN("no rotation stdev specified, using defalut");
-  }
+    if (!nh_.param("noise_stdev/position", p_stdev, 0.1))
+    {
+        ROS_WARN("no position stdev specified, using defalut");
+    }
+    if (!nh_.param("noise_stdev/rotation", r_stdev, 0.1))
+    {
+        ROS_WARN("no rotation stdev specified, using defalut");
+    }
 
-  ROS_INFO("noise stdevs assigned");
+    ROS_INFO("noise stdevs assigned");
 
-  ROS_INFO_STREAM(f_x_min << ' ' << i_x_min << ' ' << p_stdev);
+    ROS_INFO_STREAM(f_x_min << ' ' << i_x_min << ' ' << p_stdev);
 
-  nh_.param("map_frame_id", map_frame_id, std::string("map"));
-  nh_.param("odom_frame_id", odom_frame_id, std::string("odom"));
-  nh_.param("tf_tolerance", tmp_tolerance, 0.1);
-  tf_tolerance.fromSec(tmp_tolerance);
-  
-  geometry_msgs::TransformStamped blue2red_tf = tf_buffer_.lookupTransform("blue0", "red0", ros::Time::now(), ros::Duration(1.0));
-  // TODO - I think this fails if a beacon is specified as an int
-  // Transforms the blue relative beacons to red relative beacons using the static transform blue0 -> red0
-  for (size_t i = 0; i < (unsigned) xml_beacons.size(); i++) {
-    PositionBeacon b {xml_beacons[i][0], xml_beacons[i][1], xml_beacons[i][2]};
-    beacons.push_back(b);
-    blue_beacons.push_back(b);
-    geometry_msgs::PoseStamped b_red;
-    b_red.header.frame_id = "blue0";
-    b_red.header.stamp = ros::Time::now();
-    b_red.pose.position.x = xml_beacons[i][0];
-    b_red.pose.position.y = xml_beacons[i][1];
-    geometry_msgs::PoseStamped b_red_transformed; 
-    tf2::doTransform(b_red, b_red_transformed, blue2red_tf);
-    PositionBeacon b_r {b_red_transformed.pose.position.x, b_red_transformed.pose.position.y, xml_beacons[i][2]};
-    red_beacons.push_back(b_r);
-  }
-  ROS_INFO_STREAM("BLUE BEACONS");
-  // itterate over blue_beacons vector and print each one out
-  for (auto i = blue_beacons.begin(); i != blue_beacons.end(); i++)
-    std::cout << i->x_ << ' ' << i->y_ << ' ' << i->type_ << std::endl;
-  ROS_INFO_STREAM("RED BEACONS");
-  // do the same thing for red 
-  for (auto i = red_beacons.begin(); i != red_beacons.end(); i++)
-    std::cout << i->x_ << ' ' << i->y_ << ' ' << i->type_ << std::endl;
+    nh_.param("map_frame_id", map_frame_id, std::string("map"));
+    nh_.param("odom_frame_id", odom_frame_id, std::string("odom"));
+    nh_.param("tf_tolerance", tmp_tolerance, 0.1);
+    tf_tolerance.fromSec(tmp_tolerance);
 
-  WorldModel world(beacons, blue_beacons, red_beacons, f_x_min, f_x_max, f_y_min, f_y_max);
-  pf = std::make_unique<ParticleFilter>(world,
-                                        i_x_min, i_x_max, i_y_min, i_y_max,
-                                        p_stdev, r_stdev,
-                                        num_particles);
+    geometry_msgs::TransformStamped blue2red_tf = tf_buffer_.lookupTransform("blue0", "red0", ros::Time::now(), ros::Duration(1.0));
+    // TODO - I think this fails if a beacon is specified as an int
+    // Transforms the blue relative beacons to red relative beacons using the static transform blue0 -> red0
+    for (size_t i = 0; i < (unsigned) xml_beacons.size(); i++)
+    {
+        PositionBeacon b {xml_beacons[i][0], xml_beacons[i][1], xml_beacons[i][2]};
+        beacons.push_back(b);
+        blue_beacons.push_back(b);
+        geometry_msgs::PoseStamped b_red;
+        b_red.header.frame_id = "blue0";
+        b_red.header.stamp = ros::Time::now();
+        b_red.pose.position.x = xml_beacons[i][0];
+        b_red.pose.position.y = xml_beacons[i][1];
+        geometry_msgs::PoseStamped b_red_transformed;
+        tf2::doTransform(b_red, b_red_transformed, blue2red_tf);
+        PositionBeacon b_r {b_red_transformed.pose.position.x, b_red_transformed.pose.position.y, xml_beacons[i][2]};
+        red_beacons.push_back(b_r);
+    }
+    ROS_INFO_STREAM("BLUE BEACONS");
+    // itterate over blue_beacons vector and print each one out
+    for (auto i = blue_beacons.begin(); i != blue_beacons.end(); i++)
+        std::cout << i->x_ << ' ' << i->y_ << ' ' << i->type_ << std::endl;
+    ROS_INFO_STREAM("RED BEACONS");
+    // do the same thing for red
+    for (auto i = red_beacons.begin(); i != red_beacons.end(); i++)
+        std::cout << i->x_ << ' ' << i->y_ << ' ' << i->type_ << std::endl;
 
-  #ifdef VERBOSE
-  for (const Particle& p : pf->get_particles()) {
-	ROS_INFO_STREAM(p);
-  }
-  ROS_INFO_STREAM("\n\n");
-  ROS_INFO_STREAM(pf->predict());
-  ROS_INFO("pf localization initialized");
-  #endif
+    WorldModel world(beacons, blue_beacons, red_beacons, f_x_min, f_x_max, f_y_min, f_y_max);
+    pf = std::make_unique<ParticleFilter>(world,
+                                          i_x_min, i_x_max, i_y_min, i_y_max,
+                                          p_stdev, r_stdev,
+                                          num_particles);
 
-  ros::Subscriber rot_sub = nh_.subscribe(rot_topic, 1, rotCallback);
-  ros::Subscriber odom_sub = nh_.subscribe(cmd_topic, 1, cmdCallback);
-  ros::Subscriber goal_sub = nh_.subscribe<field_obj::Detection>(goal_pos_topic, 1, boost::bind(goalCallback, _1, false));
-  ros::Subscriber match_sub = nh_.subscribe(match_topic, 1, matchCallback);
+#ifdef VERBOSE
+    for (const Particle &p : pf->get_particles())
+    {
+        ROS_INFO_STREAM(p);
+    }
+    ROS_INFO_STREAM("\n\n");
+    ROS_INFO_STREAM(pf->predict());
+    ROS_INFO("pf localization initialized");
+#endif
 
-  pub = nh_.advertise<geometry_msgs::PoseWithCovarianceStamped>(pub_topic, 1);
-  ros::ServiceServer re_init_pf_server = nh_.advertiseService(reinit_pf_service, handle_re_init_pf);
+    ros::Subscriber rot_sub = nh_.subscribe(rot_topic, 1, rotCallback);
+    ros::Subscriber odom_sub = nh_.subscribe(cmd_topic, 1, cmdCallback);
+    ros::Subscriber goal_sub = nh_.subscribe<field_obj::Detection>(goal_pos_topic, 1, boost::bind(goalCallback, _1, false));
+    ros::Subscriber match_sub = nh_.subscribe(match_topic, 1, matchCallback);
 
-  pub_debug = nh_.advertise<geometry_msgs::PoseArray>(pub_debug_topic, 1);
+    pub = nh_.advertise<geometry_msgs::PoseWithCovarianceStamped>(pub_topic, 1);
+    ros::ServiceServer re_init_pf_server = nh_.advertiseService(reinit_pf_service, handle_re_init_pf);
 
-  tfbr = std::make_unique<tf2_ros::TransformBroadcaster>();
-  double publish_rate;
-  nh_.param("publish_rate", publish_rate, 10.);
-  auto pubTimer = nh_.createTimer(ros::Duration(1./ publish_rate), publish_prediction);
+    pub_debug = nh_.advertise<geometry_msgs::PoseArray>(pub_debug_topic, 1);
 
-  const auto now = ros::Time::now();
-  last_cmd_vel = now;
-  last_measurement = now;
-  ros::spin();
+    tfbr = std::make_unique<tf2_ros::TransformBroadcaster>();
+    double publish_rate;
+    nh_.param("publish_rate", publish_rate, 10.);
+    auto pubTimer = nh_.createTimer(ros::Duration(1. / publish_rate), publish_prediction);
 
-  return 0;
+    const auto now = ros::Time::now();
+    last_cmd_vel = now;
+    last_measurement = now;
+    ros::spin();
+
+    return 0;
 }

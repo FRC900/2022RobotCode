@@ -46,7 +46,6 @@ bool WorldModel::allianceColorCheck(bool amIBlueAlliance) {
       for (auto it = blue_beacons_.begin(); it != blue_beacons_.end(); ++it) {
         beacons_.push_back(*it);
       }
-      
     } 
     else {
       beacons_.clear();
@@ -55,7 +54,6 @@ bool WorldModel::allianceColorCheck(bool amIBlueAlliance) {
         beacons_.push_back(*it);
       }
     }
-    amIBlueAlliance_ = amIBlueAlliance;
     return true;
   }
   return false;

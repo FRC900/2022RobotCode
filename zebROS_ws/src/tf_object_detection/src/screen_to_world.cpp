@@ -86,7 +86,6 @@ void callback(const field_obj::TFDetectionConstPtr &objDetectionMsg, const senso
 
 		// Add the 3d object info to the list of objects in the output message
 		out_msg.objects.push_back(worldObject); 
-		
 	}
 
 	pub.publish(out_msg);
