@@ -12,7 +12,7 @@ private:
   std::vector<PositionBeacon> beacons_;
   const std::vector<PositionBeacon> blue_beacons_;
   const std::vector<PositionBeacon> red_beacons_;
-  bool amIBlueAlliance_ = false;
+  bool amIBlueAlliance_ = true;
   double x_min_;
   double x_max_;
   double y_min_;
