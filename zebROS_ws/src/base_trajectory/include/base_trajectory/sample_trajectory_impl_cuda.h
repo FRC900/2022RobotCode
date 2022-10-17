@@ -22,7 +22,9 @@ class SampleTrajectoryImplCuda : public SampleTrajectoryImpl<T>
 					std::vector<SegmentState<T>> &yStates,
 					std::vector<SegmentState<T>> &tStates,
 					const XYTTrajectory<T> &trajectory,
-					const ArcLengthTrajectory<T> &arcLengthTrajectory) override;
+					const ArcLengthTrajectory<T> &arcLengthTrajectory,
+					const std::vector<int8_t> &rotateMode,
+					const std::vector<geometry_msgs::PointStamped> &rotateData) override;
 	private:
 		cudaStream_t findArcLengthStream_;
 		cudaStream_t sampleXYTStream_;

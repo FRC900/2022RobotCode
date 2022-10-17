@@ -942,7 +942,9 @@ bool evaluateTrajectory(T &cost,
 						const XYTTrajectory<T> &trajectory,
 						const geometry_msgs::TransformStamped &pathToMapTransform,
 						SampleTrajectoryImplCpu<T> &sampleTrajectory,
-						const OptParamsList<T> &optParams)
+						const OptParamsList<T> &optParams,
+						const std::vector<int8_t> &rotateMode,
+						const std::vector<geometry_msgs::PointStamped> &rotateData)
 {
 	// arcLengthTrajectory takes in a time and returns the x-y-theta distance
 	// traveled up to that time.
@@ -960,7 +962,8 @@ bool evaluateTrajectory(T &cost,
 	static std::vector<SegmentState<T>> tStates;
 	if (!sampleTrajectory.sample(equalArcLengthTimes, equalArcLengthPositions,
 								 xStates, yStates, tStates,
-								 trajectory, arcLengthTrajectory))
+								 trajectory, arcLengthTrajectory,
+								 rotateMode, rotateData))
 	{
 		ROS_ERROR_STREAM("evaluateTrajectory :: sample() failed");
 		return false;
@@ -1194,7 +1197,9 @@ void trajectoryToSplineResponseMsg(base_trajectory_msgs::GenerateSpline::Respons
 								   const std::vector<std::string> &jointNames,
 								   const geometry_msgs::TransformStamped &pathToMapTransform,
 								   SampleTrajectoryImplCpu<T> &sampleTrajectory,
-								   const OptParamsList<T> &optParams)
+								   const OptParamsList<T> &optParams,
+								   const std::vector<int8_t> &rotateMode,
+								   const std::vector<geometry_msgs::PointStamped> &rotateData)
 {
 	out_msg.orient_coefs.resize(trajectory[0].size());
 	out_msg.x_coefs.resize(trajectory[0].size());
@@ -1247,7 +1252,7 @@ void trajectoryToSplineResponseMsg(base_trajectory_msgs::GenerateSpline::Respons
 	std::vector<T> equalArcLengthTimes;
 	std::vector<T> remappedTimes;
 	std::vector<T> vTrans;
-	if (!evaluateTrajectory(cost, segCosts, equalArcLengthTimes, remappedTimes, vTrans, trajectory, pathToMapTransform, sampleTrajectory, optParams))
+	if (!evaluateTrajectory(cost, segCosts, equalArcLengthTimes, remappedTimes, vTrans, trajectory, pathToMapTransform, sampleTrajectory, optParams, rotateMode, rotateData))
 	{
 		ROS_ERROR_STREAM("base_trajectory_node trajectoryToSplineResponseMsg : evaluateTrajectory() returned false");
 		return;
@@ -1385,6 +1390,8 @@ struct NLOPTParams
 			OptParamsList<T> &optParams,
 			const std::vector<std::string> &jointNames,
 			const geometry_msgs::TransformStamped &pathToMapTransform,
+			const std::vector<int8_t> &rotateMode,
+			const std::vector<geometry_msgs::PointStamped> &rotateData,
 			SampleTrajectoryImplCpu<T> &sampleTrajectory,
 			SegCosts<T> &segCosts,
 			size_t &optimizationAttempts)
@@ -1393,6 +1400,8 @@ struct NLOPTParams
 		, optParams_(optParams)
 		, jointNames_(jointNames)
 		, pathToMapTransform_(pathToMapTransform)
+		, rotateMode_(rotateMode)
+		, rotateData_(rotateData)
 		, sampleTrajectory_(sampleTrajectory)
 		, segCosts_(segCosts)
 		, optimizationAttempts_(optimizationAttempts)
@@ -1406,6 +1415,8 @@ struct NLOPTParams
 	OptParamsList<T> &optParams_;
 	const std::vector<std::string> &jointNames_;
 	const geometry_msgs::TransformStamped &pathToMapTransform_;
+	const std::vector<int8_t> rotateMode_;
+	const std::vector<geometry_msgs::PointStamped> rotateData_;
 	SampleTrajectoryImplCpu<T> &sampleTrajectory_;
 	SegCosts<T> &segCosts_;
 	size_t &optimizationAttempts_;
@@ -1447,7 +1458,9 @@ double myfunc(const std::vector<double> &x, std::vector<double> &grad, void *f_d
 							nloptParams->trajectory_,
 							nloptParams->pathToMapTransform_,
 							nloptParams->sampleTrajectory_,
-							nloptParams->optParams_))
+							nloptParams->optParams_,
+							nloptParams->rotateMode_,
+							nloptParams->rotateData_))
 	{
 		ROS_ERROR_STREAM("base_trajectory_node : RPROP initial evaluateTrajectory() falied");
 		return std::numeric_limits<double>::quiet_NaN();
@@ -1472,6 +1485,8 @@ bool NLOPT(
 		OptParamsList<T> &optParams,
 		const std::vector<std::string> &jointNames,
 		const geometry_msgs::TransformStamped &pathToMapTransform,
+		const std::vector<int8_t> &rotateMode,
+		const std::vector<geometry_msgs::PointStamped> &rotateData,
 		SampleTrajectoryImplCpu<T> &sampleTrajectory)
 {
 	for (const auto &it: optParams)
@@ -1494,6 +1509,8 @@ bool NLOPT(
 							optParams,
 							jointNames,
 							pathToMapTransform,
+							rotateMode,
+							rotateData,
 							sampleTrajectory,
 							segCosts,
 							optimizationAttempts);
@@ -1978,6 +1995,29 @@ bool callback(base_trajectory_msgs::GenerateSpline::Request &msg,
 	}
 	kinematicConstraints.addConstraints(msg.constraints);
 
+
+	for (size_t i = 0; i < msg.rotate_mode.size(); i++)
+	{
+		if (msg.rotate_mode[i] == base_trajectory_msgs::GenerateSpline::Request::ROTATE_MODE_FIXED_COORDINATE)
+		{
+			if (msg.rotate_data[i].header.frame_id == "map")
+			{
+				if (!transformConstraintPoint(msg.rotate_data[i].point, inversePathToMapTransform))
+				{
+					return false;
+				}
+			}
+			else
+			{
+				if (!transformConstraintPoint(msg.rotate_data[i].point, msg.rotate_data[i].header, pathFrameID))
+				{
+					return false;
+				}
+			}
+		}
+	}
+
+
 	OptParamsList<TrajectoryPointType> optParams;
 	for (const auto &pol : msg.path_offset_limit)
 	{
@@ -2027,27 +2067,27 @@ bool callback(base_trajectory_msgs::GenerateSpline::Request &msg,
 		std::vector<TrajectoryPointType> equalArcLengthTimes;
 		std::vector<TrajectoryPointType> remappedTimes;
 		std::vector<TrajectoryPointType> vTrans;
-		if (!evaluateTrajectory(cost, segCosts, equalArcLengthTimes, remappedTimes, vTrans, trajectory, pathToMapTransform, sampleTrajectory, optParams))
+		if (!evaluateTrajectory(cost, segCosts, equalArcLengthTimes, remappedTimes, vTrans, trajectory, pathToMapTransform, sampleTrajectory, optParams, msg.rotate_mode, msg.rotate_data))
 		{
 			ROS_ERROR_STREAM("base_trajectory_node : evaluateTrajectory() returned false");
 			return false;
 		}
 
 		base_trajectory_msgs::GenerateSpline::Response tmp_msg;
-		trajectoryToSplineResponseMsg(tmp_msg, trajectory, jointNames, pathToMapTransform, sampleTrajectory, optParams);
+		trajectoryToSplineResponseMsg(tmp_msg, trajectory, jointNames, pathToMapTransform, sampleTrajectory, optParams, msg.rotate_mode, msg.rotate_data);
 		writeMatlabSplines(trajectory, 1, "Initial Splines");
 		messageFilter.disable();
 		fflush(stdout);
 
 		// Call optimization, get optimizated result in trajectory
 #if 0
-		if (!RPROP(trajectory, msg.points, optParams, jointNames, pathToMapTransform, sampleTrajectory))
+		if (!RPROP(trajectory, msg.points, optParams, jointNames, pathToMapTransform, msg.rotate_mode, msg.rotate_data, sampleTrajectory))
 		{
 			ROS_ERROR_STREAM("base_trajectory_node : RPROP() returned false");
 			return false;
 		}
 #else
-		if (!NLOPT(trajectory, msg.points, optParams, jointNames, pathToMapTransform, sampleTrajectory))
+		if (!NLOPT(trajectory, msg.points, optParams, jointNames, pathToMapTransform, msg.rotate_mode, msg.rotate_data, sampleTrajectory))
 		{
 			ROS_ERROR_STREAM("base_trajectory_node : NLOPT() returned false");
 			return false;
@@ -2056,7 +2096,7 @@ bool callback(base_trajectory_msgs::GenerateSpline::Request &msg,
 		messageFilter.enable();
 	}
 
-	trajectoryToSplineResponseMsg(out_msg, trajectory, jointNames, pathToMapTransform, sampleTrajectory, optParams);
+	trajectoryToSplineResponseMsg(out_msg, trajectory, jointNames, pathToMapTransform, sampleTrajectory, optParams, msg.rotate_mode, msg.rotate_data);
 	writeMatlabSplines(trajectory, 2, "Optimized Splines");
 	fflush(stdout);
 	const auto t2 = high_resolution_clock::now();

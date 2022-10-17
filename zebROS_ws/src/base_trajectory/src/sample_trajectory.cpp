@@ -29,11 +29,15 @@ bool SampleTrajectory<T>::sample(std::vector<T> &equalArcLengthTimes,
 		std::vector<SegmentState<T>> &yStates,
 		std::vector<SegmentState<T>> &thetaStates,
 		const XYTTrajectory<T> &trajectory,
-		const ArcLengthTrajectory<T> &arcLengthTrajectory)
+		const ArcLengthTrajectory<T> &arcLengthTrajectory,
+		const std::vector<int8_t> &rotateMode,
+		const std::vector<geometry_msgs::PointStamped> &rotateData)
 {
 	return impl_->sample(equalArcLengthTimes, equalArcLengthPositions,
 						 xStates, yStates, thetaStates,
-						 trajectory, arcLengthTrajectory);
+						 trajectory, arcLengthTrajectory,
+						 const std::vector<int8_t> &rotateMode,
+						 const std::vector<geometry_msgs::PointStamped> &rotateData);
 }
 
 template <class T>

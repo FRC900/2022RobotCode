@@ -16,7 +16,9 @@ class SampleTrajectoryImplCpu : public SampleTrajectoryImpl<T>
 					std::vector<SegmentState<T>> &yStates,
 					std::vector<SegmentState<T>> &tStates,
 					const XYTTrajectory<T> &trajectory,
-					const ArcLengthTrajectory<T> &arcLengthTrajectory) override;
+					const ArcLengthTrajectory<T> &arcLengthTrajectory,
+					const std::vector<int8_t> &rotateMode,
+					const std::vector<geometry_msgs::PointStamped> &rotateData) override;
 	protected:
 		bool subdivideLength(std::vector<T> &equalArcLengthTimes,
 							 std::vector<T> &equalArcLengthPositions,
@@ -25,7 +27,9 @@ class SampleTrajectoryImplCpu : public SampleTrajectoryImpl<T>
 								   std::vector<SegmentState<T>> &yStates,
 								   std::vector<SegmentState<T>> &tStates, // thetaState == rotation state
 								   const std::vector<T> &equalArcLengthTimes,
-								   const XYTTrajectory<T> &trajectory);
+								   const XYTTrajectory<T> &trajectory,
+								   const std::vector<int8_t> &rotateMode,
+								   const std::vector<geometry_msgs::PointStamped> &rotateData);
 };
 
 #endif

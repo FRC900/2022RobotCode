@@ -16,10 +16,12 @@ bool SampleTrajectoryImplCpu<T>::sample(std::vector<T> &equalArcLengthTimes,
 										std::vector<SegmentState<T>> &yStates,
 										std::vector<SegmentState<T>> &tStates,
 										const XYTTrajectory<T> &trajectory,
-										const ArcLengthTrajectory<T> &arcLengthTrajectory)
+										const ArcLengthTrajectory<T> &arcLengthTrajectory,
+										const std::vector<int8_t> &rotateMode,
+										const std::vector<geometry_msgs::PointStamped> &rotateData)
 {
 	return subdivideLength(equalArcLengthTimes, equalArcLengthPositions, arcLengthTrajectory) &&
-		sampleEqualArcLengths(xStates, yStates, tStates, equalArcLengthTimes, trajectory);
+		sampleEqualArcLengths(xStates, yStates, tStates, equalArcLengthTimes, trajectory, rotateMode, rotateData);
 }
 
 template <class T>
@@ -113,15 +115,45 @@ bool SampleTrajectoryImplCpu<T>::subdivideLength(std::vector<T> &equalArcLengthT
 }
 
 template <class T>
+bool generateExtraRotationState(
+	SegmentState<T> &tState,
+	const size_t index,
+	int8_t rotate_mode,
+	const std::vector<SegmentState<T>> &xStates,
+	const std::vector<SegmentState<T>> &yStates,
+	const std::vector<geometry_msgs::PointStamped> &rotateData,
+)
+{
+	switch(rotate_mode)
+	{
+		case base_trajectory_msgs::GenerateSpline::Request::ROTATE_MODE_SPLINE:
+			// do nothing - tState was already sampled from trajectories in first pass
+			break;
+		case base_trajectory_msgs::GenerateSpline::Request::ROTATE_MODE_FIXED_COORDINATE:
+			break;
+		case base_trajectory_msgs::GenerateSpline::Request::ROTATE_NEXT_WAYPOINT:
+			break;
+		case base_trajectory_msgs::GenerateSpline::Request::ROTATE_MODE_CONSTANT_VELOCITY:
+			break;
+		default:
+			return false;
+	}
+	return true;
+}
+
+template <class T>
 bool SampleTrajectoryImplCpu<T>::sampleEqualArcLengths(std::vector<SegmentState<T>> &xStates,
 													   std::vector<SegmentState<T>> &yStates,
 													   std::vector<SegmentState<T>> &tStates, // thetaState == rotation state
 													   const std::vector<T> &equalArcLengthTimes,
-													   const XYTTrajectory<T> &trajectory)
+													   const XYTTrajectory<T> &trajectory,
+													   const std::vector<int8_t> &rotateMode,
+													   const std::vector<geometry_msgs::PointStamped> &rotateData)
 {
 	xStates.resize(equalArcLengthTimes.size());
 	yStates.resize(equalArcLengthTimes.size());
 	tStates.resize(equalArcLengthTimes.size());
+	bool needTwoPasses = false;
 	for (size_t i = 0; i < equalArcLengthTimes.size(); i++)
 	{
 		const auto t   = equalArcLengthTimes[i];
@@ -146,13 +178,20 @@ bool SampleTrajectoryImplCpu<T>::sampleEqualArcLengths(std::vector<SegmentState<
 		}
 		yIt->sample(t, yStates[i]);
 
-		auto tIt = trajectory[2].cbegin() + seg;
-		if (tIt >= trajectory[2].cend())
+		if (rotate_mode[seg] == base_trajectory_msgs::GenerateSpline::Request::ROTATE_MODE_SPLINE)
 		{
-			ROS_ERROR_STREAM("base_trajectory : evaluateTrajectory could not sample tState at time " << t << ", seg = " << seg << ", trajectory[2].size() = " << trajectory[2].size());
-			return false;
+			auto tIt = trajectory[2].cbegin() + seg;
+			if (tIt >= trajectory[2].cend())
+			{
+				ROS_ERROR_STREAM("base_trajectory : evaluateTrajectory could not sample tState at time " << t << ", seg = " << seg << ", trajectory[2].size() = " << trajectory[2].size());
+				return false;
+			}
+			tIt->sample(t, tStates[i]);
 		}
-		tIt->sample(t, tStates[i]);
+		else
+		{
+			needTwoPasses = true;
+		}
 	}
 	return true;
 }
