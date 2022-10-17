@@ -115,23 +115,19 @@ bool SampleTrajectoryImplCpu<T>::subdivideLength(std::vector<T> &equalArcLengthT
 }
 
 template <class T>
-SegmentState<T> generateRotationState(
-		const T t, // t is arbTime
-		const std::vector<SegmentState<T>> &xStates,
-		const std::vector<SegmentState<T>> &yStates)
+bool generateExtraRotationState(
+	SegmentState<T> &tState,
+	const size_t index,
+	int8_t rotate_mode,
+	const std::vector<SegmentState<T>> &xStates,
+	const std::vector<SegmentState<T>> &yStates,
+	const std::vector<geometry_msgs::PointStamped> &rotateData,
+)
 {
-	static SegmentState<T> tState;
-	const auto seg = arcLengthTimeToSegTime(equalArcLengthTimes, i);
 	switch(rotate_mode)
 	{
 		case base_trajectory_msgs::GenerateSpline::Request::ROTATE_MODE_SPLINE:
-			auto tIt = trajectory[2].cbegin() + seg;
-			if (tIt >= trajectory[2].cend())
-			{
-				ROS_ERROR_STREAM("base_trajectory : evaluateTrajectory could not sample tState at time " << t << ", seg = " << seg << ", trajectory[2].size() = " << trajectory[2].size());
-				return false;
-			}
-			tIt->sample(t, tState);
+			// do nothing - tState was already sampled from trajectories in first pass
 			break;
 		case base_trajectory_msgs::GenerateSpline::Request::ROTATE_MODE_FIXED_COORDINATE:
 			break;
@@ -139,8 +135,10 @@ SegmentState<T> generateRotationState(
 			break;
 		case base_trajectory_msgs::GenerateSpline::Request::ROTATE_MODE_CONSTANT_VELOCITY:
 			break;
+		default:
+			return false;
 	}
-	return tState;
+	return true;
 }
 
 template <class T>
@@ -155,6 +153,7 @@ bool SampleTrajectoryImplCpu<T>::sampleEqualArcLengths(std::vector<SegmentState<
 	xStates.resize(equalArcLengthTimes.size());
 	yStates.resize(equalArcLengthTimes.size());
 	tStates.resize(equalArcLengthTimes.size());
+	bool needTwoPasses = false;
 	for (size_t i = 0; i < equalArcLengthTimes.size(); i++)
 	{
 		const auto t   = equalArcLengthTimes[i];
@@ -179,13 +178,20 @@ bool SampleTrajectoryImplCpu<T>::sampleEqualArcLengths(std::vector<SegmentState<
 		}
 		yIt->sample(t, yStates[i]);
 
-		auto tIt = trajectory[2].cbegin() + seg;
-		if (tIt >= trajectory[2].cend())
+		if (rotate_mode[seg] == base_trajectory_msgs::GenerateSpline::Request::ROTATE_MODE_SPLINE)
 		{
-			ROS_ERROR_STREAM("base_trajectory : evaluateTrajectory could not sample tState at time " << t << ", seg = " << seg << ", trajectory[2].size() = " << trajectory[2].size());
-			return false;
+			auto tIt = trajectory[2].cbegin() + seg;
+			if (tIt >= trajectory[2].cend())
+			{
+				ROS_ERROR_STREAM("base_trajectory : evaluateTrajectory could not sample tState at time " << t << ", seg = " << seg << ", trajectory[2].size() = " << trajectory[2].size());
+				return false;
+			}
+			tIt->sample(t, tStates[i]);
 		}
-		tIt->sample(t, tStates[i]);
+		else
+		{
+			needTwoPasses = true;
+		}
 	}
 	return true;
 }
