@@ -24,11 +24,12 @@ protected:
   // create message that is used to publish feedback
   behavior_actions::Shooter2022Feedback feedback_;
 
-  double high_goal_speed_;
-  double low_goal_speed_;
+  double wheel_speed_;
+  double hood_wheel_speed_;
   double eject_speed_;
   double error_margin_;
   double downtown_high_goal_speed_;
+  bool hood_state_; 
   ddynamic_reconfigure::DDynamicReconfigure ddr_;
 
   ros::Publisher shooter_command_pub_;
@@ -39,6 +40,7 @@ protected:
 
   double current_speed_;
   double speed_offset_ = 0;
+  double hood_speed_offset_ = 0;
 
   uint64_t close_enough_counter_;
   int shooter_wheel_checks_ = 20;
@@ -97,9 +99,11 @@ public:
     // error_margin_ = 5;
     // ddr_.registerVariable<double>("samples_for_close_enough", &error_margin_, "Shooter margin of error", 0, 50);
     shooter_command_pub_ = nh_.advertise<std_msgs::Float64>("/frcrobot_jetson/shooter_controller/command", 2);
+    hood_shooter_command_pub_ nh_.advertise<std_msgs::Float64>("/frcrobot_jetson/hood_shooter_controller/command", 2);
     downtown_command_pub_ = nh_.advertise<std_msgs::Float64>("/frcrobot_jetson/downtown_solenoid_controller/command", 2);
     talon_states_sub_ = nh_.subscribe("/frcrobot_jetson/talon_states", 1, &ShooterAction2022::talonStateCallback, this);
     speed_offset_sub_ = nh_.subscribe("/shooter_speed_offset", 1, &ShooterAction2022::speedOffsetCallback, this);
+    speed_offset_sub_ = nh_.subscribe("/hood_shooter_speed_offset", 1, &ShooterAction2022::hoodSpeedOffsetCallback, this);
     as_.start();
 
     ddr_.publishServicesTopics();
@@ -113,27 +117,28 @@ public:
   {
     SHOOTER_INFO("Shooter action called with mode " << goal->mode);
     std_msgs::Float64 msg;
+    std_msgs::Float64 hood_msg;
     std_msgs::Float64 downtown_msg;
     downtown_msg.data = DOWNTOWN_INACTIVE;
     double shooter_speed;
+    double hood_shooter_speed;
     switch (goal->mode) {
       case behavior_actions::Shooter2022Goal::HIGH_GOAL:
-        shooter_speed = high_goal_speed_;
-        break;
-      case behavior_actions::Shooter2022Goal::LOW_GOAL:
-        shooter_speed = low_goal_speed_;
+        shooter_speed = msg.wheel_speed;
+        hood_shooter_speed = msg.hood_wheel_speed;
+        if (msg.hood_position) {
+          downtown_msg.data = DOWNTOWN_ACTIVE;
+        } 
         break;
       case behavior_actions::Shooter2022Goal::EJECT:
         shooter_speed = eject_speed_;
         break;
-      case behavior_actions::Shooter2022Goal::DOWNTOWN:
-        downtown_msg.data = DOWNTOWN_ACTIVE;
-        shooter_speed = downtown_high_goal_speed_;
-        break;
       default:
         SHOOTER_ERROR("invalid goal mode (" << goal->mode << ")");
         msg.data = 0;
+        hood_msg.data = 0;
         shooter_command_pub_.publish(msg);
+        hood_shooter_command_pub_.publish(hood_msg);
         feedback_.close_enough = false;
         as_.publishFeedback(feedback_);
         // set the action state to preempted
@@ -142,7 +147,9 @@ public:
     }
     downtown_command_pub_.publish(downtown_msg);
     shooter_speed += speed_offset_;
-    SHOOTER_INFO("Shooter speed setpoint = " << msg.data);
+    hood_shooter_speed += hood_speed_offset_; 
+    SHOOTER_INFO("Shooter speed setpoint = " << shooter_speed);
+    SHOOTER_INFO("Hood shooter speed setpoint = " << hood_shooter_speed);
     int good_samples = 0;
     ros::Rate r(100);
     while (ros::ok()) {
@@ -150,6 +157,8 @@ public:
       if (as_.isPreemptRequested() || !ros::ok())
       {
         msg.data = 0;
+        hood_msg.data = 0;
+        hood_shooter_command_pub_.publish(hood_msg);
         shooter_command_pub_.publish(msg);
         downtown_msg.data = DOWNTOWN_INACTIVE;
         downtown_command_pub_.publish(downtown_msg);
@@ -161,7 +170,9 @@ public:
         break;
       }
       msg.data = shooter_speed;
+      hood_msg.data = hood_shooter_speed;
       shooter_command_pub_.publish(msg);
+      hood_shooter_command_pub_.publish(hood_msg);
       /* Measure if the sample is close enough to the requested shooter wheel speed */
       if(fabs(shooter_speed - fabs(current_speed_)) < error_margin_) {
         good_samples++;
@@ -187,6 +198,9 @@ public:
 
   void speedOffsetCallback(const std_msgs::Float64 speed_offset_msg){
     speed_offset_ = speed_offset_msg.data;
+  }
+  void hoodSpeedOffsetCallback(const std_msgs::Float64 hood_speed_offset_msg) {
+    hood_speed_offset_ = hood_speed_offset_msg.data
   }
 
 };
