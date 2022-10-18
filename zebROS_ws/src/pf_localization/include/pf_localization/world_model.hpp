@@ -23,7 +23,7 @@ private:
   
 public:
   std::vector<PositionBeacon> particle_relative(const Particle& p) const;
-  WorldModel(std::vector<PositionBeacon>& beacons, const std::vector<PositionBeacon>& blue_beacons, const std::vector<PositionBeacon>& red_beacons,
+  WorldModel(std::vector<PositionBeacon>& beacons, const std::vector<PositionBeacon>& red_beacons,
              double x_min, double x_max, double y_min, double y_max);
   void get_boundaries(double &x_min, double &x_max, double &y_min, double &y_max) const;
   //bool is_in_world(const Particle& p) const;

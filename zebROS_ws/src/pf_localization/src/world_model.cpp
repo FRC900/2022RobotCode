@@ -8,10 +8,9 @@
 
 #include "pf_localization/world_model.hpp"
 
-WorldModel::WorldModel(std::vector<PositionBeacon>& beacons, const std::vector<PositionBeacon>& blue_beacons, 
-                       const std::vector<PositionBeacon>& red_beacons,
+WorldModel::WorldModel(std::vector<PositionBeacon>& beacons, const std::vector<PositionBeacon>& red_beacons,
                        double x_min, double x_max, double y_min, double y_max) :
-  beacons_(beacons), blue_beacons_(blue_beacons), red_beacons_(red_beacons), x_min_(x_min), x_max_(x_max), y_min_(y_min), y_max_(y_max) {}
+  beacons_(beacons), blue_beacons_(beacons), red_beacons_(red_beacons), x_min_(x_min), x_max_(x_max), y_min_(y_min), y_max_(y_max) {}
 
 void WorldModel::get_boundaries(double &x_min, double &x_max, double &y_min, double &y_max) const {
 	x_min = x_min_;
