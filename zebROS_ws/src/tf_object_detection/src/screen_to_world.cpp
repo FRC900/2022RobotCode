@@ -85,7 +85,7 @@ void callback(const field_obj::TFDetectionConstPtr &objDetectionMsg, const senso
 		worldObject.angle = atan2(worldObject.location.y, worldObject.location.x) * 180. / M_PI;
 
 		// Add the 3d object info to the list of objects in the output message
-		out_msg.objects.push_back(worldObject); 
+		out_msg.objects.push_back(worldObject);
 	}
 
 	pub.publish(out_msg);

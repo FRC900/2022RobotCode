@@ -63,7 +63,7 @@ class FakeGoalDetection
 				if (msgIn->markers[i].ids[0] == -1) // stage publishes odom as marker -1
 					continue;                       // ignore it here
 				// check if the id - 100 is a positive number, sim only hack for apriltags
-				if (msgIn->markers[i].ids[0] - 100 > 0) {
+				if (msgIn->markers[i].ids[0] >= 100) {
 					field_obj::Object dummy;
 
 					const auto &p = msgIn->markers[i].pose.position;
