@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+from cgitb import enable
 import os
 import argparse
 import rospy
@@ -71,6 +72,7 @@ class DriverStationSim(Plugin):
             linebreak_service = rospy.ServiceProxy('/frcrobot_' + sender.where +'/linebreak_service_set', LineBreakSensors)
             #print "Calling service %s:  %d %s %d " %('/frcrobot_' + sender.where +'/linebreak_service_set', 0, sender.objectName(), sender.isChecked())
             linebreak_service(0, sender.objectName(), sender.isChecked())
+
         except rospy.ServiceException as e:
             print(f"linebreak_service call failed: {e}")
 
