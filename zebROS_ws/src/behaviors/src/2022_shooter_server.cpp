@@ -33,7 +33,7 @@ protected:
   ddynamic_reconfigure::DDynamicReconfigure ddr_;
 
   ros::Publisher shooter_command_pub_;
-  ros::Publisher hood_shooter_command_pub_
+  ros::Publisher hood_shooter_command_pub_;
   ros::Publisher downtown_command_pub_;
 
   ros::Subscriber talon_states_sub_;
@@ -60,7 +60,7 @@ public:
     if (!nh_params_.getParam("absolute_wheel_speed", absolute_wheel_speed_))
     {
       absolute_wheel_speed_ = 0; // was 325 at start of UNCA, 343 at UNCP
-      ROS_ERROR_STREAM("2022_shooter_server : could not find absolute_wheel_speed, defaulting to " << absolute_wheel_speed);
+      ROS_ERROR_STREAM("2022_shooter_server : could not find absolute_wheel_speed, defaulting to " << absolute_wheel_speed_);
       return;
     }
     ddr_.registerVariable<double>("absolute_wheel_speed", &absolute_wheel_speed_, "Speed of lower wheel (formerly high_goal_speed)", 0, 500);
@@ -117,7 +117,8 @@ public:
   void executeCB(const behavior_actions::Shooter2022GoalConstPtr &goal)
   {
     SHOOTER_INFO("Shooter action called with mode " << goal->mode);
-    std_msgs::Float64 msg;
+    
+    std_msgs::Float64 msg; // for lower wheels
     std_msgs::Float64 hood_msg;
     std_msgs::Float64 downtown_msg;
     downtown_msg.data = DOWNTOWN_INACTIVE;
@@ -125,9 +126,9 @@ public:
     double hood_shooter_speed;
     switch (goal->mode) {
       case behavior_actions::Shooter2022Goal::HIGH_GOAL:
-        shooter_speed = msg.wheel_speed;
-        hood_shooter_speed = msg.hood_wheel_speed;
-        if (msg.hood_position) {
+        shooter_speed = goal->wheel_speed;
+        hood_shooter_speed = goal->hood_wheel_speed;
+        if (goal->hood_position) {
           downtown_msg.data = DOWNTOWN_ACTIVE;
         } 
         break;
@@ -175,7 +176,7 @@ public:
       if (absolute_wheel_speed_ && absolute_hood_wheel_speed_) {
         msg.data = shooter_speed;
         hood_msg.data = hood_shooter_speed;
-        ROS_ERROR_STREAM_THROTTLE(1000, "Using absolute shooter speeds, THIS SHOULD ONLY BE USED DURING TESTING")
+        ROS_ERROR_STREAM_THROTTLE(1000, "Using absolute shooter speeds, THIS SHOULD ONLY BE USED DURING TESTING");
       }
       else {
         msg.data = shooter_speed;
@@ -204,12 +205,12 @@ public:
       if (talon_state.name[i] == "shooter_leader") {
         current_speed_ = talon_state.speed[i];
         if (checked_speed) {return;}
-        checked_speed = true
+        checked_speed = true;
       }
       if (talon_state.name[i] == "hood_shooter_leader") {
         hood_current_speed_ = talon_state.speed[i];
         if (checked_speed) {return;}
-        checked_speed = true
+        checked_speed = true;
       }
     }
     SHOOTER_ERROR_THROTTLE(0.5, "Couldn't find shooter_leader or hood_shooter_leader talon in /frcrobot_jetson/talon_states. :(");
@@ -219,7 +220,7 @@ public:
     speed_offset_ = speed_offset_msg.data;
   }
   void hoodSpeedOffsetCallback(const std_msgs::Float64 hood_speed_offset_msg) {
-    hood_speed_offset_ = hood_speed_offset_msg.data
+    hood_speed_offset_ = hood_speed_offset_msg.data;
   }
 
 };

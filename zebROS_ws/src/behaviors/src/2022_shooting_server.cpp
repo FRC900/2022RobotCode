@@ -10,6 +10,31 @@
 #include <behavior_actions/Shooter2022Action.h>
 #include <behavior_actions/Index2022Action.h>
 #include <std_msgs/Float64.h>
+#include <behaviors/interpolating_map.h>
+
+struct ShooterData {double wheel_speed;
+                     double hood_wheel_speed;
+
+          ShooterData operator +(const ShooterData& add) const {
+            ShooterData res;
+            res.wheel_speed = wheel_speed + add.wheel_speed;
+            res.hood_wheel_speed = hood_wheel_speed + add.hood_wheel_speed;
+            return res;
+          }
+          ShooterData operator*(const double mul) const {
+            ShooterData res;
+            res.wheel_speed = wheel_speed * mul;
+            res.hood_wheel_speed = hood_wheel_speed * mul;
+            return res;
+            }
+          };
+
+ShooterData operator*(const double& a, const ShooterData& obj) {
+  ShooterData res;
+  res.wheel_speed = obj.wheel_speed * a;
+  res.hood_wheel_speed = obj.hood_wheel_speed * a;
+  return res;
+}    
 
 class ShootingServer2022
 {
@@ -24,10 +49,14 @@ protected:
   behavior_actions::Shooting2022Result result_;
   actionlib::SimpleActionClient<behavior_actions::Shooter2022Action> ac_shooter_;
   actionlib::SimpleActionClient<behavior_actions::Index2022Action> ac_indexer_;
-
+  
   double shooting_timeout_;
   double indexing_timeout_;
+  // maybe 2 meters for hood down v up?
+  double MAGIC_CONSTANT_ = 2;
 
+  wpi::interpolating_map<double, ShooterData> shooter_speed_map_;
+  ShooterData d_;
   ros::Subscriber cargo_state_sub_;
   uint8_t cargo_num_;
 
@@ -94,13 +123,27 @@ public:
     cargo_num_ = msg.data;
   }
 
-  bool spinUpShooter(bool &timedOut, bool low_goal, bool downtown) { // returns false if ros is not ok or timed out, true otherwise
+  bool spinUpShooter(bool &timedOut, bool eject, double distance) { // returns false if ros is not ok or timed out, true otherwise
     feedback_.state = feedback_.WAITING_FOR_SHOOTER;
     as_.publishFeedback(feedback_);
     ROS_INFO_STREAM("2022_shooting_server : spinning up shooter");
     is_spinning_fast_ = false;
     behavior_actions::Shooter2022Goal goal;
-    goal.mode = downtown ? goal.DOWNTOWN : (low_goal ? goal.LOW_GOAL : goal.HIGH_GOAL);
+    if (eject) {
+      goal.mode = goal.EJECT;}
+    else {
+      goal.mode = goal.HIGH_GOAL;}
+      
+    d_.wheel_speed = 300;
+    d_.hood_wheel_speed = 300;
+    shooter_speed_map_[2] = d_;
+    d_.wheel_speed = 400;
+    d_.hood_wheel_speed = 400; 
+    shooter_speed_map_[4] = d_;
+    goal.wheel_speed = shooter_speed_map_[distance].wheel_speed;
+    goal.hood_wheel_speed = shooter_speed_map_[distance].hood_wheel_speed;
+    // sets hood position to down if less than some constant up otherwise 
+    goal.hood_position = distance < MAGIC_CONSTANT_ ? false : true;
     ac_shooter_.sendGoal(goal,
                          actionlib::SimpleActionClient<behavior_actions::Shooter2022Action>::SimpleDoneCallback(),
                          actionlib::SimpleActionClient<behavior_actions::Shooter2022Action>::SimpleActiveCallback(),
@@ -178,7 +221,7 @@ public:
       ROS_ERROR_STREAM("2022_shooting_server : shooter server not running!!! this is unlikely to work");
     }
     result_.timed_out = false;
-	result_.success = false;
+	  result_.success = false;
     if (goal->num_cargo == 0) {
       ROS_ERROR_STREAM("2022_shooting_server : invalid number of cargo - must be a positive number. ");
       as_.setAborted(result_); // set the action state to aborted
