@@ -10,6 +10,8 @@
 #include <tf2_ros/transform_broadcaster.h>
 #include "tf2_geometry_msgs/tf2_geometry_msgs.h"
 #include "sensor_msgs/Imu.h"
+#include <std_msgs/Bool.h>
+#include <std_msgs/Float64.h>
 
 class Tag {
 public:
@@ -49,6 +51,8 @@ protected:
   tf2_ros::TransformListener tfListener;
   std::map<int, Tag> tags_;
   ros::Subscriber sub_;
+  ros::Publisher orient_strafing_setpoint_pub;
+  ros::Publisher orient_strafing_enable_pub;
   double hubX;
   double hubY;
   double imuZ;
@@ -75,6 +79,8 @@ public:
     hubX = static_cast<double>(xmlHub[0]);
     hubY = static_cast<double>(xmlHub[1]);
     sub_ = nh_.subscribe<sensor_msgs::Imu>("/imu/imu/data", 1000, boost::bind(&AprilTagShootingAction::imuCallback, this, _1));
+    orient_strafing_enable_pub = nh_.advertise<std_msgs::Bool>("/teleop/orient_strafing/pid_enable", 1);
+  	orient_strafing_setpoint_pub = nh_.advertise<std_msgs::Float64>("/teleop/orient_strafing/setpoint", 1);
   }
 
   void imuCallback(const sensor_msgs::Imu::ConstPtr& msg)
@@ -96,8 +102,8 @@ public:
     // robot relative
     double deltaY = hubY - tags_[tagId].y;
     double deltaX = hubX - tags_[tagId].x;
-    ROS_INFO_STREAM("Relative to robot, tag " << tagId << " is at (" << tagLocation.x << "," << tagLocation.y << ")");
-    ROS_INFO_STREAM("Relative to tag " << tagId << ", hub is at (" << deltaX << "," << deltaY << ")");
+    // ROS_INFO_STREAM("Relative to robot, tag " << tagId << " is at (" << tagLocation.x << "," << tagLocation.y << ")");
+    // ROS_INFO_STREAM("Relative to tag " << tagId << ", hub is at (" << deltaX << "," << deltaY << ")");
     // if we say the hub is 1m forward but the robot is rotated to the left,
     // we have to rotate that 1m to the right.
     // this code does that using IMU data.
@@ -111,7 +117,7 @@ public:
     // deltaY = sin(arctan-imuZ) * dist;
     double newDeltaX = deltaX * cos(-imuZ) - deltaY * sin(-imuZ);
     double newDeltaY = deltaY * cos(-imuZ) + deltaX * sin(-imuZ);
-    ROS_INFO_STREAM("Relative to tag " << tagId << ", rotated, hub is at (" << newDeltaX << "," << newDeltaY << ")");
+    // ROS_INFO_STREAM("Relative to tag " << tagId << ", rotated, hub is at (" << newDeltaX << "," << newDeltaY << ")");
     return XYCoord(newDeltaX + tagLocation.x, newDeltaY + tagLocation.y);
   }
 
@@ -129,6 +135,10 @@ public:
   void executeCB(const behavior_actions::AlignedShooting2022GoalConstPtr &goal)
   {
     static tf2_ros::TransformBroadcaster br;
+
+    double averageHubX;
+    double averageHubY;
+    uint16_t apriltagsDetected; // 65536 apriltags should be enough...
 
     for (const auto& [tag, _] : tags_) {
       geometry_msgs::TransformStamped transformStamped;
@@ -149,15 +159,31 @@ public:
         // tfBuffer.transform(pointStamped, pointStamped, "base_link"); // to deal with robot rotation
         // hubGuess.x = pointStamped.point.x;
         // hubGuess.y = pointStamped.point.y;
+        averageHubX += hubGuess.x;
+        averageHubY += hubGuess.y;
+        apriltagsDetected += 1;
         auto distAngle = distanceAngle(hubGuess);
-        ROS_INFO_STREAM("Hub X: " << hubGuess.x << ", Hub Y: " << hubGuess.y);
-        ROS_INFO_STREAM("Tag " << tag << ". Hub Distance: " << distAngle.first << "m. Angle: " << distAngle.second << "rad.");
+        //ROS_INFO_STREAM("Hub X: " << hubGuess.x << ", Hub Y: " << hubGuess.y);
+        //ROS_INFO_STREAM("Tag " << tag << ". Hub Distance: " << distAngle.first << "m. Angle: " << distAngle.second << "rad.");
       }
       catch (tf2::TransformException &ex) {
         // tag not found
         continue;
       }
     }
+
+    averageHubX /= (double)apriltagsDetected;
+    averageHubY /= (double)apriltagsDetected;
+    XYCoord hubGuess(averageHubX, averageHubY);
+    auto distAngle = distanceAngle(hubGuess);
+    std_msgs::Bool msgBool;
+    msgBool.data = false;
+    orient_strafing_enable_pub.publish(msgBool);
+    std_msgs::Float64 msgFloat;
+    msgFloat.data = distAngle.second + imuZ;
+    orient_strafing_setpoint_pub.publish(msgFloat);
+    msgBool.data = true;
+    orient_strafing_enable_pub.publish(msgBool);
     // // helper variables
     // ros::Rate r(1);
     // bool success = true;

@@ -853,8 +853,8 @@ void evaluateCommands(const ros::MessageEvent<frc_msgs::JoystickState const>& ev
 			{
 				behavior_actions::Shooting2022Goal goal;
 				goal.num_cargo = 2;
-				goal.low_goal = !shoot_in_high_goal;
-				goal.downtown = shoot_from_downtown;
+				// goal.low_goal = !shoot_in_high_goal;
+				// goal.downtown = shoot_from_downtown;
 				shooting_ac->sendGoal(goal);
 			}
 			if(joystick_states_array[0].bumperRightButton)
@@ -958,8 +958,8 @@ void evaluateCommands(const ros::MessageEvent<frc_msgs::JoystickState const>& ev
 				if(!joystick1_right_trigger_pressed) {
 					behavior_actions::Shooting2022Goal goal;
 					goal.num_cargo = 1;
-					goal.low_goal = !shoot_in_high_goal;
-					goal.downtown = shoot_from_downtown;
+					// goal.low_goal = !shoot_in_high_goal;
+					// goal.downtown = shoot_from_downtown;
 					shooting_ac->sendGoal(goal);
 				}
 				joystick1_right_trigger_pressed = true;
