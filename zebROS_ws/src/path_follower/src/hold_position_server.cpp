@@ -87,17 +87,13 @@ class holdPosition
 		double getYaw(const geometry_msgs::Quaternion &q) const
 		{
 			double roll, pitch, yaw;
-			tf2::Quaternion tf_q(
-			
-			out cop
-			out cop	q.x,
+			tf2::Quaternion tf_q(q.x,
 				q.y,
 				q.z,
 				q.w);
 			tf2::Matrix3x3(tf_q).getRPY(roll, pitch, yaw);
 		
-		out cop
-		out cop	return yaw;
+			return yaw;
 		}
 
 		void odomCallback(const nav_msgs::Odometry &odom_msg)
