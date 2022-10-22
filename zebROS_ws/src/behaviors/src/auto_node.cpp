@@ -624,7 +624,6 @@ int main(int argc, char** argv)
 					} //for some reason this is necessary, even if the server has been up and running for a while
 					behavior_actions::Shooting2022Goal goal;
 					goal.num_cargo = 2;
-					goal.low_goal = false;
 
 					shooting_ac.sendGoal(goal);
 					waitForActionlibServer(shooting_ac, 100, "shooting server");
