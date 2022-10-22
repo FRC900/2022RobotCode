@@ -1,8 +1,5 @@
-// Spin up shooter
-// Wait for shooter
-// Get cargo from indexer
-// Repeat `num_cargo` times
-// AS OF NOW, DO NOT RUN TWO CARGO AT ONCE
+// assumes map 0,0 is also the center of the goal
+
 #include <ros/ros.h>
 #include <actionlib/server/simple_action_server.h>
 #include <actionlib/client/simple_action_client.h>
@@ -11,76 +8,42 @@
 #include <behavior_actions/Index2022Action.h>
 #include <std_msgs/Float64.h>
 #include <behaviors/interpolating_map.h>
+#include <path_follower_msgs/holdPositionAction.h>
+#include <path_follower_msgs/holdPositionGoal.h>
+#include <tf2/LinearMath/Matrix3x3.h>
+#include <tf2/LinearMath/Quaternion.h>
+#include <tf2_ros/transform_listener.h>
+#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 
-struct ShooterData {double wheel_speed;
-                     double hood_wheel_speed;
-
-          ShooterData operator +(const ShooterData& add) const {
-            ShooterData res;
-            res.wheel_speed = wheel_speed + add.wheel_speed;
-            res.hood_wheel_speed = hood_wheel_speed + add.hood_wheel_speed;
-            return res;
-          }
-          ShooterData operator*(const double mul) const {
-            ShooterData res;
-            res.wheel_speed = wheel_speed * mul;
-            res.hood_wheel_speed = hood_wheel_speed * mul;
-            return res;
-            }
-          };
-
-ShooterData operator*(const double& a, const ShooterData& obj) {
-  ShooterData res;
-  res.wheel_speed = obj.wheel_speed * a;
-  res.hood_wheel_speed = obj.hood_wheel_speed * a;
-  return res;
-}    
-
-class ShootingServer2022
+class AlignShoot_PF
 {
 protected:
 
   ros::NodeHandle nh_;
-  actionlib::SimpleActionServer<behavior_actions::Shooting2022Action> as_;
-  // looks unused?
+  actionlib::SimpleActionServer<behavior_actions::AlignedShooting2022Action> as_;
   std::string action_name_;
   // create messages that are used to publish feedback/result
-  behavior_actions::Shooting2022Feedback feedback_;
+  behavior_actions::AlignedShooting2022Feedback feedback_;
+  behavior_actions::AlignedShooting2022Result result_;
 
-  behavior_actions::Shooting2022Result result_;
-  actionlib::SimpleActionClient<behavior_actions::Shooter2022Action> ac_shooter_;
-  actionlib::SimpleActionClient<behavior_actions::Index2022Action> ac_indexer_;
-  
+  actionlib::SimpleActionClient<path_follower_msgs::holdPositionAction> ac_hold_pos_;
+
   double shooting_timeout_;
   double indexing_timeout_;
-  // maybe 2 meters for hood down v up?
-  double MAGIC_CONSTANT_ = 2;
+  tf2_ros::Buffer tf_buffer_;
+  tf2_ros::TransformListener tf_listener_;
 
-  wpi::interpolating_map<double, ShooterData> shooter_speed_map_;
-  ShooterData d_;
   ros::Subscriber cargo_state_sub_;
   uint8_t cargo_num_;
 
-  bool is_spinning_fast_;
-
 public:
 
-  ShootingServer2022(std::string name) :
-    as_(nh_, name, boost::bind(&ShootingServer2022::executeCB, this, _1), false),
+  AlignShootServer(std::string name) :
+    as_(nh_, name, boost::bind(&AlignShootServer::executeCB, this, _1), false),
     action_name_(name),
-    ac_shooter_("/shooter/shooter_server_2022", true),
-    ac_indexer_("/index/index_server_2022", true)
+    ac_hold_pos_("/PATH_TO_HOLD_POSITION", true),
+    tf_listener_(tf_buffer_)
   {
-    if (!nh_.getParam("shooting_timeout", shooting_timeout_))
-    {
-      ROS_WARN_STREAM("2022_shooting_server : Could not find shooting_timeout, defaulting to 10 seconds");
-      shooting_timeout_ = 10.0;
-    }
-    if (!nh_.getParam("indexing_timeout", shooting_timeout_))
-    {
-      ROS_WARN_STREAM("2022_shooting_server : Could not find indexing_timeout, defaulting to 5 seconds");
-      indexing_timeout_ = 5.0;
-    }
     cargo_state_sub_ = nh_.subscribe("/2022_index_server/ball_state", 2, &ShootingServer2022::cargoStateCallback, this);
     as_.start();
   }
@@ -214,61 +177,58 @@ public:
     return ros::ok();
   }
 
-  void executeCB(const behavior_actions::Shooting2022GoalConstPtr &goal)
+  void executeCB(const behavior_actions::AlignedShooting2022GoalConstPtr &goal)
   {
-    if (!ac_indexer_.isServerConnected()) {
-      ROS_ERROR_STREAM("2022_shooting_server : indexer server not running!!! this is unlikely to work");
-    }
-    if (!ac_shooter_.isServerConnected()) {
-      ROS_ERROR_STREAM("2022_shooting_server : shooter server not running!!! this is unlikely to work");
-    }
-    result_.timed_out = false;
-	  result_.success = false;
     if (goal->num_cargo == 0) {
       ROS_ERROR_STREAM("2022_shooting_server : invalid number of cargo - must be a positive number. ");
       as_.setAborted(result_); // set the action state to aborted
       return;
     }
-    
-    bool shooterTimedOut = false;
-    bool success = spinUpShooter(shooterTimedOut, goal->eject, goal->distance);
-    result_.timed_out = shooterTimedOut;
-    for (uint8_t i = 0; (cargo_num_ > 0) && (i < goal->num_cargo) && success; i++)
-    {
-      bool indexerTimedOut = false;
-      // check that preempt has not been requested by the client
-      if (as_.isPreemptRequested() || !ros::ok())
-      {
-        ROS_INFO_STREAM("2022_shooting_server : preempted");
-        // set the action state to preempted
-        as_.setPreempted();
-        success = false;
-        break;
-      }
-      if (getCargoFromIndexer(indexerTimedOut)) {
-        success = success && true;
-      } else {
-        result_.timed_out = indexerTimedOut;
-        success = false;
-        break;
-      }
-      if (goal->num_cargo == 2 && i == 0) {
-        shooterTimedOut = false;
-        if (waitForShooter(shooterTimedOut)) {
-          success = success && true;
-        } else {
-          result_.timed_out = shooterTimedOut;
-          success = false;
-          break;
-        }
-      }
-	    ros::spinOnce(); // update ball count, hopefully
-      ros::Duration(goal->distance < MAGIC_CONSTANT_ ? 0.25 : 0.5).sleep();
+    // call hold_position_server and point toward goal if eject, point towards our drivers station corner to make it harder for the opponents
+    // Determine distance of the shot and call Shooting2022 server
+    // Set feedback and wait for success 
+    geometry_msgs::TransformStamped base_to_map_tf;
+    try {
+        base_to_map_tf = tf_buffer_.lookupTransform("base_link", "map", ros::Time::now(), ros::Duration(0.1));
     }
-    ros::Duration(0.75).sleep();
-
-    ac_shooter_.cancelGoal(); // stop shooter
-    ac_indexer_.cancelGoal(); // stop indexer
+    // not quite sure what should happen here, if we just abort then the driver will have no idea why the shooter didn't shoot, 
+    // but at the same time just waiting and trying to find a transform that isn't coming is bad too
+    catch (const tf2::TransformException &ex) {
+        ROS_ERROR_STREAM_THROTTLE(5, "Shooting with PF failed to find transform - fix base_link to map transform");
+        as_.setAborted(result_);
+        return;
+    }
+    double angle = tf2::getYaw(base_to_map_tf.transform.rotation);
+    ROS_INFO_STREAM("2022_shooting_server : angle to goal is " << angle);
+    // call hold position server with angle
+    behavior_actions::HoldPosition2022Goal hold_goal;
+    geometry_msgs::Pose pose;
+    geometry_msgs::Point point;
+    point.x = 0;
+    point.y = 0;
+    point.z = 0;
+    pose.position = point;
+    pose.orientation = base_to_map_tf.transform.rotation
+    hold_goal.pose = pose;
+    hold_goal.isAbsoluteCord = false;
+    // send goal to hold position server
+    ac_hold_position_.sendGoal(hold_goal);
+    // find distance to goal
+    double distance = sqrt(pow(base_to_map_tf.transform.translation.x, 2) + pow(base_to_map_tf.transform.translation.y, 2));
+    ROS_INFO_STREAM("2022_align_shoot_server : distance to goal is " << distance);
+    // wait for hold position server to finish
+    // we do lose some efficency here because we could be spinning up the shooter while we are waiting
+    // seems like what we get for layering servers the way we have 
+    bool finished_before_timeout = waitForResultAndCheckForPreempt(ros::Duration(5), ac_hold_position_, as_);
+    if (!finished_before_timeout) {
+        ROS_ERROR_STREAM("2022_shooting_server : hold position server timed out");
+        as_.setAborted(result_);
+        return;
+    }
+    // call shooting server with distance
+    behavior_actions::Shooting2022Goal shooting_goal;
+    shooting_goal.distance = distance;
+    ac_shooting_.sendGoal(shooting_goal);
 
 	  result_.success = success;
     if (success)
@@ -293,10 +253,9 @@ public:
 
 int main(int argc, char** argv)
 {
-  ros::init(argc, argv, "shooting_server_2022");
-
-  ShootingServer2022 server("shooting_server_2022");
+  ros::init(argc, argv, "AlignAndShoot_PF_2022");
+  AlignAndShoot_PF server("AlignAndShoot_PF_2022");
   ros::spin();
-
   return 0;
 }
+

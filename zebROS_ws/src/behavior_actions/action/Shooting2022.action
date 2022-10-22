@@ -1,7 +1,7 @@
 # goal
 uint8 num_cargo # 1 or 2 (0 is pointless, 3+ is impossible)
 float64 distance # how far are we from the goal
-float64 angle # what angle do we need to turn
+bool eject # shoiuld cargo be ejected
 ---
 # result
 bool success

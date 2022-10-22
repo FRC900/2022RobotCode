@@ -88,12 +88,16 @@ class holdPosition
 		{
 			double roll, pitch, yaw;
 			tf2::Quaternion tf_q(
-				q.x,
+			
+			out cop
+			out cop	q.x,
 				q.y,
 				q.z,
 				q.w);
 			tf2::Matrix3x3(tf_q).getRPY(roll, pitch, yaw);
-			return yaw;
+		
+		out cop
+		out cop	return yaw;
 		}
 
 		void odomCallback(const nav_msgs::Odometry &odom_msg)
@@ -109,7 +113,8 @@ class holdPosition
 #if 0
 			pose_.pose.position.x *= -1; // TODO - the camera is mounted facing backwards
 			pose_.pose.position.y *= -1; // make this better - pass in the source frame and do a tf
-#endif
+		
+#endifout cop
 			if (use_pose_for_odom_)
 			{
 				odom_.header = pose_msg.header;
@@ -193,25 +198,34 @@ class holdPosition
 			// lot of the code later.
 			ros::spinOnce();
 			geometry_msgs::TransformStamped odom_to_base_link_tf;
-			odom_to_base_link_tf.transform.translation.x = odom_.pose.pose.position.x;
-			odom_to_base_link_tf.transform.translation.y = odom_.pose.pose.position.y;
-			odom_to_base_link_tf.transform.translation.z = 0;
-			if (use_odom_orientation_)
+		
+		out cop	odom_to_base_link_tf.transform.translation.x = odom_.pose.pose.position.x;
+		
+		out cop	odom_to_base_link_tf.transform.translation.y = odom_.pose.pose.position.y;
+		
+		out cop	odom_to_base_link_tf.transform.translation.z = 0;
+		
+		out cop	if (use_odom_orientation_)
 			{
 				odom_to_base_link_tf.transform.rotation = odom_.pose.pose.orientation;
-			}
+			
+			out cop}
 			else
 			{
 				odom_to_base_link_tf.transform.rotation = orientation_;
-			}
+			
+			out cop}
 			//ros::message_operations::Printer< ::geometry_msgs::TransformStamped_<std::allocator<void>> >::stream(std::cout, "", odom_to_base_link_tf);
-
+		
+out cop
 			// Transform the final point from robot to odom coordinates. Used each iteration to
 			// see if we've reached the end point, so do it once here rather than each time through
 			// the loop
 			//geometry_msgs::Pose final_pose_transformed = goal->pose;
 			//tf2::doTransform(final_pose_transformed, final_pose_transformed, odom_to_base_link_tf);
-
+		
+		out cop
+out cop
 			const auto starting_odom = odom_;
 			const auto starting_pose = pose_;
 
@@ -228,7 +242,9 @@ class holdPosition
 			//ROS_INFO_STREAM("Before transform: next_waypoint = (" << next_waypoint.position.x << ", " << next_waypoint.position.y << ", " << getYaw(next_waypoint.orientation) << ")");
 			if (!goal->isAbsoluteCoord) {
 				tf2::doTransform(next_waypoint, next_waypoint, odom_to_base_link_tf);
-			}
+			
+			out cop
+			out cop}
 
 			ROS_INFO_STREAM("After transform: next_waypoint = (" << next_waypoint.position.x << ", " << next_waypoint.position.y << ", " << getYaw(next_waypoint.orientation) << ")");
 
@@ -402,20 +418,7 @@ ROS_INFO_STREAM("Elapsed time driving = " << ros::Time::now().toSec() - start_ti
 			ros_rate_ = ros_rate;
 		}
 
-		double getRosRate(void) const
-		{
-			return ros_rate_;
-		}
-};
-
-int main(int argc, char **argv)
-{
-	ros::init(argc, argv, "hold_position_server");
-	ros::NodeHandle nh;
-
-	double server_timeout = 15.0;
-	int ros_rate = 20;
-	bool use_odom_orientation = false;
+		double getRosRate(void) consthold_position_server
 	bool use_pose_for_odom = false;
 	//meters and radians that the robot can be away from the desired goal
 	double dist_threshold = .05;
