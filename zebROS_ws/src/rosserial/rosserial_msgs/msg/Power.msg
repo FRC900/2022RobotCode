@@ -1,3 +1,7 @@
+<<<<<<< Updated upstream
+=======
+Header header
+>>>>>>> Stashed changes
 string partName
 string version
 string serialString
