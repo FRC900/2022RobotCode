@@ -12,6 +12,7 @@
 #include "sensor_msgs/Imu.h"
 #include <std_msgs/Bool.h>
 #include <std_msgs/Float64.h>
+#include <path_follower_msgs/holdPositionAction.h>
 
 class Tag {
 public:
@@ -51,11 +52,11 @@ protected:
   tf2_ros::TransformListener tfListener;
   std::map<int, Tag> tags_;
   ros::Subscriber sub_;
-  ros::Publisher orient_strafing_setpoint_pub;
-  ros::Publisher orient_strafing_enable_pub;
   double hubX;
   double hubY;
   double imuZ;
+  actionlib::SimpleActionClient<behavior_actions::Shooting2022Action> ac_;
+  actionlib::SimpleActionClient<path_follower_msgs::holdPositionAction> ac_pos_;
 
 public:
 
@@ -63,24 +64,22 @@ public:
     as_(nh_, name, boost::bind(&AprilTagShootingAction::executeCB, this, _1), false),
     action_name_(name),
     tfBuffer(ros::Duration(0.25)),
-    tfListener(tfBuffer)
+    tfListener(tfBuffer),
+    ac_("/shooting/shooting_server_2022", true),
+    ac_pos_("/hold_position/hold_position_server", true)
   {
     as_.start();
     XmlRpc::XmlRpcValue xmlTags;
     nh_.getParam("tags", xmlTags);
-    ROS_INFO_STREAM(xmlTags << std::endl);
     for (auto pair : xmlTags) {
-      ROS_INFO_STREAM(pair.first << std::endl);
-      ROS_INFO_STREAM(pair.second);
       tags_[std::stoi(pair.first)] = Tag(static_cast<double>(pair.second[0]), static_cast<double>(pair.second[1]), static_cast<double>(pair.second[2]), static_cast<bool>(pair.second[3]));
     }
+    ROS_INFO_STREAM("2022_apriltag_shooting_server : " << tags_.size() << " tags loaded");
     XmlRpc::XmlRpcValue xmlHub;
     nh_.getParam("hub", xmlHub);
     hubX = static_cast<double>(xmlHub[0]);
     hubY = static_cast<double>(xmlHub[1]);
     sub_ = nh_.subscribe<sensor_msgs::Imu>("/imu/imu/data", 1000, boost::bind(&AprilTagShootingAction::imuCallback, this, _1));
-    orient_strafing_enable_pub = nh_.advertise<std_msgs::Bool>("/teleop/orient_strafing/pid_enable", 1);
-  	orient_strafing_setpoint_pub = nh_.advertise<std_msgs::Float64>("/teleop/orient_strafing/setpoint", 1);
   }
 
   void imuCallback(const sensor_msgs::Imu::ConstPtr& msg)
@@ -91,7 +90,7 @@ public:
     double roll, pitch, yaw;
     m.getRPY(roll, pitch, yaw);
     imuZ = yaw;
-    ROS_INFO_STREAM_THROTTLE(5, "IMU: " << imuZ);
+    ROS_INFO_STREAM_THROTTLE(5, "2022_apriltag_shooting_server : IMU: " << imuZ);
   }
 
   ~AprilTagShootingAction(void)
@@ -134,6 +133,9 @@ public:
 
   void executeCB(const behavior_actions::AlignedShooting2022GoalConstPtr &goal)
   {
+    if (!ac_.isServerConnected()) {
+      ROS_ERROR_STREAM("2022_apriltag_shooting_server : shooting server not running!!! this is unlikely to work");
+    }
     static tf2_ros::TransformBroadcaster br;
 
     double averageHubX;
@@ -146,82 +148,94 @@ public:
       try{
         transformStamped = tfBuffer.lookupTransform("base_link", "36h11"+std::to_string(tag),
                                  ros::Time(0));
-        // ROS_INFO_STREAM("Tag " << tag << " tf: " << transformStamped);
         XYCoord robotRelativeTagCoord = XYCoord(transformStamped.transform.translation.x, transformStamped.transform.translation.y);
         XYCoord hubGuess = hubLocation(tag, robotRelativeTagCoord);
-        // pointStamped.header.stamp = transformStamped.header.stamp;
-        // pointStamped.header.frame_id = "map";
-        // pointStamped.point.x = hubGuess.x;
-        // pointStamped.point.y = hubGuess.y;
-        // pointStamped.point.z = 5; // idk
-        // // TODO make this a pose with orientation
-        // // right now distances line up but angles are different depending on apriltag location
-        // tfBuffer.transform(pointStamped, pointStamped, "base_link"); // to deal with robot rotation
-        // hubGuess.x = pointStamped.point.x;
-        // hubGuess.y = pointStamped.point.y;
         averageHubX += hubGuess.x;
         averageHubY += hubGuess.y;
         apriltagsDetected += 1;
         auto distAngle = distanceAngle(hubGuess);
-        //ROS_INFO_STREAM("Hub X: " << hubGuess.x << ", Hub Y: " << hubGuess.y);
-        //ROS_INFO_STREAM("Tag " << tag << ". Hub Distance: " << distAngle.first << "m. Angle: " << distAngle.second << "rad.");
       }
       catch (tf2::TransformException &ex) {
-        // tag not found
+        // tag not found, this is ok
         continue;
       }
     }
-
+    ROS_INFO_STREAM("2022_apriltag_shooting_server : setting angle");
     averageHubX /= (double)apriltagsDetected;
     averageHubY /= (double)apriltagsDetected;
     XYCoord hubGuess(averageHubX, averageHubY);
     auto distAngle = distanceAngle(hubGuess);
-    std_msgs::Bool msgBool;
-    msgBool.data = false;
-    orient_strafing_enable_pub.publish(msgBool);
-    std_msgs::Float64 msgFloat;
-    msgFloat.data = distAngle.second + imuZ;
-    orient_strafing_setpoint_pub.publish(msgFloat);
-    msgBool.data = true;
-    orient_strafing_enable_pub.publish(msgBool);
-    // // helper variables
-    // ros::Rate r(1);
-    // bool success = true;
-    //
-    // // push_back the seeds for the fibonacci sequence
-    // feedback_.sequence.clear();
-    // feedback_.sequence.push_back(0);
-    // feedback_.sequence.push_back(1);
-    //
-    // // publish info to the console for the user
-    // ROS_INFO("%s: Executing, creating fibonacci sequence of order %i with seeds %i, %i", action_name_.c_str(), goal->order, feedback_.sequence[0], feedback_.sequence[1]);
-    //
-    // // start executing the action
-    // for(int i=1; i<=goal->order; i++)
-    // {
-    //   // check that preempt has not been requested by the client
-    //   if (as_.isPreemptRequested() || !ros::ok())
-    //   {
-    //     ROS_INFO("%s: Preempted", action_name_.c_str());
-    //     // set the action state to preempted
-    //     as_.setPreempted();
-    //     success = false;
-    //     break;
-    //   }
-    //   feedback_.sequence.push_back(feedback_.sequence[i] + feedback_.sequence[i-1]);
-    //   // publish the feedback
-    //   as_.publishFeedback(feedback_);
-    //   // this sleep is not necessary, the sequence is computed at 1 Hz for demonstration purposes
-    //   r.sleep();
-    // }
-    //
-    // if(success)
-    // {
-    //   result_.sequence = feedback_.sequence;
-    //   ROS_INFO("%s: Succeeded", action_name_.c_str());
-    //   // set the action state to succeeded
-    //   as_.setSucceeded(result_);
-    // }
+
+    path_follower_msgs::holdPositionGoal posGoal;
+    tf2::Quaternion q;
+    q.setRPY(0, 0, distAngle.second/* + imuZ*/);  // Create this quaternion from roll/pitch/yaw (in radians)
+    geometry_msgs::Quaternion gq = tf2::toMsg(q);
+    posGoal.pose.orientation = gq;
+    posGoal.isAbsoluteCoord = false;
+
+    bool aligned = false;
+
+    ac_pos_.sendGoal(posGoal,
+                actionlib::SimpleActionClient<path_follower_msgs::holdPositionAction>::SimpleDoneCallback(),
+                actionlib::SimpleActionClient<path_follower_msgs::holdPositionAction>::SimpleActiveCallback(),
+                [&](const path_follower_msgs::holdPositionFeedbackConstPtr& feedback){
+                  aligned = feedback->isAligned;
+                });
+
+    ROS_INFO_STREAM("2022_apriltag_shooting_server : angle set");
+
+    ros::Rate r(50);
+    bool success = true;
+    while (!aligned) {
+      if (as_.isPreemptRequested() || !ros::ok())
+      {
+        ROS_INFO_STREAM("2022_apriltag_shooting_server : preempted");
+        ac_pos_.cancelGoalsAtAndBeforeTime(ros::Time::now());
+        // set the action state to preempted
+        as_.setPreempted();
+        success = false;
+        break;
+      }
+      r.sleep();
+    }
+    ac_pos_.cancelGoalsAtAndBeforeTime(ros::Time::now());
+
+    ROS_INFO_STREAM("2022_apriltag_shooting_server : angle reached");
+    feedback_.state = feedback_.WAITING_FOR_SHOOTER;
+
+    ROS_INFO_STREAM("2022_apriltag_shooting_server : shooting " << std::to_string(goal->num_cargo) << " cargo at a distance of " << distAngle.first << "m.");
+
+    behavior_actions::Shooting2022Goal shootingGoal;
+    shootingGoal.num_cargo = goal->num_cargo;
+    shootingGoal.distance = distAngle.first;
+    shootingGoal.eject = false;
+
+    bool done = false;
+
+    ac_.sendGoal(shootingGoal,
+      [&](const actionlib::SimpleClientGoalState& state, const behavior_actions::Shooting2022ResultConstPtr& result){
+        result_.success = result->success;
+        as_.setSucceeded(result_);
+        done = true;
+      },
+                actionlib::SimpleActionClient<behavior_actions::Shooting2022Action>::SimpleActiveCallback(),
+                [&](const behavior_actions::Shooting2022FeedbackConstPtr& feedback){
+                  feedback_.state = feedback->state;
+                });
+
+    while (!done) {
+      // handle preempt. preempt shooting if this is preempted
+      if (as_.isPreemptRequested() || !ros::ok())
+      {
+        ROS_INFO_STREAM("2022_apriltag_shooting_server : preempted");
+        // set the action state to preempted
+        as_.setPreempted();
+        ac_.cancelGoalsAtAndBeforeTime(ros::Time::now());
+        success = false;
+        break;
+      }
+      r.sleep();
+    }
   }
 
 
