@@ -138,9 +138,9 @@ public:
     }
     static tf2_ros::TransformBroadcaster br;
 
-    double averageHubX;
-    double averageHubY;
-    uint16_t apriltagsDetected; // 65536 apriltags should be enough...
+    double averageHubX = 0;
+    double averageHubY = 0;
+    uint16_t apriltagsDetected = 0; // 65536 apriltags should be enough...
 
     for (const auto& [tag, _] : tags_) {
       geometry_msgs::TransformStamped transformStamped;
@@ -160,7 +160,7 @@ public:
         continue;
       }
     }
-    ROS_INFO_STREAM("2022_apriltag_shooting_server : setting angle");
+    ROS_INFO_STREAM("2022_apriltag_shooting_server : " << apriltagsDetected << " tags found, setting angle");
     averageHubX /= (double)apriltagsDetected;
     averageHubY /= (double)apriltagsDetected;
     XYCoord hubGuess(averageHubX, averageHubY);
@@ -168,10 +168,10 @@ public:
 
     path_follower_msgs::holdPositionGoal posGoal;
     tf2::Quaternion q;
-    q.setRPY(0, 0, distAngle.second/* + imuZ*/);  // Create this quaternion from roll/pitch/yaw (in radians)
+    q.setRPY(0, 0, distAngle.second + imuZ);  // Create this quaternion from roll/pitch/yaw (in radians)
     geometry_msgs::Quaternion gq = tf2::toMsg(q);
     posGoal.pose.orientation = gq;
-    posGoal.isAbsoluteCoord = false;
+    posGoal.isAbsoluteCoord = true;
 
     bool aligned = false;
 
@@ -182,9 +182,9 @@ public:
                   aligned = feedback->isAligned;
                 });
 
-    ROS_INFO_STREAM("2022_apriltag_shooting_server : angle set");
+    ROS_INFO_STREAM("2022_apriltag_shooting_server : angle set to " << distAngle.second + imuZ << " absolute");
 
-    ros::Rate r(50);
+    ros::Rate r(100);
     bool success = true;
     while (!aligned) {
       if (as_.isPreemptRequested() || !ros::ok())
