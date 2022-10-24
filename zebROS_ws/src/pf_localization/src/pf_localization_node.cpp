@@ -312,6 +312,8 @@ int main(int argc, char **argv) {
   nh_.param("odom_frame_id", odom_frame_id, std::string("odom"));
   nh_.param("tf_tolerance", tmp_tolerance, 0.1);
   tf_tolerance.fromSec(tmp_tolerance);
+  // might be some sort of race between the static publisher and the PF, it can crash on looking up blue0 to red0 
+  ros::Duration(3).sleep();
   
   ros::Rate r(.25);
   r.sleep();

@@ -39,7 +39,7 @@ public:
   AlignShootServer(std::string name) :
     as_(nh_, name, boost::bind(&AlignShootServer::executeCB, this, _1), false),
     action_name_(name),
-    ac_hold_pos_("/PATH_TO_HOLD_POSITION", true),
+    ac_hold_pos_("/hold_position/hold_position_server", true),
     ac_shooting_("/shooting/shooting_server_2022", true),
     tf_listener_(tf_buffer_)
   {
@@ -122,7 +122,13 @@ public:
         as_.setAborted(result_);
         return;
     }
-    double angle = getYaw(base_to_map_tf.transform.rotation);
+    
+    // TODO USE THE PREDICTED POSE AND ANGLE TO DETERMINE DISTANCE AND ANGLE
+    //double angle = getYaw(base_to_map_tf.transform.rotation);
+    double angle = atan2(base_to_map_tf.transform.translation.y, base_to_map_tf.transform.translation.x);
+    ROS_INFO_STREAM("Angle with atan: " << atan2(base_to_map_tf.transform.translation.y, base_to_map_tf.transform.translation.x)); 
+    ROS_INFO_STREAM("Raw X data: " << base_to_map_tf.transform.translation.x << " Y: " << base_to_map_tf.transform.translation.y);
+
     ROS_INFO_STREAM("2022_shooting_server : angle to goal is " << angle);
     // call hold position server with angle
     path_follower_msgs::holdPositionGoal hold_goal;
@@ -132,7 +138,15 @@ public:
     point.y = 0;
     point.z = 0;
     pose.position = point;
-    pose.orientation = base_to_map_tf.transform.rotation;
+    // make quaternion q
+    tf2::Quaternion q;
+    // convert angle to degrees
+    angle = angle * 180 / M_PI;
+    ROS_INFO_STREAM("ANGLE IN DEGREES " << angle);
+    ROS_INFO_STREAM("ANGLE FROM TF" << getYaw(base_to_map_tf.transform.rotation));
+    q.setRPY(0, 0, angle);
+    pose.orientation = tf2::toMsg(q);
+    //pose.orientation = base_to_map_tf.transform.rotation;
     hold_goal.pose = pose;
     hold_goal.isAbsoluteCoord = false;
     // send goal to hold position server
