@@ -29,7 +29,7 @@ protected:
   double absolute_hood_wheel_speed_ = 0;
   double eject_speed_;
   double error_margin_;
-  bool hood_state_; 
+  bool hood_state_;
   ddynamic_reconfigure::DDynamicReconfigure ddr_;
 
   ros::Publisher shooter_command_pub_;
@@ -64,15 +64,15 @@ public:
       return;
     }
     ddr_.registerVariable<double>("absolute_wheel_speed", &absolute_wheel_speed_, "Speed of lower wheel (formerly high_goal_speed)", 0, 500);
- 
-    if (!nh_params_.getParam("absolute_hood_wheel_speed_", absolute_hood_wheel_speed_))
+
+    if (!nh_params_.getParam("absolute_hood_wheel_speed", absolute_hood_wheel_speed_))
     {
       absolute_hood_wheel_speed_ = 0;
       ROS_ERROR_STREAM("2022_shooter_server : could not find absolute_hood_wheel_speed_, defaulting to " << absolute_hood_wheel_speed_);
       return;
     } // 180 or 200
     ddr_.registerVariable<double>("absolute_hood_wheel_speed", &absolute_hood_wheel_speed_, "Hood wheel shooting speed for testing", 0, 500);
-    
+
     if (!nh_params_.getParam("eject_speed", eject_speed_))
     {
       eject_speed_ = 120;
@@ -80,7 +80,7 @@ public:
       return;
     }
     ddr_.registerVariable<double>("eject_speed", &eject_speed_, "Eject Cargo - Shooting Speed", 0, 500);
-    
+
     if (!nh_params_.getParam("error_margin", error_margin_))
     {
       error_margin_ = 2;
@@ -88,7 +88,7 @@ public:
       return;
     }
     ddr_.registerVariable<double>("error_margin", &error_margin_, "Shooter margin of error", 0, 50);
-    
+
     if (!nh_params_.getParam("shooter_wheel_checks", shooter_wheel_checks_))
     {
       shooter_wheel_checks_ = 8;
@@ -99,6 +99,9 @@ public:
     // change close_enough to operate with multiple samples
     // error_margin_ = 5;
     // ddr_.registerVariable<double>("samples_for_close_enough", &error_margin_, "Shooter margin of error", 0, 50);
+
+    ddr_.publishServicesTopics();
+
     shooter_command_pub_ = nh_.advertise<std_msgs::Float64>("/frcrobot_jetson/shooter_controller/command", 2);
     hood_shooter_command_pub_ = nh_.advertise<std_msgs::Float64>("/frcrobot_jetson/hood_shooter_controller/command", 2);
     downtown_command_pub_ = nh_.advertise<std_msgs::Float64>("/frcrobot_jetson/downtown_solenoid_controller/command", 2);
@@ -106,8 +109,6 @@ public:
     speed_offset_sub_ = nh_.subscribe("/shooter_speed_offset", 1, &ShooterAction2022::speedOffsetCallback, this);
     hood_speed_offset_sub_ = nh_.subscribe("/hood_shooter_speed_offset", 1, &ShooterAction2022::hoodSpeedOffsetCallback, this);
     as_.start();
-
-    ddr_.publishServicesTopics();
   }
 
   ~ShooterAction2022(void)
@@ -117,7 +118,7 @@ public:
   void executeCB(const behavior_actions::Shooter2022GoalConstPtr &goal)
   {
     SHOOTER_INFO("Shooter action called with mode " << goal->mode);
-    
+
     std_msgs::Float64 msg; // for lower wheels
     std_msgs::Float64 hood_msg;
     std_msgs::Float64 downtown_msg;
@@ -130,7 +131,7 @@ public:
         hood_shooter_speed = goal->hood_wheel_speed;
         if (goal->hood_position) {
           downtown_msg.data = DOWNTOWN_ACTIVE;
-        } 
+        }
         break;
       case behavior_actions::Shooter2022Goal::EJECT:
         shooter_speed = eject_speed_;
@@ -150,7 +151,7 @@ public:
     downtown_command_pub_.publish(downtown_msg);
     /* Offsets commented out until we need them
     shooter_speed += speed_offset_;
-    hood_shooter_speed += hood_speed_offset_; 
+    hood_shooter_speed += hood_speed_offset_;
     */
     SHOOTER_INFO("Shooter speed setpoint = " << shooter_speed);
     SHOOTER_INFO("Hood shooter speed setpoint = " << hood_shooter_speed);
@@ -201,7 +202,7 @@ public:
   {
     bool checked_speed = false;
     for (size_t i = 0; i < talon_state.name.size(); i++) {
-      // not sure which one will get found first, checked_speed makes sure not to return to early 
+      // not sure which one will get found first, checked_speed makes sure not to return to early
       if (talon_state.name[i] == "shooter_leader") {
         current_speed_ = talon_state.speed[i];
         if (checked_speed) {return;}
