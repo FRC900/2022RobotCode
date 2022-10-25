@@ -3,16 +3,28 @@
 #include "frc_msgs/JoystickState.h"
 #include "teleop_joystick_control/rate_limiter.h"
 #include "teleop_joystick_control/TeleopJoystickCompConfig.h"
+#include "teleop_joystick_control/store_xy.h"
+#include "teleop_joystick_control/interpolating_map.h"
 
 template <class ConfigT>
 class TeleopCmdVel
 {
 	public:
+		wpi::interpolating_map<double, store_xy> joystick_values;
 
 		TeleopCmdVel(const ConfigT &config):
 			x_rate_limit_(-config.max_speed, config.max_speed, config.drive_rate_limit_time),
 			y_rate_limit_(-config.max_speed, config.max_speed, config.drive_rate_limit_time),
-			rotation_rate_limit_(-config.max_rot, config.max_rot, config.rotate_rate_limit_time){}
+			rotation_rate_limit_(-config.max_rot, config.max_rot, config.rotate_rate_limit_time){
+				joystick_values.insert(atan2(-0.5, -1.0), store_xy(-1.0, -0.5));
+				joystick_values.insert(atan2(0.5, -1.0), store_xy(-1.0, 0.5));
+				joystick_values.insert(atan2(-0.5, 1.0), store_xy(1.0, -0.5));
+				joystick_values.insert(atan2(0.5, 1.0), store_xy(1.0, 0.5));
+				joystick_values.insert(atan2(-1.0, -0.5), store_xy(-0.5, -1.0));
+				joystick_values.insert(atan2(1.0, -0.5), store_xy(-0.5, 1.0));
+				joystick_values.insert(atan2(-1.0, 0.5), store_xy(0.5, -1.0));
+				joystick_values.insert(atan2(1.0, 0.5), store_xy(0.5, 1.0));
+			}
 
 		void setRobotOrient(const bool &robot_orient, const double &offset_angle)
 		{
@@ -59,6 +71,7 @@ class TeleopCmdVel
 			// output needed to move the robot and 100% to the max
 			// configured speed
 			double magnitude = dead_zone_check(hypot(leftStickX, leftStickY), config.joystick_deadzone);
+			magnitude /= joystick_values[magnitude].hypot();
 			//ROS_INFO_STREAM(__LINE__ << " magnitude:"  << magnitude);
 			if (magnitude != 0)
 			{

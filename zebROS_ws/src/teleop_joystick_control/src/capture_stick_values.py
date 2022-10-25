@@ -3,7 +3,7 @@
 '''
 Script to capture and print gamepad stick values seen while running
 
-Press A to clear the buffer
+Press B to clear the buffer
 Press left bumper to dump values seen since last clear
 
 This is used to check the values reported at the limits of stick
@@ -54,7 +54,7 @@ def callback(data):
     elif axis_data.magnitude() > axis_data_map[direction].magnitude():
         axis_data_map[direction] = axis_data
 
-    if data.bumperLeftPress:
+    if data.buttonBackPress:
         rospy.loginfo("="*50)
         for k in sorted(axis_data_map):
             rospy.loginfo(f", {k}, {axis_data_map[k]}")

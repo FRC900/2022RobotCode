@@ -44,8 +44,6 @@
 
 #include <imu_zero/ImuZeroAngle.h>
 
-#include "interpolating_map.h"
-#include "store_xy.h"
 #include <math.h>
 
 std::unique_ptr<TeleopCmdVel<teleop_joystick_control::TeleopJoystickComp2022Config>> teleop_cmd_vel;
@@ -104,16 +102,6 @@ bool imu_service_needed = true;
 ros::Publisher dynamic_arm_piston_;
 double last_offset;
 bool last_robot_orient;
-
-wpi::interpolating_map<double, store_xy> joystick_values;
-joystick_values.insert(atan2(-0.5, -1.0), store_xy(-1.0, -0.5));
-joystick_values.insert(atan2(0.5, -1.0), store_xy(-1.0, 0.5));
-joystick_values.insert(atan2(-0.5, 1.0), store_xy(1.0, -0.5));
-joystick_values.insert(atan2(0.5, 1.0), store_xy(1.0, 0.5));
-joystick_values.insert(atan2(-1.0, -0.5), store_xy(-0.5, -1.0));
-joystick_values.insert(atan2(1.0, -0.5), store_xy(-0.5, 1.0));
-joystick_values.insert(atan2(-1.0, 0.5), store_xy(0.5, -1.0));
-joystick_values.insert(atan2(1.0, 0.5), store_xy(0.5, 1.0));
 
 // Diagnostic mode controls
 void decIndexerArc(void)
