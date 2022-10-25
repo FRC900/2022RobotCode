@@ -167,8 +167,7 @@ double WorldModel::total_distance(const Particle& p,
       if (assignment[i] >= 0) {
         const double w = pair.second.meas[i]->weight(pair.second.rel[assignment[i]], sigmas);
         total_res *= w;
-        updated_result = true;
-      }
+       }
     }
   }
 

@@ -70,13 +70,11 @@ void ParticleFilter::normalize() {
   for (const Particle& p : particles_) {
     sum += p.weight_;
   }
-  //ROS_INFO_STREAM("normalize : sum = " << sum);
   if (sum == 0.0) {
     // If more than X camera observations come in and
     // we don't get any particles which even remotely
     // match, reinit the particles
-    resetCounter_ += 1;
-    if (resetCounter_ > 10) { // TODO : make me a config item
+    if (++resetCounter_ > 10) { // TODO : make me a config item
       ROS_WARN("Particle Filter : reinitializing due to bad convergence");
       resetCounter_ = 0;
       reinit();
