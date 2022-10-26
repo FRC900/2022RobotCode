@@ -42,6 +42,7 @@ public:
   void constrain_to_world(Particle& p) const;
   void init_particle(Particle& p, const WorldModelBoundaries &boundaries);
   bool allianceColorCheck(bool amIBlueAlliance);
+  std::vector<PositionBeacon> getRedBeacons(const std::vector<PositionBeacon> &blueBeacons);
   double total_distance(const Particle& p, const std::vector<std::shared_ptr<BeaconBase>>& measurements, const std::vector<double> &sigmas) const;
 };
 

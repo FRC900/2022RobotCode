@@ -12,27 +12,29 @@
 #include <std_msgs/Float64.h>
 #include <behaviors/interpolating_map.h>
 
-struct ShooterData {double wheel_speed;
-                     double hood_wheel_speed;
-
-          ShooterData operator +(const ShooterData& add) const {
-            ShooterData res;
-            res.wheel_speed = wheel_speed + add.wheel_speed;
-            res.hood_wheel_speed = hood_wheel_speed + add.hood_wheel_speed;
-            return res;
-          }
-          ShooterData operator*(const double mul) const {
-            ShooterData res;
-            res.wheel_speed = wheel_speed * mul;
-            res.hood_wheel_speed = hood_wheel_speed * mul;
-            return res;
-            }
-          };
+struct ShooterData {
+      double wheel_speed; 
+      double hood_wheel_speed;
+      ShooterData(double inp_wheel_speed, double inp_hood_wheel_speed) {
+        wheel_speed = inp_wheel_speed;
+        hood_wheel_speed = inp_hood_wheel_speed;
+      }
+      ShooterData operator +(const ShooterData& add) const {
+        ShooterData res(wheel_speed + add.wheel_speed, hood_wheel_speed + add.hood_wheel_speed);
+        return res;
+      }
+      ShooterData operator*(const double mul) const {
+        ShooterData res(wheel_speed * mul, hood_wheel_speed * mul);
+        return res;
+      }
+};
 
 ShooterData operator*(const double& a, const ShooterData& obj) {
-  ShooterData res;
+  ShooterData res(obj.wheel_speed * a, obj.hood_wheel_speed * a);
+  /*
   res.wheel_speed = obj.wheel_speed * a;
   res.hood_wheel_speed = obj.hood_wheel_speed * a;
+  */
   return res;
 }    
 
@@ -57,7 +59,6 @@ protected:
   double MAGIC_CONSTANT_ = 2;
 
   wpi::interpolating_map<double, ShooterData> shooter_speed_map_;
-  ShooterData d_;
   ros::Subscriber cargo_state_sub_;
   uint8_t cargo_num_;
 
@@ -135,13 +136,6 @@ public:
     else {
       goal.mode = goal.HIGH_GOAL;}
       
-    d_.wheel_speed = 300;
-    d_.hood_wheel_speed = 300;
-    shooter_speed_map_[2] = d_;
-    d_.wheel_speed = 400;
-    d_.hood_wheel_speed = 400; 
-    shooter_speed_map_[4] = d_;
-    ROS_WARN_STREAM("Shooter speed map " << shooter_speed_map_[3].wheel_speed);
     goal.wheel_speed = shooter_speed_map_[distance].wheel_speed;
     goal.hood_wheel_speed = shooter_speed_map_[distance].hood_wheel_speed;
     // sets hood position to down if less than some constant up otherwise 

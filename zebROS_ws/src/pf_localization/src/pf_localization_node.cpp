@@ -312,27 +312,13 @@ int main(int argc, char **argv) {
   nh_.param("odom_frame_id", odom_frame_id, std::string("odom"));
   nh_.param("tf_tolerance", tmp_tolerance, 0.1);
   tf_tolerance.fromSec(tmp_tolerance);
-  // might be some sort of race between the static publisher and the PF, it can crash on looking up blue0 to red0 
-  ros::Duration(3).sleep();
   
-  ros::Rate r(.25);
-  r.sleep();
-  geometry_msgs::TransformStamped blue2red_tf = tf_buffer_.lookupTransform("blue0", "red0", ros::Time::now(), ros::Duration(1.0));
   // TODO - I think this fails if a beacon is specified as an int
   // Transforms the blue relative beacons to red relative beacons using the static transform blue0 -> red0
   for (size_t i = 0; i < (unsigned) xml_beacons.size(); i++) {
     PositionBeacon b {xml_beacons[i][0], xml_beacons[i][1], xml_beacons[i][2]};
     // beacons is blue_beacons
     beacons.push_back(b);
-    geometry_msgs::PoseStamped b_red;
-    b_red.header.frame_id = "blue0";
-    b_red.header.stamp = ros::Time::now();
-    b_red.pose.position.x = xml_beacons[i][0];
-    b_red.pose.position.y = xml_beacons[i][1];
-    geometry_msgs::PoseStamped b_red_transformed; 
-    tf2::doTransform(b_red, b_red_transformed, blue2red_tf);
-    PositionBeacon b_r {b_red_transformed.pose.position.x, b_red_transformed.pose.position.y, xml_beacons[i][2]};
-    red_beacons.push_back(b_r);
   }
   ROS_INFO_STREAM("BLUE BEACONS");
   // itterate over blue_beacons vector and print each one out

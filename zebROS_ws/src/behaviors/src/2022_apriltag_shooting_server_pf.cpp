@@ -9,17 +9,20 @@
 #include <behavior_actions/AlignedShooting2022Feedback.h>
 #include <path_follower_msgs/holdPositionAction.h>
 #include <path_follower_msgs/holdPositionGoal.h>
+#include <path_follower_msgs/holdPositionFeedback.h>
 #include <std_msgs/Float64.h>
 #include <behaviors/interpolating_map.h>
-#include <tf2/LinearMath/Matrix3x3.h>
+#include <XmlRpcValue.h>
+#include <geometry_msgs/PoseWithCovarianceStamped.h>
+#include <geometry_msgs/PoseWithCovariance.h>
 #include <tf2/LinearMath/Quaternion.h>
 #include <tf2_ros/transform_listener.h>
-#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
+#include <tf2_ros/transform_broadcaster.h>
+#include "tf2_geometry_msgs/tf2_geometry_msgs.h"
 
 class AlignShootServer
 {
 protected:
-
   ros::NodeHandle nh_;
   actionlib::SimpleActionServer<behavior_actions::AlignedShooting2022Action> as_;
   std::string action_name_;
@@ -29,30 +32,28 @@ protected:
   behavior_actions::Shooting2022Feedback shooting_feedback_;
   actionlib::SimpleActionClient<path_follower_msgs::holdPositionAction> ac_hold_pos_;
   actionlib::SimpleActionClient<behavior_actions::Shooting2022Action> ac_shooting_;
-
+  ros::Subscriber pf_sub_; 
   double shooting_timeout_;
-  tf2_ros::Buffer tf_buffer_;
-  tf2_ros::TransformListener tf_listener_;
+  double FIELD_X = 8.299;
+  double FIELD_Y = 4.114;
+  double angle_ = -999;
+  double distance_ = -999;
 
 public:
-
   AlignShootServer(std::string name) :
     as_(nh_, name, boost::bind(&AlignShootServer::executeCB, this, _1), false),
     action_name_(name),
     ac_hold_pos_("/hold_position/hold_position_server", true),
-    ac_shooting_("/shooting/shooting_server_2022", true),
-    tf_listener_(tf_buffer_)
+    ac_shooting_("/shooting/shooting_server_2022", true)
+
   {
     if (!nh_.getParam("shooting_timeout", shooting_timeout_))
     {
       ROS_WARN_STREAM("2022_shooting_server : Could not find shooting_timeout, defaulting to 10 seconds");
       shooting_timeout_ = 10.0;
     }
+    pf_sub_ = nh_.subscribe("/predicted_pose", 1, &AlignShootServer::pfCallback, this);
     as_.start();
-  }
-
-  ~AlignShootServer(void)
-  {
   }
 
   template<class C, class S>
@@ -85,16 +86,43 @@ public:
 		return ac.getState().isDone();
 	}
 
-  double getYaw(const geometry_msgs::Quaternion &q)
+  ~AlignShootServer(void)
   {
-    double roll, pitch, yaw;
-    tf2::Quaternion tf_q(
-      q.x,
-      q.y,
-      q.z,
-      q.w);
-    tf2::Matrix3x3(tf_q).getRPY(roll, pitch, yaw);
-    return yaw;
+  }
+
+double getYaw(const geometry_msgs::Quaternion &q)
+{
+	double roll, pitch, yaw;
+	tf2::Quaternion tf_q(
+		q.x,
+		q.y,
+		q.z,
+		q.w);
+	tf2::Matrix3x3(tf_q).getRPY(roll, pitch, yaw);
+	return yaw;
+}
+
+void pfCallback(const geometry_msgs::PoseWithCovarianceStamped &data) {
+    double x = data.pose.pose.position.x;
+    double y = data.pose.pose.position.y;
+    double d_x = x - FIELD_X;
+    double d_y = y - FIELD_Y;
+
+    distance_ = sqrt(pow(d_x, 2) + pow(d_y, 2));
+    //ROS_INFO_STREAM("Distance: " << distance_);
+    // ros_info_stream x and y
+    //ROS_INFO_STREAM("X: " << x << " Y: " << y);
+    double d_center_x = 8.229 - x;
+    double d_center_y = 4.114 - y;
+    //ROS_INFO_STREAM("d_X: " << d_center_x << " d_Y: " << d_center_y);
+    // get yaw from data and convert to degrees
+    angle_ = atan2(d_center_y, d_center_x) * 180 / M_PI;
+    //ROS_INFO_STREAM("First Angle: " << angle_);
+    // find compliment of angle
+    //angle_ = -angle_;
+    //ROS_INFO_STREAM("Angle negated " << angle_ << "\n");
+    //angle_ = angle_ + yaw;
+    
   }
 
   void executeCB(const behavior_actions::AlignedShooting2022GoalConstPtr &goal)
@@ -111,26 +139,7 @@ public:
     // call hold_position_server and point toward goal if eject, point towards our drivers station corner to make it harder for the opponents
     // Determine distance of the shot and call Shooting2022 server
     // Set feedback and wait for success 
-    geometry_msgs::TransformStamped base_to_map_tf;
-    try {
-        base_to_map_tf = tf_buffer_.lookupTransform("base_link", "map", ros::Time::now(), ros::Duration(0.1));
-    }
-    // not quite sure what should happen here, if we just abort then the driver will have no idea why the shooter didn't shoot, 
-    // but at the same time just waiting and trying to find a transform that isn't coming is bad too
-    catch (const tf2::TransformException &ex) {
-        ROS_ERROR_STREAM_THROTTLE(5, "Shooting with PF failed to find transform - fix base_link to map transform");
-        as_.setAborted(result_);
-        return;
-    }
-    
-    // TODO USE THE PREDICTED POSE AND ANGLE TO DETERMINE DISTANCE AND ANGLE
-    //double angle = getYaw(base_to_map_tf.transform.rotation);
-    double angle = atan2(base_to_map_tf.transform.translation.y, base_to_map_tf.transform.translation.x);
-    ROS_INFO_STREAM("Angle with atan: " << atan2(base_to_map_tf.transform.translation.y, base_to_map_tf.transform.translation.x)); 
-    ROS_INFO_STREAM("Raw X data: " << base_to_map_tf.transform.translation.x << " Y: " << base_to_map_tf.transform.translation.y);
 
-    ROS_INFO_STREAM("2022_shooting_server : angle to goal is " << angle);
-    // call hold position server with angle
     path_follower_msgs::holdPositionGoal hold_goal;
     geometry_msgs::Pose pose;
     geometry_msgs::Point point;
@@ -140,34 +149,49 @@ public:
     pose.position = point;
     // make quaternion q
     tf2::Quaternion q;
-    // convert angle to degrees
-    angle = angle * 180 / M_PI;
-    ROS_INFO_STREAM("ANGLE IN DEGREES " << angle);
-    ROS_INFO_STREAM("ANGLE FROM TF" << getYaw(base_to_map_tf.transform.rotation));
-    q.setRPY(0, 0, angle);
+    q.setRPY(0, 0, angle_);
+    // print out the quaternion
+    ROS_INFO_STREAM("Quaternion XYZW: " << q.x() << " " << q.y() << " " << q.z() << " " << q.w());
+    ROS_INFO_STREAM("being called with Angle: " << angle_);
     pose.orientation = tf2::toMsg(q);
     //pose.orientation = base_to_map_tf.transform.rotation;
     hold_goal.pose = pose;
-    hold_goal.isAbsoluteCoord = false;
-    // send goal to hold position server
-    ac_hold_pos_.sendGoal(hold_goal);
-    // find distance to goal
-    double distance = sqrt(pow(base_to_map_tf.transform.translation.x, 2) + pow(base_to_map_tf.transform.translation.y, 2));
-    ROS_INFO_STREAM("2022_align_shoot_server : distance to goal is " << distance);
-    // wait for hold position server to finish
-    // we do lose some efficency here because we could be spinning up the shooter while we are waiting
-    // seems like what we get for layering servers the way we have, still much much faster than having to drive to the goal
-    bool finished_before_timeout = waitForResultAndCheckForPreempt(ros::Duration(5), ac_hold_pos_, as_);
-    if (!finished_before_timeout) {
-        ROS_ERROR_STREAM("2022_align_shoot_server : hold position server timed out");
-        as_.setAborted(result_);
-        return;
+    hold_goal.isAbsoluteCoord = true;
+    
+    bool aligned = false;
+
+    ac_hold_pos_.sendGoal(hold_goal,
+                actionlib::SimpleActionClient<path_follower_msgs::holdPositionAction>::SimpleDoneCallback(),
+                actionlib::SimpleActionClient<path_follower_msgs::holdPositionAction>::SimpleActiveCallback(),
+                [&](const path_follower_msgs::holdPositionFeedbackConstPtr& feedback){
+                  aligned = feedback->isAligned;
+                });
+
+    ros::Rate r(100);
+    bool success = true;
+    while (!aligned) {
+      if (as_.isPreemptRequested() || !ros::ok())
+      {
+        ROS_INFO_STREAM("2022_apriltag_shooting_server : preempted");
+        ac_hold_pos_.cancelGoalsAtAndBeforeTime(ros::Time::now());
+        // set the action state to preempted
+        as_.setPreempted();
+        success = false;
+        break;
+      }
+      r.sleep();
     }
+    ac_hold_pos_.cancelGoalsAtAndBeforeTime(ros::Time::now());
+
+    ROS_INFO_STREAM("2022_apriltag_shooting_server : angle reached");
+    // find distance to goal
+    ROS_INFO_STREAM("2022_align_shoot_server : distance to goal is " << distance_);
+
     feedback_.state = feedback_.WAITING_FOR_SHOOTER;
     as_.publishFeedback(feedback_);
     // call shooting server with distance
     behavior_actions::Shooting2022Goal shooting_goal;
-    shooting_goal.distance = distance;
+    shooting_goal.distance = distance_;
     shooting_goal.num_cargo = goal->num_cargo;
     shooting_goal.eject = goal->eject;
     ac_shooting_.sendGoal(shooting_goal,
@@ -176,6 +200,7 @@ public:
                       [&](const behavior_actions::Shooting2022FeedbackConstPtr &feedback){ ROS_INFO_STREAM_THROTTLE(0.1, "2022_align_shooting_server : new feedback"); feedback_.state = feedback->state; as_.publishFeedback(feedback_); });
 
     // wait for shooting server to finish
+    bool finished_before_timeout;
     finished_before_timeout = waitForResultAndCheckForPreempt(ros::Duration(shooting_timeout_), ac_shooting_, as_);
     if (!finished_before_timeout) {
         ROS_ERROR_STREAM("2022_align_shoot_server : hold position server timed out");
