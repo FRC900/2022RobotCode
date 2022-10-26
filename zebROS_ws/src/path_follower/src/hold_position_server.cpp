@@ -419,7 +419,7 @@ int main(int argc, char **argv)
 	bool use_pose_for_odom = false;
 	//meters and radians that the robot can be away from the desired goal
 	double dist_threshold = .05;
-
+	// TODO make 0.01
 	double angle_threshold = .036;
 	std::string odom_topic = "/frcrobot_jetson/swerve_drive_controller/odom";
 	std::string pose_topic = "/hold_distance/distance_as_pose";

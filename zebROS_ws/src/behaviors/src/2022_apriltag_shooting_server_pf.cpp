@@ -116,7 +116,7 @@ void pfCallback(const geometry_msgs::PoseWithCovarianceStamped &data) {
     double d_center_y = 4.114 - y;
     //ROS_INFO_STREAM("d_X: " << d_center_x << " d_Y: " << d_center_y);
     // get yaw from data and convert to degrees
-    angle_ = atan2(d_center_y, d_center_x) * 180 / M_PI;
+    angle_ = atan2(d_center_y, d_center_x);
     //ROS_INFO_STREAM("First Angle: " << angle_);
     // find compliment of angle
     //angle_ = -angle_;
@@ -152,7 +152,7 @@ void pfCallback(const geometry_msgs::PoseWithCovarianceStamped &data) {
     q.setRPY(0, 0, angle_);
     // print out the quaternion
     ROS_INFO_STREAM("Quaternion XYZW: " << q.x() << " " << q.y() << " " << q.z() << " " << q.w());
-    ROS_INFO_STREAM("being called with Angle: " << angle_);
+    ROS_INFO_STREAM("being called with Angle: " << angle_ * M_PI / 180);
     pose.orientation = tf2::toMsg(q);
     //pose.orientation = base_to_map_tf.transform.rotation;
     hold_goal.pose = pose;
