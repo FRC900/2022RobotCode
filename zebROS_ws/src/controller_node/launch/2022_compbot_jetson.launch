@@ -121,13 +121,6 @@
 	</include>
 	-->
 
-
-	
-	<include file="$(find rosbridge_server)/launch/rosbridge_websocket.launch" >
-		<arg name="port" value="5803"/>
-	</include>
-	
-
 	<!-- Consider adding 2022 launch file for recording -->
 	<include file="$(find controller_node)/launch/record_2022_compbot.launch" if="$(arg record)" />
 	<!--

@@ -32,10 +32,6 @@
 		</node>
 	</group>
 
-	<include file="$(find rosbridge_server)/launch/rosbridge_websocket.launch" >
-		<arg name="port" value="5803"/>
-	</include>
-
 	<include file="$(find controller_node)/launch/joysticks_for_simulator.launch">
 		<arg name="joy_or_key" value="$(arg joy_or_key)" />
 	</include>
@@ -81,6 +77,9 @@
 		</node>
 	</group>
 
+	<include file="$(find controller_node)/launch/rosbridge_websocket.launch">
+		<arg name="port" value="5803"/>
+	</include>
 	<!-- set up auto node to create paths -->
 	<include file="$(find behaviors)/launch/auto_node.launch"/>
 
