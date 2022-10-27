@@ -61,16 +61,8 @@ class SimAprilTagPub
 			{
 				if (msgIn->markers[i].ids[0] == -1) // stage publishes odom as marker -1
 					continue;                       // ignore it here
-
-					geometry_msgs::TransformStamped mapTfStamped;
-	    try{
-	      mapTfStamped = tfBuffer.lookupTransform(msgIn->header.frame_id, "map",
-	                               ros::Time(0));
-	    }
-	    catch (tf2::TransformException &ex) {
-	      ROS_WARN("%s",ex.what());
-	      continue;
-	    }
+				if (msgIn->markers[i].ids[0] < 100)
+					continue; // added 100 to apriltag ids
 
 				geometry_msgs::TransformStamped transformStamped;
 
@@ -78,11 +70,11 @@ class SimAprilTagPub
 
 				transformStamped.header.stamp = msgIn->header.stamp;
 				transformStamped.header.frame_id = msgIn->header.frame_id;
-				transformStamped.child_frame_id = "36h11" + std::to_string(msgIn->markers[i].ids[0]);
+				transformStamped.child_frame_id = "36h11" + std::to_string(msgIn->markers[i].ids[0]-100);
 
 				transformStamped.transform.translation.x = p.x;
 				transformStamped.transform.translation.y = p.y;
-				transformStamped.transform.translation.z = tags_[msgIn->markers[i].ids[0]].z + mapTfStamped.transform.translation.z;
+				transformStamped.transform.translation.z = tags_[msgIn->markers[i].ids[0]-100].z;
 
 				// Can't detect rotation yet, so publish 0 instead
 				tf2::Quaternion q;
