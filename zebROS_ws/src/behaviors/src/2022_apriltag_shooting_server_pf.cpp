@@ -183,9 +183,9 @@ void pfCallback(const geometry_msgs::PoseWithCovarianceStamped &data) {
     }
     ac_hold_pos_.cancelGoalsAtAndBeforeTime(ros::Time::now());
 
-    ROS_INFO_STREAM("2022_apriltag_shooting_server : angle reached");
+    ROS_INFO_STREAM("2022_pf_shooting_server : angle reached");
     // find distance to goal
-    ROS_INFO_STREAM("2022_align_shoot_server : distance to goal is " << distance_);
+    ROS_INFO_STREAM("2022_align_shoot_pf_server : distance to goal is " << distance_);
 
     feedback_.state = feedback_.WAITING_FOR_SHOOTER;
     as_.publishFeedback(feedback_);
@@ -194,19 +194,34 @@ void pfCallback(const geometry_msgs::PoseWithCovarianceStamped &data) {
     shooting_goal.distance = distance_;
     shooting_goal.num_cargo = goal->num_cargo;
     shooting_goal.eject = goal->eject;
-    ac_shooting_.sendGoal(shooting_goal,
-                      actionlib::SimpleActionClient<behavior_actions::Shooting2022Action>::SimpleDoneCallback(),
-                      actionlib::SimpleActionClient<behavior_actions::Shooting2022Action>::SimpleActiveCallback(),                                                     // publish feedback up the chain, they have the same fields
-                      [&](const behavior_actions::Shooting2022FeedbackConstPtr &feedback){ ROS_INFO_STREAM_THROTTLE(0.1, "2022_align_shooting_server : new feedback"); feedback_.state = feedback->state; as_.publishFeedback(feedback_); });
 
-    // wait for shooting server to finish
-    bool finished_before_timeout;
-    finished_before_timeout = waitForResultAndCheckForPreempt(ros::Duration(shooting_timeout_), ac_shooting_, as_);
-    if (!finished_before_timeout) {
-        ROS_ERROR_STREAM("2022_align_shoot_server : hold position server timed out");
-        as_.setAborted(result_);
-        return;
+    bool done = false;
+
+    ac_shooting_.sendGoal(shooting_goal,
+      [&](const actionlib::SimpleClientGoalState& state, const behavior_actions::Shooting2022ResultConstPtr& result){
+        result_.success = result->success;
+        as_.setSucceeded(result_);
+        done = true;
+      },
+                actionlib::SimpleActionClient<behavior_actions::Shooting2022Action>::SimpleActiveCallback(),
+                [&](const behavior_actions::Shooting2022FeedbackConstPtr& feedback){
+                  feedback_.state = feedback->state; as_.publishFeedback(feedback_);
+                });
+
+    while (!done) {
+      // handle preempt. preempt shooting if this is preempted
+      if (as_.isPreemptRequested() || !ros::ok())
+      {
+        ROS_INFO_STREAM("2022_apriltag_shooting_pf_server : preempted");
+        // set the action state to preempted
+        as_.setPreempted();
+        ac_shooting_.cancelGoalsAtAndBeforeTime(ros::Time::now());
+        success = false;
+        break;
+      }
+      r.sleep();
     }
+
     feedback_ = behavior_actions::AlignedShooting2022Feedback();
   }
 };

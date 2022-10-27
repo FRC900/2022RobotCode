@@ -45,7 +45,7 @@ protected:
   double hood_current_speed_;
   double speed_offset_ = 0;
   double hood_speed_offset_ = 0;
-
+  bool hood_state_override_ = false;
   uint64_t close_enough_counter_;
   int shooter_wheel_checks_ = 20;
 
@@ -96,6 +96,7 @@ public:
       return;
     }
     ddr_.registerVariable<int>("shooter_wheel_checks", &shooter_wheel_checks_, "Number of times to check shooter wheel speed", 0, 50);
+    ddr_.registerVariable<bool>("hood_state_override_", &hood_state_override_, "Hood state, must set absolute shooter speeds for this to be used", 0, 1);
     // change close_enough to operate with multiple samples
     // error_margin_ = 5;
     // ddr_.registerVariable<double>("samples_for_close_enough", &error_margin_, "Shooter margin of error", 0, 50);
@@ -148,6 +149,10 @@ public:
         as_.setPreempted();
         return;
     }
+      if (absolute_wheel_speed_ && absolute_hood_wheel_speed_) {
+        downtown_msg.data = hood_state_override_;
+        ROS_ERROR_STREAM_THROTTLE(1, "Using absolute shooter speeds, THIS SHOULD ONLY BE USED DURING TESTING");
+      }
     downtown_command_pub_.publish(downtown_msg);
     /* Offsets commented out until we need them
     shooter_speed += speed_offset_;
