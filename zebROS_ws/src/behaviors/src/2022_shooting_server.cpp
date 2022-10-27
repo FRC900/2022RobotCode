@@ -13,7 +13,7 @@
 #include <behaviors/interpolating_map.h>
 
 struct ShooterData {
-      double wheel_speed; 
+      double wheel_speed;
       double hood_wheel_speed;
       ShooterData(double inp_wheel_speed, double inp_hood_wheel_speed) {
         wheel_speed = inp_wheel_speed;
@@ -36,7 +36,7 @@ ShooterData operator*(const double& a, const ShooterData& obj) {
   res.hood_wheel_speed = obj.hood_wheel_speed * a;
   */
   return res;
-}    
+}
 
 class ShootingServer2022
 {
@@ -52,7 +52,7 @@ protected:
   behavior_actions::Shooting2022Result result_;
   actionlib::SimpleActionClient<behavior_actions::Shooter2022Action> ac_shooter_;
   actionlib::SimpleActionClient<behavior_actions::Index2022Action> ac_indexer_;
-  
+
   double shooting_timeout_;
   double indexing_timeout_;
   // maybe 2 meters for hood down v up?
@@ -135,10 +135,15 @@ public:
       goal.mode = goal.EJECT;}
     else {
       goal.mode = goal.HIGH_GOAL;}
-      
+
+    for (double i = 0; i < 10; i++) { // test data
+      ShooterData d(i, 2*i);
+      shooter_speed_map_.insert(i, d);
+    }
+
     goal.wheel_speed = shooter_speed_map_[distance].wheel_speed;
     goal.hood_wheel_speed = shooter_speed_map_[distance].hood_wheel_speed;
-    // sets hood position to down if less than some constant up otherwise 
+    // sets hood position to down if less than some constant up otherwise
     goal.hood_position = distance < MAGIC_CONSTANT_ ? false : true;
     ac_shooter_.sendGoal(goal,
                          actionlib::SimpleActionClient<behavior_actions::Shooter2022Action>::SimpleDoneCallback(),
@@ -223,7 +228,7 @@ public:
       as_.setAborted(result_); // set the action state to aborted
       return;
     }
-    
+
     bool shooterTimedOut = false;
     bool success = spinUpShooter(shooterTimedOut, goal->eject, goal->distance);
     result_.timed_out = shooterTimedOut;
