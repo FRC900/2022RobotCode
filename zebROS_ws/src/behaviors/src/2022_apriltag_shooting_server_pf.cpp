@@ -229,8 +229,8 @@ void pfCallback(const geometry_msgs::PoseWithCovarianceStamped &data) {
 
 int main(int argc, char** argv)
 {
-  ros::init(argc, argv, "AlignAndShoot_PF_2022");
-  AlignShootServer server("AlignAndShoot_PF_2022");
+  ros::init(argc, argv, "pf_apriltag_shooting_server_2022_node");
+  AlignShootServer server("pf_apriltag_shooting_server_2022");
   ros::spin();
   return 0;
 }
