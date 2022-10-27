@@ -964,7 +964,7 @@ void evaluateCommands(const ros::MessageEvent<frc_msgs::JoystickState const>& ev
 					// for testing this is fine
 					goal.num_cargo = 1;
 					goal.eject = false;
-					align_shooting_ac->sendGoal(goal);
+					align_shooting_pf_ac->sendGoal(goal);
 				}
 				joystick1_right_trigger_pressed = true;
 			}
@@ -1356,8 +1356,8 @@ int main(int argc, char **argv)
 	auto_mode_select_pub = n.advertise<behavior_actions::AutoMode>("/auto/auto_mode", 1, true);
 
 	climb_ac = std::make_shared<actionlib::SimpleActionClient<behavior_actions::Climb2022Action>>("/climber/climb_server_2022", true);
-	align_shooting_ac = std::make_shared<actionlib::SimpleActionClient<behavior_actions::AlignedShooting2022Action>>("/shooting/aligned_shooting_server_2022", true);
-	align_shooting_pf_ac = std::make_shared<actionlib::SimpleActionClient<behavior_actions::AlignedShooting2022Action>>("/shooting/aligned_shooting_server_2022", true);	
+	align_shooting_ac = std::make_shared<actionlib::SimpleActionClient<behavior_actions::AlignedShooting2022Action>>("/shooting/apriltag_shooting_server_2022", true);
+	align_shooting_pf_ac = std::make_shared<actionlib::SimpleActionClient<behavior_actions::AlignedShooting2022Action>>("/shooting/apriltag_shooting_server_pf_2022", true);	
 	intaking_ac = std::make_shared<actionlib::SimpleActionClient<behavior_actions::Intaking2022Action>>("/intaking/intaking_server_2022", true);
 	ejecting_ac = std::make_shared<actionlib::SimpleActionClient<behavior_actions::Ejecting2022Action>>("/ejecting/ejecting_server_2022", true);
 	distance_ac = std::make_shared<actionlib::SimpleActionClient<path_follower_msgs::holdPositionAction>>("/hold_distance/hold_position_server", true);
