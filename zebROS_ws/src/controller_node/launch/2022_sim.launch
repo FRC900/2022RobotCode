@@ -76,10 +76,11 @@
 		<node pkg="tf_object_detection" name="cargo_detection_filter" type="cargo_detection_filter" output="screen">
 		</node>
 	</group>
-
+	<!-- 
 	<include file="$(find controller_node)/launch/rosbridge_websocket.launch">
 		<arg name="port" value="5803"/>
 	</include>
+	-->
 	<!-- set up auto node to create paths -->
 	<include file="$(find behaviors)/launch/auto_node.launch"/>
 

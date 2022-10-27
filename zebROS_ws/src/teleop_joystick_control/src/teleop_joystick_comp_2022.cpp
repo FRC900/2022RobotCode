@@ -244,6 +244,7 @@ void zero_all_diag_commands(void)
 
 std::shared_ptr<actionlib::SimpleActionClient<behavior_actions::Climb2022Action>> climb_ac;
 std::shared_ptr<actionlib::SimpleActionClient<behavior_actions::AlignedShooting2022Action>> align_shooting_ac;
+std::shared_ptr<actionlib::SimpleActionClient<behavior_actions::AlignedShooting2022Action>> align_shooting_pf_ac;
 std::shared_ptr<actionlib::SimpleActionClient<behavior_actions::Intaking2022Action>> intaking_ac;
 std::shared_ptr<actionlib::SimpleActionClient<behavior_actions::Ejecting2022Action>> ejecting_ac;
 std::shared_ptr<actionlib::SimpleActionClient<path_follower_msgs::holdPositionAction>> distance_ac;
@@ -281,6 +282,7 @@ void preemptActionlibServers(void)
 	ROS_WARN_STREAM("Preempting ALL actionlib servers!");
 	climb_ac->cancelGoalsAtAndBeforeTime(ros::Time::now());
 	align_shooting_ac->cancelGoalsAtAndBeforeTime(ros::Time::now());
+	align_shooting_pf_ac->cancelGoalsAtAndBeforeTime(ros::Time::now());
 	intaking_ac->cancelGoalsAtAndBeforeTime(ros::Time::now());
 	ejecting_ac->cancelGoalsAtAndBeforeTime(ros::Time::now());
 	reset_climb = true;
@@ -1355,6 +1357,7 @@ int main(int argc, char **argv)
 
 	climb_ac = std::make_shared<actionlib::SimpleActionClient<behavior_actions::Climb2022Action>>("/climber/climb_server_2022", true);
 	align_shooting_ac = std::make_shared<actionlib::SimpleActionClient<behavior_actions::AlignedShooting2022Action>>("/shooting/aligned_shooting_server_2022", true);
+	align_shooting_pf_ac = std::make_shared<actionlib::SimpleActionClient<behavior_actions::AlignedShooting2022Action>>("/shooting/aligned_shooting_server_2022", true);	
 	intaking_ac = std::make_shared<actionlib::SimpleActionClient<behavior_actions::Intaking2022Action>>("/intaking/intaking_server_2022", true);
 	ejecting_ac = std::make_shared<actionlib::SimpleActionClient<behavior_actions::Ejecting2022Action>>("/ejecting/ejecting_server_2022", true);
 	distance_ac = std::make_shared<actionlib::SimpleActionClient<path_follower_msgs::holdPositionAction>>("/hold_distance/hold_position_server", true);
@@ -1365,6 +1368,9 @@ int main(int argc, char **argv)
 	}
 
 	if (!align_shooting_ac->waitForServer(ros::Duration(1))) {
+		ROS_ERROR("**SHOOTING LIKELY WON'T WORK*** Wait (1 sec) timed out, for shooting action in teleop_joystick_comp.cpp");
+	}
+	if (!align_shooting_pf_ac->waitForServer(ros::Duration(1))) {
 		ROS_ERROR("**SHOOTING LIKELY WON'T WORK*** Wait (1 sec) timed out, for shooting action in teleop_joystick_comp.cpp");
 	}
 
