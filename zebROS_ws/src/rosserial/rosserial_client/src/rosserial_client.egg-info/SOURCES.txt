@@ -1,0 +1,7 @@
+setup.py
+src/rosserial_client/__init__.py
+src/rosserial_client/make_library.py
+src/rosserial_client.egg-info/PKG-INFO
+src/rosserial_client.egg-info/SOURCES.txt
+src/rosserial_client.egg-info/dependency_links.txt
+src/rosserial_client.egg-info/top_level.txt

@@ -192,7 +192,7 @@ public:
       hood_shooter_command_pub_.publish(hood_msg);
       /* Measure if the sample is close enough to the requested shooter wheel speed */
       // Maybe add diffrent error margins?
-      if((fabs(shooter_speed - fabs(current_speed_)) < error_margin_) && (fabs(shooter_speed - fabs(hood_current_speed_)) < error_margin_)) {
+      if((fabs(shooter_speed - fabs(current_speed_)) < error_margin_) && (fabs(hood_shooter_speed - fabs(hood_current_speed_)) < error_margin_)) {
         good_samples++;
       } else {
         good_samples = 0;
@@ -213,13 +213,13 @@ public:
         if (checked_speed) {return;}
         checked_speed = true;
       }
-      if (talon_state.name[i] == "hood_shooter_leader") {
+      if (talon_state.name[i] == "hood_shooter") {
         hood_current_speed_ = talon_state.speed[i];
         if (checked_speed) {return;}
         checked_speed = true;
       }
     }
-    SHOOTER_ERROR_THROTTLE(0.5, "Couldn't find shooter_leader or hood_shooter_leader talon in /frcrobot_jetson/talon_states. :(");
+    SHOOTER_ERROR_THROTTLE(0.5, "Couldn't find shooter_leader or hood_shooter talon in /frcrobot_jetson/talon_states. :(");
   }
 
   void speedOffsetCallback(const std_msgs::Float64 speed_offset_msg){

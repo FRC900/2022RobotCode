@@ -1,0 +1,7 @@
+README.md
+setup.py
+src/rosserial_vex_v5/make_libraries.py
+src/rosserial_vex_v5.egg-info/PKG-INFO
+src/rosserial_vex_v5.egg-info/SOURCES.txt
+src/rosserial_vex_v5.egg-info/dependency_links.txt
+src/rosserial_vex_v5.egg-info/top_level.txt
