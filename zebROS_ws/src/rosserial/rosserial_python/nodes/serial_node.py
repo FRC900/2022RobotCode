@@ -94,7 +94,6 @@ if __name__=="__main__":
             try:
                 client = SerialClient(port_name, baud, fix_pyserial_for_test=fix_pyserial_for_test)
                 client.run()
-                
             except KeyboardInterrupt:
                 break
             except SerialException:

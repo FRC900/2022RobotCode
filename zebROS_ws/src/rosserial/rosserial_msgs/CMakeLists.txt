@@ -1,15 +1,15 @@
 cmake_minimum_required(VERSION 3.7.2)
 project(rosserial_msgs)
 
-find_package(catkin REQUIRED COMPONENTS
-  message_generation
-  std_msgs
+find_package(catkin REQUIRED COMPONENTS 
+    message_generation
+    std_msgs
 )
 
 add_message_files(FILES
-  Log.msg
-  TopicInfo.msg
-  Power.msg
+                  Log.msg
+                  TopicInfo.msg
+                  Power.msg
 )
 
 add_service_files(FILES
@@ -17,10 +17,8 @@ add_service_files(FILES
 )
 
 generate_messages(
-  DEPENDENCIES
-  std_msgs
+    DEPENDENCIES
+    std_msgs
 )
 
-catkin_package(CATKIN_DEPENDS
-  message_runtime
-)
+catkin_package(CATKIN_DEPENDS message_runtime)

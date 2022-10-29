@@ -119,7 +119,7 @@
 	</include>
 	-->
 	<!-- Will advertise /zed_objdetect/left/image_rect_color_throttle -->
-	<node name="throttle_zed" pkg="topic_tools" type="throttle"  args="messages /zed_objdetect/left/image_rect_color 4" output="screen"/>
+	<node name="throttle_zed" pkg="topic_tools" type="throttle" args="messages /zed_objdetect/left/image_rect_color 4" output="screen"/>
 	<!-- Consider adding 2022 launch file for recording -->
 	<include file="$(find controller_node)/launch/record_2022_compbot.launch" if="$(arg record)" />
 	

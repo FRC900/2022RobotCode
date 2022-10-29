@@ -1,8 +1,0 @@
-Metadata-Version: 2.1
-Name: rosserial-client
-Version: 0.9.2
-Summary: Generalized client side source for rosserial.
-Home-page: http://ros.org/wiki/rosserial_client
-Author: Michael Ferguson, Adam Stambler
-Maintainer: Paul Bouchier <paul.bouchier@gmail.com>, Mike Purvis <mpurvis@clearpathrobotics.com>
-License: BSD
