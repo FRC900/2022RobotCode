@@ -61,7 +61,6 @@ hardware_interface:
        - {name: bl_drive, type: can_talon_fx, can_bus: CANivore, can_id: 23, local: true}
        - {name: bl_angle, type: can_talon_fx, can_bus: CANivore, can_id: 13, local: true}
          #- {name: bl_angle_encoder, type: can_talon_srx, can_id: 3, local: true}
-       # - {name: pdh, type: pdh}
        # - {name: pcm, type: pcm, pcm_id: 0}
 
        - {name: robot_code_ready_jetson, local: true, type: ready}
@@ -201,7 +200,7 @@ hood_shooter_controller:
   type: talon_controllers/TalonVelocityCloseLoopController
   feedback_type: IntegratedSensor
   close_loop_values:
-      - {p: 0.00, i: 0.00, d: 0.0, f: 0.046, i_zone: 0}
+      - {p: 0.9, i: 0.00, d: 0.0, f: 0.065, i_zone: 0}
   invert_output: false 
   sensor_phase: false
   peak_output_forward: 1.0
@@ -344,36 +343,6 @@ joint_state_controller_jetson:
 joint_state_listener_controller:
     type:      state_listener_controller/JointStateListenerController
     topic:     /frcrobot_rio/joint_states
-
-pdh_state_controller:
-   type:         pdh_state_controller/PDHStateController
-   publish_rate: 20
-   things_plugged_in_pdh_channel:
-        ["", #id 1
-         "", #id 2
-         "", #id 3
-         "", #id 4
-         "", #id 5
-         "", #id 6
-         "", #id 7
-         "", #id 8
-         "", #id 9
-         "", #id 10
-         "", #id 11
-         "", #id 12
-         "", #id 13
-         "", #id 14
-         "", #id 15
-         "", #id 16
-         "", #id 17
-         "", #id 18
-         "", #id 19
-         "", #id 20
-         "", #id 21
-         "", #id 22
-         "", #id 23
-         ""  #id 24
-        ]
 
 pcm_state_controller:
    type:         pcm_state_controller/PCMStateController

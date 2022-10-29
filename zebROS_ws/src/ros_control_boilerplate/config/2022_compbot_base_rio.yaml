@@ -44,6 +44,8 @@ hardware_interface:
 
        # OperationDowntown
        - {name: shooter_downtown_solenoid_joint, type: solenoid, module_type: ctrepcm, module_id: 0, channel: 5, local_hardware: true, local_update: false}
+      
+       - {name: pdh, type: pdh, module: 1}
 
        - {name: joystick0, type: joystick, id: 0, local: true}
        - {name: button_box, type: joystick, id: 1, local: true}
@@ -122,3 +124,33 @@ button_box_controller:
     type: button_box_state_controller/ButtonBoxStateController
     name: button_box
     publish_rate: 50
+
+pdh_state_controller:
+   type:         pdh_state_controller/PDHStateController
+   publish_rate: 20
+   things_plugged_in_pdh_channel:
+        ["", #id 1
+         "", #id 2
+         "", #id 3
+         "", #id 4
+         "", #id 5
+         "", #id 6
+         "", #id 7
+         "", #id 8
+         "", #id 9
+         "", #id 10
+         "", #id 11
+         "", #id 12
+         "", #id 13
+         "", #id 14
+         "", #id 15
+         "", #id 16
+         "", #id 17
+         "", #id 18
+         "", #id 19
+         "", #id 20
+         "", #id 21
+         "", #id 22
+         "", #id 23
+         ""  #id 24
+        ]

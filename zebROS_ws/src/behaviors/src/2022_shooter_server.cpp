@@ -180,8 +180,8 @@ public:
         break;
       }
       if (absolute_wheel_speed_ && absolute_hood_wheel_speed_) {
-        msg.data = shooter_speed;
-        hood_msg.data = hood_shooter_speed;
+        msg.data = absolute_wheel_speed_;
+        hood_msg.data = absolute_hood_wheel_speed_;
         ROS_ERROR_STREAM_THROTTLE(1, "Using absolute shooter speeds, THIS SHOULD ONLY BE USED DURING TESTING");
       }
       else {
