@@ -122,7 +122,7 @@ void pfCallback(const geometry_msgs::PoseWithCovarianceStamped &data) {
     //angle_ = -angle_;
     //ROS_INFO_STREAM("Angle negated " << angle_ << "\n");
     //angle_ = angle_ + yaw;
-    
+    ROS_INFO_STREAM_THROTTLE(5, "pf_apriltag_shooting_server : angle_: " << angle_ << " distance_: " << distance_);
   }
 
   void executeCB(const behavior_actions::AlignedShooting2022GoalConstPtr &goal)
@@ -147,7 +147,6 @@ void pfCallback(const geometry_msgs::PoseWithCovarianceStamped &data) {
     point.y = 0;
     point.z = 0;
     pose.position = point;
-    // make quaternion q
     tf2::Quaternion q;
     q.setRPY(0, 0, angle_);
     // print out the quaternion
@@ -172,7 +171,7 @@ void pfCallback(const geometry_msgs::PoseWithCovarianceStamped &data) {
     while (!aligned) {
       if (as_.isPreemptRequested() || !ros::ok())
       {
-        ROS_INFO_STREAM("2022_apriltag_shooting_server : preempted");
+        ROS_INFO_STREAM("2022_pf_apriltag_shooting_server : preempted");
         ac_hold_pos_.cancelGoalsAtAndBeforeTime(ros::Time::now());
         // set the action state to preempted
         as_.setPreempted();
@@ -185,7 +184,7 @@ void pfCallback(const geometry_msgs::PoseWithCovarianceStamped &data) {
 
     ROS_INFO_STREAM("2022_pf_shooting_server : angle reached");
     // find distance to goal
-    ROS_INFO_STREAM("2022_align_shoot_pf_server : distance to goal is " << distance_);
+    ROS_INFO_STREAM("2022_pf_shooting_server : distance to goal is " << distance_);
 
     feedback_.state = feedback_.WAITING_FOR_SHOOTER;
     as_.publishFeedback(feedback_);

@@ -59,9 +59,6 @@
 		<include file="$(find controller_node)/launch/fuse_odom.launch"/>
 	-->
 	</group>
-	
-	<!--From blue 0,0 to red 0,0 is the field lenght plus a 180 turn-->
-	<node pkg="tf" type="static_transform_publisher" name="blue0_to_red0" args="16.458 8.228 0 3.1415927 0 0 blue0 red0 100" />
 
 	<include file="$(find teleop_joystick_control)/launch/2022_snap_to_angle.launch"/>
 	<include file="$(find controller_node)/launch/teleop.launch">
@@ -113,16 +110,19 @@
 
 	<include file="$(find controller_node)/launch/2022_terabee.launch" if="$(eval arg('hw_or_sim')=='hw')">
 	</include>
-
+	
+	<node name="teensy_power_info" pkg="rosserial_python" type="serial_node.py" args="_port:=/dev/ttyACM0 _baud:=115200"/>
 	<!-- Run ZED camera + tensorflow object detection -->
 	<!--
 	<include file="$(find tf_object_detection)/launch/detection.launch" if="$(eval arg('hw_or_sim')=='hw')">
 		<arg name="input_type" value="live_camera" />
 	</include>
 	-->
-
+	<!-- Will advertise /zed_objdetect/left/image_rect_color_throttle -->
+	<node name="throttle_zed" pkg="topic_tools" type="throttle"  args="messages /zed_objdetect/left/image_rect_color 4" output="screen"/>
 	<!-- Consider adding 2022 launch file for recording -->
 	<include file="$(find controller_node)/launch/record_2022_compbot.launch" if="$(arg record)" />
+	
 	<!--
 	<include file="$(find controller_node)/launch/record_2022_no_zed.launch" if="$(arg record)" />
 	-->

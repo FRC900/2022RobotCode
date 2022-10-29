@@ -206,5 +206,18 @@
 		/zed_objdetect/imu/mag
 		/zed_objdetect/odom
 		/zed_objdetect/pose
+		/power_info
+		/shooting/pf_apriltag_shooting_server_2022/cancel
+		/shooting/pf_apriltag_shooting_server_2022/feedback
+		/shooting/pf_apriltag_shooting_server_2022/goal
+		/shooting/pf_apriltag_shooting_server_2022/result
+		/shooting/pf_apriltag_shooting_server_2022/status
+		/shooting/apriltag_shooting_server_2022/cancel
+		/shooting/apriltag_shooting_server_2022/feedback
+		/shooting/apriltag_shooting_server_2022/goal
+		/shooting/apriltag_shooting_server_2022/result
+		/shooting/apriltag_shooting_server_2022/status
+		/zed_objdetect/left/image_rect_color_throttle
+		/cuda_tag_detections
 		"/>
 </launch>
