@@ -60,6 +60,7 @@ sudo apt install -y \
     ninja-build \
     nmap \
     ntp \
+	ntpstat \
     openssh-client \
     pkg-config \
     pyqt5-dev-tools \
