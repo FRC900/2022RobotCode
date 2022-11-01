@@ -28,16 +28,19 @@ Zero point in degrees is set using service call.
 #include <robot_localization/SetPose.h>
 #include <zed_interfaces/reset_tracking.h>
 #include <zed_interfaces/reset_odometry.h>
+#include <std_msgs/Float64.h>
 
 constexpr double pi = 3.14159;
 const std::string sub_topic = "imu/data";
 const std::string pub_topic = "zeroed_imu";
+const std::string yaw_topic = "imu_yaw";
 const std::string service_name = "set_imu_zero";
 const std::string bias_service_name = "imu/bias_estimate";
 const std::string ukf_set_pose_name = "/swerve_imu_ukf/set_pose";
 const std::string zed_reset_odometry_name = "/zed_objdetect/reset_odometry";
 const std::string zed_reset_tracking_name = "/zed_objdetect/reset_tracking";
 ros::Publisher pub;
+ros::Publisher yaw_pub;
 tf2::Quaternion zero_rot;
 tf2::Quaternion last_raw;
 ros::ServiceClient bias_estimate;
@@ -60,6 +63,7 @@ double getYaw(const geometry_msgs::Quaternion &q)
 		q.z,
 		q.w);
 	tf2::Matrix3x3(tf_q).getRPY(roll, pitch, yaw);
+  yaw_pub.publish(yaw);
 	return yaw;
 }
 
@@ -139,6 +143,7 @@ int main(int argc, char* argv[]) {
   ros::init(argc, argv, "imu_zero_node");
   ros::NodeHandle node;
   pub = node.advertise<sensor_msgs::Imu>(pub_topic, 1);
+  yaw_pub = node.advertise<std_msgs::Float64>(yaw_topic, 1)
   ros::Subscriber sub = node.subscribe(sub_topic, 1, zeroCallback);
   ros::ServiceServer svc = node.advertiseService(service_name, zeroSet);
   zero_rot.setRPY(0,0,0);
