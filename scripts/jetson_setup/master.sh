@@ -11,7 +11,7 @@ sudo systemctl start systemd-networkd
 sudo systemctl enable systemd-networkd
 
 date >> /home/ubuntu/mounted.txt
-/home/ubuntu/2022RobotCode/scripts/jetson_setup/can_up.sh >> /home/ubuntu/mounted.txt
+/home/ubuntu/2022RobotCode/scripts/jetson_setup/can_up.sh
 /home/ubuntu/2022RobotCode/scripts/jetson_setup/wait_for_ntp_sync.sh >> /home/ubuntu/mounted.txt
 # Allow scheduling of RT threads without cgroups
 sysctl -w kernel.sched_rt_runtime_us=-1
