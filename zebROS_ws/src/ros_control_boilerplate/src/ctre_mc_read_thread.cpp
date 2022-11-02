@@ -20,7 +20,7 @@ namespace ros_control_boilerplate
 // data given the update rate of various CAN messages.
 void FRCRobotInterface::ctre_mc_read_thread(std::shared_ptr<ctre::phoenix::motorcontrol::IMotorController> ctre_mc,
 											std::shared_ptr<hardware_interface::TalonHWState> state,
-											std::shared_ptr<std::mutex> mutex,
+											std::shared_ptr<std::timed_mutex> mutex,
 											std::unique_ptr<Tracer> tracer,
 											size_t index,
 											double poll_frequency)
@@ -63,15 +63,15 @@ void FRCRobotInterface::ctre_mc_read_thread(std::shared_ptr<ctre::phoenix::motor
 		// Note that this isn't a complete list - only the values
 		// used by the read thread are copied over.  Update
 		// as needed when more are read
+		mutex->lock();
+		if (state->getEnableReadThread())
 		{
-			std::lock_guard<std::mutex> l(*mutex);
-			if (!state->getEnableReadThread())
-				return;
 			talon_mode = state->getTalonMode();
 			encoder_feedback = state->getEncoderFeedback();
 			encoder_ticks_per_rotation = state->getEncoderTicksPerRotation();
 			conversion_factor = state->getConversionFactor();
 		}
+		mutex->unlock();
 
 		// TODO : in main read() loop copy status from talon being followed
 		// into follower talon state?
@@ -211,7 +211,8 @@ void FRCRobotInterface::ctre_mc_read_thread(std::shared_ptr<ctre::phoenix::motor
 			// Lock the state entry to make sure writes
 			// are atomic - reads won't grab data in
 			// the middle of a write
-			std::lock_guard<std::mutex> l(*mutex);
+			//std::lock_guard<std::mutex> l(*mutex);
+			mutex->lock();
 
 			if (talon_mode == hardware_interface::TalonMode_MotionProfile)
 			{
@@ -287,6 +288,7 @@ void FRCRobotInterface::ctre_mc_read_thread(std::shared_ptr<ctre::phoenix::motor
 			}
 
 			state->setFirmwareVersion(firmware_version);
+			mutex->unlock();
 		}
 		tracer->report(60);
 	}

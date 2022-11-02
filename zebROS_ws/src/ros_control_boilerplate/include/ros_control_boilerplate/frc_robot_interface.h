@@ -485,16 +485,19 @@ class FRCRobotInterface : public hardware_interface::RobotHW
 		std::vector<std::shared_ptr<ctre::phoenix::motorcontrol::IMotorController>> ctre_mcs_;
 
 		// Maintain a separate read thread for each talon SRX
-		std::vector<std::shared_ptr<std::mutex>> ctre_mc_read_state_mutexes_;
+		std::vector<std::shared_ptr<std::timed_mutex>> ctre_mc_read_state_mutexes_;
 		std::vector<std::shared_ptr<hardware_interface::TalonHWState>> ctre_mc_read_thread_states_;
 		std::vector<std::thread> ctre_mc_read_threads_;
 		void ctre_mc_read_thread(std::shared_ptr<ctre::phoenix::motorcontrol::IMotorController> ctre_mc,
 												 std::shared_ptr<hardware_interface::TalonHWState> state,
-												 std::shared_ptr<std::mutex> mutex,
+												 std::shared_ptr<std::timed_mutex> mutex,
 												 std::unique_ptr<Tracer> tracer,
 												 size_t index,
 												 double poll_frequency);
 		ros::Time ctre_mc_init_time_;
+		size_t ctre_read_lock_success_{0};
+		size_t ctre_read_lock_failure_{0};
+		int ctre_read_lock_timeout_usec_{500};
 
 		std::vector<std::shared_ptr<ctre::phoenix::sensors::CANCoder>> cancoders_;
 		std::vector<std::shared_ptr<std::mutex>> cancoder_read_state_mutexes_;

@@ -206,7 +206,7 @@ bool FRCRobotInterface::initDevices(ros::NodeHandle root_nh)
 								  "Motor " << can_ctre_mc_names_[i] <<
 								  " controller firmware version " << ctre_mcs_[i]->GetFirmwareVersion());
 
-			ctre_mc_read_state_mutexes_.push_back(std::make_shared<std::mutex>());
+			ctre_mc_read_state_mutexes_.push_back(std::make_shared<std::timed_mutex>());
 			ctre_mc_read_thread_states_.push_back(std::make_shared<hardware_interface::TalonHWState>(can_ctre_mc_can_ids_[i]));
 			ctre_mc_read_threads_.emplace_back(std::thread(&FRCRobotInterface::ctre_mc_read_thread, this,
 											   ctre_mcs_[i], ctre_mc_read_thread_states_[i],
@@ -663,6 +663,10 @@ bool FRCRobotInterface::init(ros::NodeHandle& root_nh, ros::NodeHandle &robot_hw
 		ROS_ERROR("Failed to read robot_controller_read_hz in frc_robot_interface");
 	}
 
+	if(! param_nh.param("ctre_read_lock_timeout_usec", ctre_read_lock_timeout_usec_, ctre_read_lock_timeout_usec_)) {
+		ROS_ERROR("Failed to read ctre_read_lock_timeout_usec in frc_robot_interface");
+	}
+
 	ROS_INFO_STREAM("Controller Frequencies:" << std::endl <<
 			"\tctre_mc_read : " << ctre_mc_read_hz_ << std::endl <<
 			"\tcancoder_read : " << cancoder_read_hz_ << std::endl <<
@@ -1016,55 +1020,68 @@ void FRCRobotInterface::read(const ros::Time &time, const ros::Duration &period)
 	{
 		if (can_ctre_mc_local_hardwares_[joint_id])
 		{
+			if (ctre_mc_read_state_mutexes_[joint_id]->try_lock_for(std::chrono::microseconds(ctre_read_lock_timeout_usec_)))
+			{
+#if 0
 			std::unique_lock<std::mutex> l(*ctre_mc_read_state_mutexes_[joint_id], std::try_to_lock);
 			if (!l.owns_lock())
 				continue;
-			auto &ts   = talon_state_[joint_id];
-			auto &trts = ctre_mc_read_thread_states_[joint_id];
+#endif
+				auto &ts = talon_state_[joint_id];
+				auto &trts = ctre_mc_read_thread_states_[joint_id];
 
-			// Copy config items from talon state to talon_read_thread_state
-			// This makes sure config items set by controllers is
-			// eventually reflected in the state unique to the
-			// talon_read_thread code
-			trts->setTalonMode(ts.getTalonMode());
-			trts->setEncoderFeedback(ts.getEncoderFeedback());
-			trts->setEncoderTicksPerRotation(ts.getEncoderTicksPerRotation());
-			trts->setConversionFactor(ts.getConversionFactor());
-			trts->setEnableReadThread(ts.getEnableReadThread());
-			// There looks like a bug in sim which requires us to read these
-			// more slowly.  Pass the previously-read value in to use as
-			// a default for iterations where the value isn't read
-			trts->setBusVoltage(ts.getBusVoltage());
-			trts->setTemperature(ts.getTemperature());
+				// Copy config items from talon state to talon_read_thread_state
+				// This makes sure config items set by controllers is
+				// eventually reflected in the state unique to the
+				// talon_read_thread code
+				trts->setTalonMode(ts.getTalonMode());
+				trts->setEncoderFeedback(ts.getEncoderFeedback());
+				trts->setEncoderTicksPerRotation(ts.getEncoderTicksPerRotation());
+				trts->setConversionFactor(ts.getConversionFactor());
+				trts->setEnableReadThread(ts.getEnableReadThread());
+				// There looks like a bug in sim which requires us to read these
+				// more slowly.  Pass the previously-read value in to use as
+				// a default for iterations where the value isn't read
+				trts->setBusVoltage(ts.getBusVoltage());
+				trts->setTemperature(ts.getTemperature());
 
-			// Copy talon state values read in the read thread into the
-			// talon state shared globally with the rest of the hardware
-			// interface code
-			ts.setPosition(trts->getPosition());
-			ts.setSpeed(trts->getSpeed());
-			ts.setOutputCurrent(trts->getOutputCurrent());
-			ts.setBusVoltage(trts->getBusVoltage());
-			ts.setMotorOutputPercent(trts->getMotorOutputPercent());
-			ts.setOutputVoltage(trts->getOutputVoltage());
-			ts.setTemperature(trts->getTemperature());
-			ts.setClosedLoopError(trts->getClosedLoopError());
-			ts.setIntegralAccumulator(trts->getIntegralAccumulator());
-			ts.setErrorDerivative(trts->getErrorDerivative());
-			ts.setClosedLoopTarget(trts->getClosedLoopTarget());
-			ts.setActiveTrajectoryPosition(trts->getActiveTrajectoryPosition());
-			ts.setActiveTrajectoryVelocity(trts->getActiveTrajectoryVelocity());
-			ts.setActiveTrajectoryHeading(trts->getActiveTrajectoryHeading());
-			ts.setMotionProfileTopLevelBufferCount(trts->getMotionProfileTopLevelBufferCount());
-			ts.setMotionProfileStatus(trts->getMotionProfileStatus());
-			ts.setFaults(trts->getFaults());
-			ts.setForwardLimitSwitch(trts->getForwardLimitSwitch());
-			ts.setReverseLimitSwitch(trts->getReverseLimitSwitch());
-			ts.setForwardSoftlimitHit(trts->getForwardSoftlimitHit());
-			ts.setReverseSoftlimitHit(trts->getReverseSoftlimitHit());
-			ts.setStickyFaults(trts->getStickyFaults());
-			ts.setFirmwareVersion(trts->getFirmwareVersion());
+				// Copy talon state values read in the read thread into the
+				// talon state shared globally with the rest of the hardware
+				// interface code
+				ts.setPosition(trts->getPosition());
+				ts.setSpeed(trts->getSpeed());
+				ts.setOutputCurrent(trts->getOutputCurrent());
+				ts.setBusVoltage(trts->getBusVoltage());
+				ts.setMotorOutputPercent(trts->getMotorOutputPercent());
+				ts.setOutputVoltage(trts->getOutputVoltage());
+				ts.setTemperature(trts->getTemperature());
+				ts.setClosedLoopError(trts->getClosedLoopError());
+				ts.setIntegralAccumulator(trts->getIntegralAccumulator());
+				ts.setErrorDerivative(trts->getErrorDerivative());
+				ts.setClosedLoopTarget(trts->getClosedLoopTarget());
+				ts.setActiveTrajectoryPosition(trts->getActiveTrajectoryPosition());
+				ts.setActiveTrajectoryVelocity(trts->getActiveTrajectoryVelocity());
+				ts.setActiveTrajectoryHeading(trts->getActiveTrajectoryHeading());
+				ts.setMotionProfileTopLevelBufferCount(trts->getMotionProfileTopLevelBufferCount());
+				ts.setMotionProfileStatus(trts->getMotionProfileStatus());
+				ts.setFaults(trts->getFaults());
+				ts.setForwardLimitSwitch(trts->getForwardLimitSwitch());
+				ts.setReverseLimitSwitch(trts->getReverseLimitSwitch());
+				ts.setForwardSoftlimitHit(trts->getForwardSoftlimitHit());
+				ts.setReverseSoftlimitHit(trts->getReverseSoftlimitHit());
+				ts.setStickyFaults(trts->getStickyFaults());
+				ts.setFirmwareVersion(trts->getFirmwareVersion());
+
+				ctre_mc_read_state_mutexes_[joint_id]->unlock();
+				ctre_read_lock_success_ += 1;
+			}
+			else
+			{
+				ctre_read_lock_failure_ += 1;
+			}
 		}
 	}
+	ROS_INFO_STREAM_THROTTLE(20., "CTRE read lock success = " << ctre_read_lock_success_ << " failure = " << ctre_read_lock_failure_);
 
 	read_tracer_.start_unique("cancoder");
 	for (size_t joint_id = 0; joint_id < num_cancoders_; ++joint_id)
