@@ -11,6 +11,7 @@
 #include <behavior_actions/Index2022Action.h>
 #include <std_msgs/Float64.h>
 #include <behaviors/interpolating_map.h>
+#include <XmlRpcValue.h>
 
 struct ShooterData {
       double wheel_speed;
@@ -57,8 +58,11 @@ protected:
   double indexing_timeout_;
   // maybe 2 meters for hood down v up?
   double MAGIC_CONSTANT_ = 2;
-
+  // data was recorded to edge of robot, robot is 17.661 inches from center to edge
+  // fender shot, 1.031m to edge + 0.4485894m to center = 1.4795894m to center
+  // from center of field to center of robot
   wpi::interpolating_map<double, ShooterData> shooter_speed_map_;
+  XmlRpc::XmlRpcValue shooter_speed_map_xml_;
   ros::Subscriber cargo_state_sub_;
   uint8_t cargo_num_;
 
@@ -82,8 +86,31 @@ public:
       ROS_WARN_STREAM("2022_shooting_server : Could not find indexing_timeout, defaulting to 5 seconds");
       indexing_timeout_ = 5.0;
     }
+    if (!nh_.getParam("/shooting/shooter_speed_map", shooter_speed_map_xml_))
+    {
+      ROS_WARN_STREAM("2022_shooting_server : COULD NOT FIND SHOOTER SPEED MAP SHOOTING WILL FAIL, defaulting to hardcoded values");
+      /* no equality operator for interpolating_map, just make sure the config works
+      shooter_speed_map_ = {
+        {1.48, ShooterData(175, 200)}, // hood up
+        {2.48, ShooterData(120, 280)}, // hood down
+        {3.48, ShooterData(140, 260)}, // down
+        {3.98, ShooterData(145, 275)}, // ceiling too strong, these are guesses
+        {4.48, ShooterData(150, 280)}
+      }; 
+      */
+    }
+    // kinda pointless, we are in trouble if the read fails, but this prevents a out of bounds crash
+    else {
+      for (size_t i = 0; i < (unsigned) shooter_speed_map_xml_.size(); i++) {
+        auto s = shooter_speed_map_xml_[i];
+        shooter_speed_map_.insert(s[0], ShooterData(s[1], s[2]));
+        ROS_INFO_STREAM("2022_shooting_server : Inserted " << s[0] << " " << s[1] << " " << s[2]);
+      }
+    }
+
     cargo_state_sub_ = nh_.subscribe("/2022_index_server/ball_state", 2, &ShootingServer2022::cargoStateCallback, this);
     as_.start();
+
   }
 
   ~ShootingServer2022(void)
@@ -136,15 +163,13 @@ public:
     else {
       goal.mode = goal.HIGH_GOAL;}
 
-    for (double i = 0; i < 10; i++) { // test data
-      ShooterData d(i, 2*i);
-      shooter_speed_map_.insert(i, d);
-    }
-
     goal.wheel_speed = shooter_speed_map_[distance].wheel_speed;
     goal.hood_wheel_speed = shooter_speed_map_[distance].hood_wheel_speed;
     // sets hood position to down if less than some constant up otherwise
-    goal.hood_position = distance < MAGIC_CONSTANT_ ? false : true;
+    if (distance < MAGIC_CONSTANT_) {
+      goal.hood_position = false;} 
+    else {
+      goal.hood_position = true;}
     ac_shooter_.sendGoal(goal,
                          actionlib::SimpleActionClient<behavior_actions::Shooter2022Action>::SimpleDoneCallback(),
                          actionlib::SimpleActionClient<behavior_actions::Shooter2022Action>::SimpleActiveCallback(),
@@ -292,7 +317,10 @@ public:
 
 int main(int argc, char** argv)
 {
+  
   ros::init(argc, argv, "shooting_server_2022");
+  // read ros param for interpolating map
+
 
   ShootingServer2022 server("shooting_server_2022");
   ros::spin();

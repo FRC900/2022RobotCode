@@ -195,7 +195,7 @@ public:
       
       /* Measure if the sample is close enough to the requested shooter wheel speed */
       // Maybe add diffrent error margins?
-      ROS_INFO_STREAM("SHOOTER SERVER shooter speed: " << msg.data << " CURRENT SHOOTER SPEED " << current_speed_ << " CURRENT HOOD SPEED " << " HOOD SPEED " << hood_current_speed_);
+      ROS_INFO_STREAM_THROTTLE(2, "SHOOTER SERVER shooter speed: " << msg.data << " CURRENT SHOOTER SPEED " << current_speed_ << " CURRENT HOOD SPEED " << " HOOD SPEED " << hood_current_speed_);
       if((fabs(msg.data - fabs(current_speed_)) < error_margin_) && (fabs(hood_msg.data - fabs(hood_current_speed_)) < error_margin_)) {
         good_samples++;
       } else {

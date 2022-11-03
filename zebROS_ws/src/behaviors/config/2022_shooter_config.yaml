@@ -4,3 +4,4 @@ shooter_server_2022:
   eject_speed: 120.0
   error_margin: 7.0
   shooter_wheel_checks: 8
+  
