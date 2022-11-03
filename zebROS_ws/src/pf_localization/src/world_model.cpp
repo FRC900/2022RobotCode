@@ -43,9 +43,8 @@ std::vector<PositionBeacon> WorldModel::getRedBeacons(const std::vector<Position
 	return redBeacons;
 }
 
-WorldModel::WorldModel(std::vector<PositionBeacon>& beacons, const std::vector<PositionBeacon>& red_beacons,
-                       const WorldModelBoundaries &boundaries) :
-  beacons_(beacons), blue_beacons_(beacons), red_beacons_(red_beacons), boundaries_(boundaries) {}
+WorldModel::WorldModel(std::vector<PositionBeacon>& beacons, const WorldModelBoundaries &boundaries) :
+  beacons_(beacons), blue_beacons_(beacons), red_beacons_(getRedBeacons(beacons)), boundaries_(boundaries) {}
 
 const WorldModelBoundaries& WorldModel::get_boundaries() const {
   return boundaries_;

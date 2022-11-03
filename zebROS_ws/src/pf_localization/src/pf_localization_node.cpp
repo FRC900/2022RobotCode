@@ -240,7 +240,6 @@ int main(int argc, char **argv) {
   double tmp_tolerance = 0.1;
 
   std::vector<PositionBeacon> beacons;
-  std::vector<PositionBeacon> red_beacons;
   //ros::topic::waitForMessage() 	
   if (!nh_.getParam("noise_delta_t", noise_delta_t)) {
     ROS_ERROR("noise_delta_t not specified");
@@ -324,12 +323,8 @@ int main(int argc, char **argv) {
   // itterate over blue_beacons vector and print each one out
   for (auto i = beacons.begin(); i != beacons.end(); i++)
     std::cout << i->x_ << ' ' << i->y_ << ' ' << i->type_ << std::endl;
-  ROS_INFO_STREAM("RED BEACONS");
-  // do the same thing for red 
-  for (auto i = red_beacons.begin(); i != red_beacons.end(); i++)
-    std::cout << i->x_ << ' ' << i->y_ << ' ' << i->type_ << std::endl;
 
-  WorldModel world(beacons, red_beacons, WorldModelBoundaries(f_x_min, f_x_max, f_y_min, f_y_max));
+  WorldModel world(beacons, WorldModelBoundaries(f_x_min, f_x_max, f_y_min, f_y_max));
   pf = std::make_unique<ParticleFilter>(world,
                                         WorldModelBoundaries(i_x_min, i_x_max, i_y_min, i_y_max),
                                         p_stdev, r_stdev,

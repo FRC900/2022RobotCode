@@ -144,7 +144,6 @@ include_directories(
 add_executable(tf_object_screen_to_world src/screen_to_world.cpp src/depth_algorithms.cpp)
 add_executable(test_depth_detection src/test_depth_detection.cpp src/depth_algorithms.cpp)
 add_executable(cargo_detection_filter src/cargo_filter.cpp)
-add_executable(static_img_pub src/static_img_pub.cpp)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -157,7 +156,6 @@ add_executable(static_img_pub src/static_img_pub.cpp)
 add_dependencies(tf_object_screen_to_world ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 add_dependencies(test_depth_detection ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 add_dependencies(cargo_detection_filter ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-add_dependencies(static_img_pub ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Specify libraries to link a library or executable target against
 target_link_libraries(tf_object_screen_to_world
@@ -167,9 +165,6 @@ target_link_libraries(test_depth_detection
  ${catkin_LIBRARIES}
 )
 target_link_libraries(cargo_detection_filter
- ${catkin_LIBRARIES}
- )
- target_link_libraries(static_img_pub
  ${catkin_LIBRARIES}
  )
 

@@ -15,8 +15,8 @@ struct WorldModelBoundaries
     , y_min_(y_min)
     , y_max_(y_max)
   {
-  }
-
+  
+}
   double x_min_;
   double x_max_;
   double y_min_;
@@ -35,8 +35,7 @@ private:
 
 public:
   std::vector<PositionBeacon> particle_relative(const Particle& p) const;
-  WorldModel(std::vector<PositionBeacon>& beacons, const std::vector<PositionBeacon>& red_beacons,
-             const WorldModelBoundaries &boundaries);
+  WorldModel(std::vector<PositionBeacon>& beacons, const WorldModelBoundaries &boundaries);
   const WorldModelBoundaries &get_boundaries() const;
   //bool is_in_world(const Particle& p) const;
   void constrain_to_world(Particle& p) const;
