@@ -19,7 +19,7 @@ echo "polling to see that host is up and ready"
 RESULT=1 # 0 upon success
 TIMEOUT=60 # number of iterations (5 minutes?)
 while :; do 
-    echo "waiting for server ping ..."
+    echo "waiting for server $1:$2 ping ..."
     # https://serverfault.com/questions/152795/linux-command-to-wait-for-a-ssh-server-to-be-up
     # https://unix.stackexchange.com/questions/6809/how-can-i-check-that-a-remote-computer-is-online-for-ssh-script-access
     # https://stackoverflow.com/questions/1405324/how-to-create-a-bash-script-to-check-the-ssh-connection
