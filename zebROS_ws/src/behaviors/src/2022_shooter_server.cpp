@@ -161,6 +161,8 @@ public:
     SHOOTER_INFO("Shooter speed setpoint = " << shooter_speed);
     SHOOTER_INFO("Hood shooter speed setpoint = " << hood_shooter_speed);
     int good_samples = 0;
+    current_speed_ = std::numeric_limits<double>::max();
+    hood_current_speed_ = std::numeric_limits<double>::max();
     ros::Rate r(100);
     while (ros::ok()) {
       ros::spinOnce();
@@ -190,9 +192,11 @@ public:
       }
       shooter_command_pub_.publish(msg);
       hood_shooter_command_pub_.publish(hood_msg);
+      
       /* Measure if the sample is close enough to the requested shooter wheel speed */
       // Maybe add diffrent error margins?
-      if((fabs(shooter_speed - fabs(current_speed_)) < error_margin_) && (fabs(hood_shooter_speed - fabs(hood_current_speed_)) < error_margin_)) {
+      ROS_INFO_STREAM("SHOOTER SERVER shooter speed: " << msg.data << " CURRENT SHOOTER SPEED " << current_speed_ << " CURRENT HOOD SPEED " << " HOOD SPEED " << hood_current_speed_);
+      if((fabs(msg.data - fabs(current_speed_)) < error_margin_) && (fabs(hood_msg.data - fabs(hood_current_speed_)) < error_margin_)) {
         good_samples++;
       } else {
         good_samples = 0;

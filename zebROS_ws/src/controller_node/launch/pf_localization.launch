@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <launch>
   <!-- Should be false -->
-  <arg name="vis" default="True" />
+  <arg name="vis" default="False" />
   <arg name="pf" default="True" />
   <group ns="pf_localization">
 	   <rosparam command="load" file="$(find pf_localization)/config/2022Rumble_params.yaml" />

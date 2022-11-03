@@ -200,7 +200,7 @@ hood_shooter_controller:
   type: talon_controllers/TalonVelocityCloseLoopController
   feedback_type: IntegratedSensor
   close_loop_values:
-      - {p: 0.9, i: 0.00, d: 0.0, f: 0.065, i_zone: 0}
+      - {p: 0.5, i: 0.00, d: 0.0, f: 0.065, i_zone: 0}
   invert_output: false 
   sensor_phase: false
   peak_output_forward: 1.0
@@ -211,6 +211,7 @@ hood_shooter_controller:
   voltage_compensation_saturation: 12
   dynamic_reconfigure: True
   neutral_mode: Coast
+  closed_loop_ramp: 0.1
   neutral_deadband: 0.01
   velocity_measurement_period: Period_20Ms
   velocity_measurement_window: 4
