@@ -3,7 +3,6 @@
 #include <behavior_actions/AlignedShooting2022Action.h>
 #include <actionlib/client/simple_action_client.h>
 #include <behavior_actions/Shooting2022Action.h>
-
 #include <geometry_msgs/TransformStamped.h>
 #include <tf2/LinearMath/Quaternion.h>
 #include <tf2_ros/transform_listener.h>
@@ -181,7 +180,7 @@ public:
                 [&](const path_follower_msgs::holdPositionFeedbackConstPtr& feedback){
                   aligned = feedback->isAligned;
                 });
-
+    ROS_INFO_STREAM("angle.second " << distAngle.second << " IMUZ " << imuZ);
     ROS_INFO_STREAM("2022_apriltag_shooting_server : angle set to " << distAngle.second + imuZ << " absolute");
 
     ros::Rate r(100);

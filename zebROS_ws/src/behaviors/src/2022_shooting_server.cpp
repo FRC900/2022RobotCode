@@ -61,7 +61,7 @@ protected:
   // data was recorded to edge of robot, robot is 17.661 inches from center to edge
   // fender shot, 1.031m to edge + 0.4485894m to center = 1.4795894m to center
   // from center of field to center of robot
-  wpi::interpolating_map<double, ShooterData> shooter_speed_map_;
+  wpi::interpolating_map<double, ShooterData>  shooter_speed_map_;
   XmlRpc::XmlRpcValue shooter_speed_map_xml_;
   ros::Subscriber cargo_state_sub_;
   uint8_t cargo_num_;
@@ -89,6 +89,7 @@ public:
     if (!nh_.getParam("/shooting/shooter_speed_map", shooter_speed_map_xml_))
     {
       ROS_WARN_STREAM("2022_shooting_server : COULD NOT FIND SHOOTER SPEED MAP SHOOTING WILL FAIL, defaulting to hardcoded values");
+
       /* no equality operator for interpolating_map, just make sure the config works
       shooter_speed_map_ = {
         {1.48, ShooterData(175, 200)}, // hood up
@@ -101,13 +102,15 @@ public:
     }
     // kinda pointless, we are in trouble if the read fails, but this prevents a out of bounds crash
     else {
+      
       for (size_t i = 0; i < (unsigned) shooter_speed_map_xml_.size(); i++) {
-        auto s = shooter_speed_map_xml_[i];
-        shooter_speed_map_.insert(s[0], ShooterData(s[1], s[2]));
-        ROS_INFO_STREAM("2022_shooting_server : Inserted " << s[0] << " " << s[1] << " " << s[2]);
+        ROS_INFO_STREAM("Here");
+        shooter_speed_map_.insert((double) shooter_speed_map_xml_[i][0], ShooterData((double) shooter_speed_map_xml_[i][1], (double) shooter_speed_map_xml_[i][2]));
+        //ROS_INFO_STREAM("2022_shooting_server : Inserted " << s[0] << " " << s[1] << " " << s[2]);
       }
+    
     }
-
+    shooter_speed_map_.insert(1.48, ShooterData(175, 200));
     cargo_state_sub_ = nh_.subscribe("/2022_index_server/ball_state", 2, &ShootingServer2022::cargoStateCallback, this);
     as_.start();
 
@@ -165,11 +168,9 @@ public:
 
     goal.wheel_speed = shooter_speed_map_[distance].wheel_speed;
     goal.hood_wheel_speed = shooter_speed_map_[distance].hood_wheel_speed;
+    ROS_INFO_STREAM("2022_shooting_server : using wheel speed " << goal.wheel_speed << " and hood speed " << goal.hood_wheel_speed);
     // sets hood position to down if less than some constant up otherwise
-    if (distance < MAGIC_CONSTANT_) {
-      goal.hood_position = false;} 
-    else {
-      goal.hood_position = true;}
+    goal.hood_position = distance >= MAGIC_CONSTANT_;
     ac_shooter_.sendGoal(goal,
                          actionlib::SimpleActionClient<behavior_actions::Shooter2022Action>::SimpleDoneCallback(),
                          actionlib::SimpleActionClient<behavior_actions::Shooter2022Action>::SimpleActiveCallback(),

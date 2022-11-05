@@ -211,7 +211,7 @@ hood_shooter_controller:
   voltage_compensation_saturation: 12
   dynamic_reconfigure: True
   neutral_mode: Coast
-  closed_loop_ramp: 0.1
+  #closed_loop_ramp: 0.1
   neutral_deadband: 0.01
   velocity_measurement_period: Period_20Ms
   velocity_measurement_window: 4

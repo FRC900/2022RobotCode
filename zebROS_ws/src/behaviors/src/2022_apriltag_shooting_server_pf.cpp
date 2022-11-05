@@ -52,7 +52,7 @@ public:
       ROS_WARN_STREAM("2022_shooting_server : Could not find shooting_timeout, defaulting to 10 seconds");
       shooting_timeout_ = 10.0;
     }
-    pf_sub_ = nh_.subscribe("/predicted_pose", 1, &AlignShootServer::pfCallback, this);
+    pf_sub_ = nh_.subscribe("/pf_localization/predicted_pose", 1, &AlignShootServer::pfCallback, this);
     as_.start();
   }
 
@@ -89,18 +89,6 @@ public:
   ~AlignShootServer(void)
   {
   }
-
-double getYaw(const geometry_msgs::Quaternion &q)
-{
-	double roll, pitch, yaw;
-	tf2::Quaternion tf_q(
-		q.x,
-		q.y,
-		q.z,
-		q.w);
-	tf2::Matrix3x3(tf_q).getRPY(roll, pitch, yaw);
-	return yaw;
-}
 
 void pfCallback(const geometry_msgs::PoseWithCovarianceStamped &data) {
     double x = data.pose.pose.position.x;
@@ -148,7 +136,7 @@ void pfCallback(const geometry_msgs::PoseWithCovarianceStamped &data) {
     point.z = 0;
     pose.position = point;
     tf2::Quaternion q;
-    q.setRPY(0, 0, angle_);
+    q.setRPY(0, 0, angle_ + M_PI);
     // print out the quaternion
     ROS_INFO_STREAM("Quaternion XYZW: " << q.x() << " " << q.y() << " " << q.z() << " " << q.w());
     ROS_INFO_STREAM("being called with Angle: " << angle_ * M_PI / 180);
@@ -158,7 +146,7 @@ void pfCallback(const geometry_msgs::PoseWithCovarianceStamped &data) {
     hold_goal.isAbsoluteCoord = true;
     
     bool aligned = false;
-
+    
     ac_hold_pos_.sendGoal(hold_goal,
                 actionlib::SimpleActionClient<path_follower_msgs::holdPositionAction>::SimpleDoneCallback(),
                 actionlib::SimpleActionClient<path_follower_msgs::holdPositionAction>::SimpleActiveCallback(),
@@ -169,6 +157,7 @@ void pfCallback(const geometry_msgs::PoseWithCovarianceStamped &data) {
     ros::Rate r(100);
     bool success = true;
     while (!aligned) {
+      ros::spinOnce();
       if (as_.isPreemptRequested() || !ros::ok())
       {
         ROS_INFO_STREAM("2022_pf_apriltag_shooting_server : preempted");
@@ -180,7 +169,6 @@ void pfCallback(const geometry_msgs::PoseWithCovarianceStamped &data) {
       }
       r.sleep();
     }
-    ac_hold_pos_.cancelGoalsAtAndBeforeTime(ros::Time::now());
 
     ROS_INFO_STREAM("2022_pf_shooting_server : angle reached");
     // find distance to goal
@@ -208,19 +196,21 @@ void pfCallback(const geometry_msgs::PoseWithCovarianceStamped &data) {
                 });
 
     while (!done) {
+      ros::spinOnce();
       // handle preempt. preempt shooting if this is preempted
       if (as_.isPreemptRequested() || !ros::ok())
       {
         ROS_INFO_STREAM("2022_apriltag_shooting_pf_server : preempted");
         // set the action state to preempted
         as_.setPreempted();
+        ac_hold_pos_.cancelGoalsAtAndBeforeTime(ros::Time::now());
         ac_shooting_.cancelGoalsAtAndBeforeTime(ros::Time::now());
         success = false;
         break;
       }
       r.sleep();
     }
-
+    ac_hold_pos_.cancelGoalsAtAndBeforeTime(ros::Time::now());
     feedback_ = behavior_actions::AlignedShooting2022Feedback();
   }
 };

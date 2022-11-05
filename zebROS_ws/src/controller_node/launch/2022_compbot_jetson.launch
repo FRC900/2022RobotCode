@@ -73,10 +73,10 @@
 	</group>
 
 	<!-- 2022 TODO add actionlib servers with namespaces -->
-	<!--
+	
 	<include file="$(find controller_node)/launch/hold_position.launch"/>
 	<include file="$(find controller_node)/launch/path_follower.launch"/>
-	-->
+	
 	<include file="$(find controller_node)/launch/distance_to_pose.launch"/>
 	<include file="$(find behaviors)/launch/auto_node.launch"/>
 
@@ -120,7 +120,6 @@
 	<!-- Will advertise /zed_objdetect/left/image_rect_color_throttle -->
 	<!--<node name="throttle_zed" pkg="topic_tools" type="throttle"  args="messages /zed_objdetect/left/image_rect_color 4" output="screen"/>-->
 	<!-- Consider adding 2022 launch file for recording -->
-	<include file="$(find controller_node)/launch/record_2022_compbot.launch" if="$(arg record)" />
 	
 	<!--
 	<include file="$(find controller_node)/launch/record_2022_no_zed.launch" if="$(arg record)" />
