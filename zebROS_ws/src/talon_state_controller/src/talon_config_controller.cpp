@@ -48,9 +48,15 @@ bool TalonConfigController::init(hardware_interface::TalonStateInterface *hw,
 	// get publishing period
 	if (!controller_nh.getParam("publish_rate", publish_rate_))
 	{
-		ROS_ERROR("Parameter 'publish_rate' not set");
+		ROS_ERROR("Parameter 'publish_rate' not set in talon config controller");
 		return false;
 	}
+	else if (publish_rate_ <= 0.0)
+	{
+		ROS_ERROR_STREAM("Invalid publish rate in talon config controller (" << publish_rate_ << ")");
+		return false;
+	}
+	interval_counter_.init(publish_rate_);
 
 	// realtime publisher
 	realtime_pub_.reset(new
@@ -212,8 +218,7 @@ bool TalonConfigController::init(hardware_interface::TalonStateInterface *hw,
 
 void TalonConfigController::starting(const ros::Time &time)
 {
-	// initialize time
-	last_publish_time_ = time;
+	interval_counter_.reset();
 }
 
 std::string TalonConfigController::limitSwitchSourceToString(const hardware_interface::LimitSwitchSource source) const
@@ -341,19 +346,12 @@ std::string TalonConfigController::remoteSensorSourceToString(const hardware_int
 
 void TalonConfigController::update(const ros::Time &time, const ros::Duration &period)
 {
-	if (period < ros::Duration{0})
-	{
-		last_publish_time_ = time;
-	}
 	// limit rate of publishing
-	if (publish_rate_ > 0.0 && last_publish_time_ + ros::Duration(1.0 / publish_rate_) < time)
+	if (interval_counter_.update(period))
 	{
 		// try to publish
 		if (realtime_pub_->trylock())
 		{
-			// we're actually publishing, so increment time
-			last_publish_time_ = time;
-
 			// populate joint state message:
 			// - fill only joints that are present in the JointStateInterface, i.e. indices [0, num_hw_joints_)
 			// - leave unchanged extra joints, which have static values, i.e. indices from num_hw_joints_ onwards
@@ -608,6 +606,10 @@ void TalonConfigController::update(const ros::Time &time, const ros::Duration &p
 				}
 			}
 			realtime_pub_->unlockAndPublish();
+		}
+		else
+		{
+			interval_counter_.reset();
 		}
 	}
 }

@@ -1,10 +1,12 @@
-#pragma once
+#ifndef INC_ORCHESTRA_STATE_CONTROLLER__
+#define INC_ORCHESTRA_STATE_CONTROLLER__
 
 #include <controller_interface/controller.h>
 #include <realtime_tools/realtime_publisher.h>
 #include <talon_interface/orchestra_state_interface.h>
 #include <talon_state_msgs/OrchestraState.h>
 #include <talon_state_msgs/InstrumentList.h>
+#include <periodic_interval_counter/periodic_interval_counter.h>
 
 namespace orchestra_state_controller
 {
@@ -37,8 +39,10 @@ class OrchestraStateController: public controller_interface::Controller<hardware
 	private:
 		std::vector<hardware_interface::OrchestraStateHandle> orchestra_state_;
 		std::shared_ptr<realtime_tools::RealtimePublisher<talon_state_msgs::OrchestraState> > realtime_pub_;
-		ros::Time last_publish_time_;
+		PeriodicIntervalCounter interval_counter_;
 		double publish_rate_;
 		size_t num_hw_joints_; ///< Number of joints present in the OrchestraStateInterface
 };
 } // namespace
+
+#endif

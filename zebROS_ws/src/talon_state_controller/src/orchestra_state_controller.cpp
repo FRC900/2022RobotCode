@@ -20,9 +20,15 @@ bool OrchestraStateController::init(hardware_interface::OrchestraStateInterface 
 	// get publishing period
 	if (!controller_nh.getParam("publish_rate", publish_rate_))
 	{
-		ROS_ERROR("Parameter 'publish_rate' not set");
+		ROS_ERROR("Parameter 'publish_rate' not set in orchestra state controller");
 		return false;
 	}
+	else if (publish_rate_ <= 0.0)
+	{
+		ROS_ERROR_STREAM("Invalid publish_rate in orchestra state controller (" << publish_rate_ << ")");
+		return false;
+	}
+	interval_counter_.init(publish_rate_);
 
 	// realtime publisher
 	realtime_pub_.reset(new
@@ -48,26 +54,19 @@ bool OrchestraStateController::init(hardware_interface::OrchestraStateInterface 
 void OrchestraStateController::starting(const ros::Time &time)
 {
 	// initialize time
-	last_publish_time_ = time;
+	interval_counter_.reset();
 }
 
 void OrchestraStateController::update(const ros::Time &time, const ros::Duration &period)
 {
-	if (period < ros::Duration{0})
-	{
-		last_publish_time_ = time;
-	}
 	talon_state_msgs::InstrumentList instrument_list_holder;
 
 	// limit rate of publishing
-	if (publish_rate_ > 0.0 && last_publish_time_ + ros::Duration(1.0 / publish_rate_) < time)
+	if (interval_counter_.update(period))
 	{
 		// try to publish
 		if (realtime_pub_->trylock())
 		{
-			// we're actually publishing, so increment time
-			last_publish_time_ = time;
-
 			// populate joint state message:
 			// - fill only joints that are present in the JointStateInterface, i.e. indices [0, num_hw_joints_)
 			// - leave unchanged extra joints, which have static values, i.e. indices from num_hw_joints_ onwards
@@ -84,6 +83,10 @@ void OrchestraStateController::update(const ros::Time &time, const ros::Duration
 				m.is_paused[i] = os->getIsPaused();
 			}
 			realtime_pub_->unlockAndPublish();
+		}
+		else
+		{
+			interval_counter_.reset();
 		}
 	}
 }

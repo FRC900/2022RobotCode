@@ -51,9 +51,15 @@ bool SparkMaxStateController::init(hardware_interface::SparkMaxStateInterface *h
 	// get publishing period
 	if (!controller_nh.getParam("publish_rate", publish_rate_))
 	{
-		ROS_ERROR("Parameter 'publish_rate' not set");
+		ROS_ERROR("Parameter 'publish_rate' not set in spark max state controller");
 		return false;
 	}
+	else if (publish_rate_ <= 0.0)
+	{
+		ROS_ERROR_STREAM("Invalid publish_rate in spark max state controller (" << publish_rate_ << ")");
+		return false;
+	}
+	interval_counter_.init(publish_rate_);
 
 	// realtime publisher
 	realtime_pub_.reset(new
@@ -91,7 +97,7 @@ bool SparkMaxStateController::init(hardware_interface::SparkMaxStateInterface *h
 void SparkMaxStateController::starting(const ros::Time &time)
 {
 	// initialize time
-	last_publish_time_ = time;
+	interval_counter_.reset();
 }
 
 std::string SparkMaxStateController::faultsToString(unsigned faults) const
@@ -137,19 +143,12 @@ std::string SparkMaxStateController::faultsToString(unsigned faults) const
 
 void SparkMaxStateController::update(const ros::Time &time, const ros::Duration &period)
 {
-	if (period < ros::Duration{0})
-	{
-		last_publish_time_ = time;
-	}
 	// limit rate of publishing
-	if (publish_rate_ > 0.0 && last_publish_time_ + ros::Duration(1.0 / publish_rate_) < time)
+	if (interval_counter_.update(period))
 	{
 		// try to publish
 		if (realtime_pub_->trylock())
 		{
-			// we're actually publishing, so increment time
-			last_publish_time_ = time;
-
 			// populate joint state message:
 			// - fill only joints that are present in the JointStateInterface, i.e. indices [0, num_hw_joints_)
 			auto &m = realtime_pub_->msg_;
@@ -173,6 +172,10 @@ void SparkMaxStateController::update(const ros::Time &time, const ros::Duration 
 				m.motor_temperature[i] = sms->getMotorTemperature();
 			}
 			realtime_pub_->unlockAndPublish();
+		}
+		else
+		{
+			interval_counter_.reset();
 		}
 	}
 }
