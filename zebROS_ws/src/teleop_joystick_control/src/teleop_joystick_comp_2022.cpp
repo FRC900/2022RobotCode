@@ -867,6 +867,7 @@ void evaluateCommands(const ros::MessageEvent<frc_msgs::JoystickState const>& ev
 			}
 			if(joystick_states_array[0].bumperRightRelease)
 			{
+				shooting_ac->cancelGoalsAtAndBeforeTime(ros::Time::now());
 			}
 
 			//Joystick1: directionLeft
@@ -959,19 +960,25 @@ void evaluateCommands(const ros::MessageEvent<frc_msgs::JoystickState const>& ev
 			//Joystick1: rightTrigger
 			if(joystick_states_array[0].rightTrigger > config.trigger_threshold)
 			{
+				
 				// teleop_cmd_vel->setSlowMode(true);
 				if(!joystick1_right_trigger_pressed) {
 					behavior_actions::AlignedShooting2022Goal goal;
 					// feels like we should always shoot all of our cargo, so num_cargo might be uneeded, just get it from indexer and shoot it all
 					// for testing this is fine
-					goal.num_cargo = 1;
+					goal.num_cargo = 2;
 					goal.eject = false;
 					align_shooting_pf_ac->sendGoal(goal);
 				}
 				joystick1_right_trigger_pressed = true;
+				
 			}
 			else
-			{
+			{	
+				if(joystick1_right_trigger_pressed){
+					align_shooting_pf_ac->cancelGoalsAtAndBeforeTime(ros::Time::now());
+				}
+
 				// teleop_cmd_vel->setSlowMode(false);
 				joystick1_right_trigger_pressed = false;
 			}
@@ -1358,7 +1365,7 @@ int main(int argc, char **argv)
 	auto_mode_select_pub = n.advertise<behavior_actions::AutoMode>("/auto/auto_mode", 1, true);
 
 	climb_ac = std::make_shared<actionlib::SimpleActionClient<behavior_actions::Climb2022Action>>("/climber/climb_server_2022", true);
-	shooting_ac = std::make_shared<actionlib::SimpleActionClient<behavior_actions::Shooting2022Action>>("/shooting/apriltag_shooting_server_2022", true);
+	shooting_ac = std::make_shared<actionlib::SimpleActionClient<behavior_actions::Shooting2022Action>>("/shooting/shooting_server_2022", true);
 	align_shooting_pf_ac = std::make_shared<actionlib::SimpleActionClient<behavior_actions::AlignedShooting2022Action>>("/shooting/pf_apriltag_shooting_server_2022", true);	
 	intaking_ac = std::make_shared<actionlib::SimpleActionClient<behavior_actions::Intaking2022Action>>("/intaking/intaking_server_2022", true);
 	ejecting_ac = std::make_shared<actionlib::SimpleActionClient<behavior_actions::Ejecting2022Action>>("/ejecting/ejecting_server_2022", true);

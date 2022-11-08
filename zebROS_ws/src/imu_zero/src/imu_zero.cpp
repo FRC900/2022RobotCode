@@ -71,7 +71,7 @@ void zeroCallback(const sensor_msgs::Imu::ConstPtr& raw_msg) {
   zeroed_imu.orientation = tf2::toMsg(zeroed);
   if (!std::isfinite(getYaw(zeroed_imu.orientation)))
   {
-	  ROS_WARN_STREAM("zeroCallback : NaN yaw result"
+    ROS_WARN_STREAM_THROTTLE(10, "zeroCallback : NaN yaw result"
 			  << "\n\traw_msg = " << raw_msg
 			  << "\n\tlast_raw = " << last_raw
 			  << "\n\tzeroed = " << zeroed

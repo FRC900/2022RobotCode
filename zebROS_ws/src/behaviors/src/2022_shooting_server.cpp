@@ -12,6 +12,31 @@
 #include <std_msgs/Float64.h>
 #include <behaviors/interpolating_map.h>
 #include <XmlRpcValue.h>
+#include <XmlRpcExeception.h>
+
+bool checkFloatArray(XmlRpc::XmlRpcValue &param, &double val0, &double val1, &double val2)
+{
+	if (!params.hasMember(0) || !params.hasMember(1), || !params.hasMember(2))
+		ROS_ERROR_STREAM("SHOOTING ARRAY DOES NOT HAVE THREE ELEMENTS")
+    return false;
+
+	if (!param.valid())
+    throw std::runtime_error(param_name + " was not a valid double type in shooting server");
+	if (param.getType() == XmlRpc::XmlRpcValue::TypeDouble)
+	{
+		val = static_cast<double>(param);
+		return true;
+	}
+	else if (param.getType() == XmlRpc::XmlRpcValue::TypeInt)
+	{
+		val = static_cast<int>(param);
+		return true;
+	}
+	else
+		throw std::runtime_error("Shooting server, A non-double value was read for" + param_name);
+
+	return false;
+}
 
 struct ShooterData {
       double wheel_speed;
@@ -104,6 +129,17 @@ public:
     else {
       
       for (size_t i = 0; i < (unsigned) shooter_speed_map_xml_.size(); i++) {
+        if (!shooter_speed_map_[i].hasMember()) {
+          while (true) {
+            ROS_ERROR_STREAM_THROTTLE(2, "SHOOTER IS NOT WORKING, XML ERROR")
+          }
+        }
+        double val0, val1, val2;
+
+        if (checkFloatArray(shooter_speed_map_[i], &double val0, &double val1, &double val2)) {
+          
+
+        }
         ROS_INFO_STREAM("Here");
         shooter_speed_map_.insert((double) shooter_speed_map_xml_[i][0], ShooterData((double) shooter_speed_map_xml_[i][1], (double) shooter_speed_map_xml_[i][2]));
         //ROS_INFO_STREAM("2022_shooting_server : Inserted " << s[0] << " " << s[1] << " " << s[2]);
@@ -119,6 +155,8 @@ public:
   ~ShootingServer2022(void)
   {
   }
+
+  
 
   template<class C, class S>
 	bool waitForResultAndCheckForPreempt(const ros::Duration & timeout, const actionlib::SimpleActionClient<C> & ac, actionlib::SimpleActionServer<S> & as)

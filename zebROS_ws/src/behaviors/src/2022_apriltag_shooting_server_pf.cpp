@@ -19,6 +19,8 @@
 #include <tf2_ros/transform_listener.h>
 #include <tf2_ros/transform_broadcaster.h>
 #include "tf2_geometry_msgs/tf2_geometry_msgs.h"
+#include <angles/angles.h>
+#include "sensor_msgs/Imu.h"
 
 class AlignShootServer
 {
@@ -32,12 +34,15 @@ protected:
   behavior_actions::Shooting2022Feedback shooting_feedback_;
   actionlib::SimpleActionClient<path_follower_msgs::holdPositionAction> ac_hold_pos_;
   actionlib::SimpleActionClient<behavior_actions::Shooting2022Action> ac_shooting_;
-  ros::Subscriber pf_sub_; 
+  ros::Subscriber pf_sub_;
+  ros::Subscriber imu_sub_;
   double shooting_timeout_;
   double FIELD_X = 8.299;
   double FIELD_Y = 4.114;
   double angle_ = -999;
   double distance_ = -999;
+  double imuZ = -999;
+
 
 public:
   AlignShootServer(std::string name) :
@@ -53,6 +58,7 @@ public:
       shooting_timeout_ = 10.0;
     }
     pf_sub_ = nh_.subscribe("/pf_localization/predicted_pose", 1, &AlignShootServer::pfCallback, this);
+    imu_sub_ = nh_.subscribe<sensor_msgs::Imu>("/imu/zeroed_imu", 1000, boost::bind(&AlignShootServer::imuCallback, this, _1));   
     as_.start();
   }
 
@@ -90,6 +96,17 @@ public:
   {
   }
 
+void imuCallback(const sensor_msgs::Imu::ConstPtr& msg)
+  {
+    tf2::Quaternion q;
+    tf2::fromMsg(msg->orientation, q);
+    tf2::Matrix3x3 m(q);
+    double roll, pitch, yaw;
+    m.getRPY(roll, pitch, yaw);
+    imuZ = yaw;
+    ROS_INFO_STREAM_THROTTLE(5, "2022_pf_apriltag_shooting_server : IMU: " << imuZ);
+  }
+
 void pfCallback(const geometry_msgs::PoseWithCovarianceStamped &data) {
     double x = data.pose.pose.position.x;
     double y = data.pose.pose.position.y;
@@ -105,13 +122,17 @@ void pfCallback(const geometry_msgs::PoseWithCovarianceStamped &data) {
     //ROS_INFO_STREAM("d_X: " << d_center_x << " d_Y: " << d_center_y);
     // get yaw from data and convert to degrees
     angle_ = atan2(d_center_y, d_center_x);
+    ROS_INFO_STREAM_THROTTLE(2, "INTIAL ANGLE: " << angle_ << " IMUZ " << imuZ);
+    angle_ = angles::shortest_angular_distance(imuZ, angle_);
+    ROS_INFO_STREAM_THROTTLE(2, "FINAL ANGLE: " << angle_);
     //ROS_INFO_STREAM("First Angle: " << angle_);
     // find compliment of angle
     //angle_ = -angle_;
     //ROS_INFO_STREAM("Angle negated " << angle_ << "\n");
     //angle_ = angle_ + yaw;
     ROS_INFO_STREAM_THROTTLE(5, "pf_apriltag_shooting_server : angle_: " << angle_ << " distance_: " << distance_);
-  }
+}
+
 
   void executeCB(const behavior_actions::AlignedShooting2022GoalConstPtr &goal)
   {
@@ -143,7 +164,7 @@ void pfCallback(const geometry_msgs::PoseWithCovarianceStamped &data) {
     pose.orientation = tf2::toMsg(q);
     //pose.orientation = base_to_map_tf.transform.rotation;
     hold_goal.pose = pose;
-    hold_goal.isAbsoluteCoord = true;
+    hold_goal.isAbsoluteCoord = false;
     
     bool aligned = false;
     
