@@ -21,6 +21,8 @@ spreadsheet with little problem.
 import math
 import rospy
 from frc_msgs.msg import JoystickState
+import geometry_msgs
+
 
 class AxisData():
     def __init__(self, x, y):
@@ -38,14 +40,20 @@ class AxisData():
 
 axis_data_map = {}
 
-def callback(data):
+def joystick_state_callback(data):
     global axis_data_map
     if data.buttonAPress:
         rospy.loginfo("Clearing saved values")
         axis_data_map = {}
 
-    x = data.leftStickX
-    y = data.leftStickY
+    if data.buttonBackPress:
+        rospy.loginfo("="*50)
+        for k in sorted(axis_data_map):
+            rospy.loginfo(f", {k}, {axis_data_map[k]}")
+
+def cmd_vel_callback(data):
+    x = data.linear.x
+    y = data.linear.y
     axis_data = AxisData(x, y)
     direction = axis_data.direction()
 
@@ -53,11 +61,6 @@ def callback(data):
         axis_data_map[direction] = axis_data
     elif axis_data.magnitude() > axis_data_map[direction].magnitude():
         axis_data_map[direction] = axis_data
-
-    if data.buttonBackPress:
-        rospy.loginfo("="*50)
-        for k in sorted(axis_data_map):
-            rospy.loginfo(f", {k}, {axis_data_map[k]}")
 
     
 def main():
@@ -68,7 +71,8 @@ def main():
     # name for our node so that multiple can run simultaneously.
     rospy.init_node('capture_stick_values', anonymous=True)
 
-    rospy.Subscriber("/frcrobot_rio/joystick_states1", JoystickState, callback)
+    rospy.Subscriber("/frcrobot_rio/joystick_states1", JoystickState, joystick_state_callback)
+    rospy.Subscriber("swerve_drive_controller/cmd_vel", geometry_msgs::Twist, cmd_vel_callback)
 
     # spin() simply keeps python from exiting until this node is stopped
     rospy.spin()
