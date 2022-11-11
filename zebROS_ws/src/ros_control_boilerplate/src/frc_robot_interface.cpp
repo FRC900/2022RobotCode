@@ -800,7 +800,7 @@ void FRCRobotInterface::read(const ros::Time &time, const ros::Duration &period)
 				}
 #endif
 			}
-			if (updated_all)
+			if (!updated_all)
 			{
 				joystick_read_interval_->force_publish();
 			}
