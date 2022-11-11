@@ -885,11 +885,8 @@ void FRCRobotInterface::read(const ros::Time &time, const ros::Duration &period)
 #ifdef MATCH_DATA_LOCK
 			match_data_mutex_.unlock();
 		}
-		else
-		{
-			match_data_read_interval_->force_publish();
-		}
 #endif
+
 		read_tracer_.start_unique("robot controller data");
 		//check if sufficient time has passed since last read
 		if (robot_controller_read_interval_->update(period))
