@@ -184,10 +184,15 @@ std::optional<geometry_msgs::PoseWithCovariance> ParticleFilter::predict() {
 
 bool ParticleFilter::motion_update(double delta_x, double delta_y, double delta_rot) {
   for (Particle& p : particles_) {
-    // p.x_ += delta_x;
-    // p.y_ += delta_y;
-    const double abs_delta_x = delta_x * cos(p.rot_) + delta_y * sin(p.rot_);
-    const double abs_delta_y = delta_x * sin(p.rot_) + delta_y * cos(p.rot_);
+    // delta x and y are robot relative, since they come from the 
+    // drive base twist message.  Particle coords are map centric,
+    // so rotate the delta x, y values by the robot yaw in map
+    // space to get map-centric x and y offsets this timestep
+    const double c = cos(p.rot_ + delta_rot / 2.0);
+    const double s = sin(p.rot_ + delta_rot / 2.0);
+    const double abs_delta_x = delta_x * c - delta_y * s;
+    const double abs_delta_y = delta_x * s + delta_y * c;
+#ifdef CHECK_NAN
     // TODO - do we really want to return here, or should it try to
     // motion update the rest of the particles?
     // Maybe split the check - if d_x or d_y are inf/nan, nothing we can do
@@ -196,7 +201,6 @@ bool ParticleFilter::motion_update(double delta_x, double delta_y, double delta_
     // Then hoist the check for d_x, d_y outside the loop, return false for
     // that case. Remove the return false here to the particles which do
     // pass are constrained properly
-#ifdef CHECK_NAN
     if (!std::isfinite(delta_rot + abs_delta_x + abs_delta_y)) {
       return false;
     }
@@ -216,7 +220,9 @@ bool ParticleFilter::set_rotation(double rot) {
   }
 #endif
   for (Particle& p : particles_) {
-    p.rot_ = rot;
+    if (fabs(p.rot_ - rot) > (M_PI/10.)) {
+      p.rot_ = rot;
+    }
   }
   noise_rot();
   return true;

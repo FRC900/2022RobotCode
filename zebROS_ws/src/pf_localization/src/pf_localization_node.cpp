@@ -48,7 +48,6 @@ tf2_ros::Buffer tf_buffer_;
 
 ros::Time last_cmd_vel;
 ros::Time last_measurement;
-double rot = 0;
 double noise_delta_t = 0;  // if the time since the last measurement is greater than this, positional noise will not be applied
 std::vector<double> sigmas; // std.dev for each dimension of detected beacon position (x&y for depth camera, angle for bearing-only)
 std::unique_ptr<ParticleFilter> pf;
@@ -103,7 +102,8 @@ void publish_prediction(const ros::TimerEvent &/*event*/)
 
       geometry_msgs::PoseStamped baselink_to_map;
       baselink_to_map.header.frame_id = "base_link";
-      baselink_to_map.header.stamp = last_cmd_vel;
+      //ROS_INFO_STREAM("last_cmd_vel = " << last_cmd_vel << " minus 0.05 = " << (last_cmd_vel - ros::Duration(0.05)));
+      baselink_to_map.header.stamp = last_cmd_vel - ros::Duration(0.05);
       tf2::toMsg(tmp_tf.inverse(), baselink_to_map.pose);
 
       // baselink_to_map transformed from base_link to odom == odom->map
@@ -181,14 +181,16 @@ void cmdCallback(const geometry_msgs::TwistStamped::ConstPtr& msg){
   double timestep = (msg->header.stamp - last_cmd_vel).toSec();
   double x_vel = msg->twist.linear.x;
   double y_vel = msg->twist.linear.y;
+  double z_ang_velocity = msg->twist.angular.z;
 
   // TODO - use the average of the previous and current velocity?
   double delta_x = x_vel * timestep;
   double delta_y = y_vel * timestep;
+  double delta_angular_z = z_ang_velocity * timestep;
 
   last_cmd_vel = msg->header.stamp;
   // TODO - check return code
-  pf->motion_update(delta_x, delta_y, 0);
+  pf->motion_update(delta_x, delta_y, delta_angular_z);
   if ((ros::Time::now() - last_measurement).toSec() < noise_delta_t) {
     pf->noise_pos();
     pf->noise_rot();
@@ -357,6 +359,7 @@ int main(int argc, char **argv) {
   nh_.param("publish_rate", publish_rate, 10.);
   auto pubTimer = nh_.createTimer(ros::Duration(1./ publish_rate), publish_prediction);
 
+  ros::Duration(1).sleep();
   const auto now = ros::Time::now();
   last_cmd_vel = now;
   last_measurement = now;
