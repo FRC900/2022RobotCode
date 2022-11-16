@@ -25,11 +25,13 @@ std::ostream& operator<<(std::ostream &os, const BearingBeacon& b)
 
 ParticleFilter::ParticleFilter(const WorldModel& w,
                                const WorldModelBoundaries &boundaries,
-                               double ns, double rs, size_t n) :
+                               double ns, double rs, double rt, size_t n) :
                                num_particles_(n),
                                rng_(std::mt19937(0)),
                                pos_dist_(0, ns),
                                rot_dist_(0, rs),
+                               rotation_threshold_(rt),
+                               rot_thresh_dist_(0, rt),
                                world_(w) {
   init(boundaries);
 }
@@ -213,6 +215,12 @@ bool ParticleFilter::motion_update(double delta_x, double delta_y, double delta_
   return true;
 }
 
+// Use rotation data from the IMU to update particles
+// rotation component. Only do so if the particle's current
+// rotation is > a configurable threshold. This allows particles
+// to use camera data to correct orientation if the robot 
+// IMU zero is slightly off and at the same time corrects for
+// particles where the orientation is clearly wrong.
 bool ParticleFilter::set_rotation(double rot) {
 #ifdef CHECK_NAN
   if (!std::isfinite(rot)) {
@@ -220,7 +228,7 @@ bool ParticleFilter::set_rotation(double rot) {
   }
 #endif
   for (Particle& p : particles_) {
-    if (fabs(p.rot_ - rot) > (M_PI/10.)) {
+    if (fabs(angles::shortest_angular_distance(p.rot_, rot)) > rotation_threshold_) {
       p.rot_ = rot;
     }
   }
@@ -233,7 +241,11 @@ bool ParticleFilter::set_rotation(double rot) {
 bool ParticleFilter::assign_weights(const std::vector<std::shared_ptr<BeaconBase>> &measurements,
 		const std::vector<double> &sigmas) {
   if (measurements.empty()) {
-	return false;
+    return false;
+  }
+
+  for (auto m: measurements) {
+    beacons_seen_.insert(m->type_);
   }
 
 #ifdef CHECK_NAN
@@ -253,8 +265,16 @@ bool ParticleFilter::assign_weights(const std::vector<std::shared_ptr<BeaconBase
   return true;
 }
 
-std::vector<Particle> ParticleFilter::get_particles() const {
+const std::vector<Particle> &ParticleFilter::get_particles() const {
   return particles_;
+}
+
+const std::set<std::string> &ParticleFilter::get_beacons_seen() const {
+  return beacons_seen_;
+}
+
+void ParticleFilter::clear_beacons_seen() {
+  beacons_seen_.clear();
 }
 
 void ParticleFilter::check_particles(const char *file, int line) const {

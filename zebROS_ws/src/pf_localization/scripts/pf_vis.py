@@ -4,18 +4,15 @@ import math
 import matplotlib.pyplot as plt
 
 import rospy
-#from pf_localization.msg import pf_debug, pf_pose
 from nav_msgs.msg import Odometry
 from geometry_msgs.msg import Quaternion
 from tf.transformations import euler_from_quaternion, quaternion_from_euler
-from geometry_msgs.msg import PoseArray, PoseWithCovarianceStamped, PoseStamped, TransformStamped
-from field_obj.msg import Detection
+from geometry_msgs.msg import PoseStamped, TransformStamped
+from pf_localization.msg import PFDebug
 from frc_msgs.msg import MatchSpecificData
-import tf2_ros, tf2_geometry_msgs
+import tf2_geometry_msgs
 
-particles_topic = "pf_debug"
-pf_pose_topic = "predicted_pose"
-detections_topic = "/goal_detection/goal_detect_msg"
+debug_topic = "pf_debug"
 ground_truth_topic = "/base_pose_ground_truth"
 match_data_topic = "/frcrobot_rio/match_data"
 
@@ -75,32 +72,40 @@ ln,  = ax.plot([], [], 'b.', markersize=.15)
 gtn, = ax.plot([], [], 'g.', markersize=2)
 dtns = {}
 
-def update_particles(pose_array):
-    global ln
+def update_debug(debug_msg):
+    global ln, predicted_x, predicted_y, beacon_locations, dtns
 
     x_data = []
     y_data = []
     rot_data = []
-    for p in pose_array.poses:
+    for p in debug_msg.poses:
         x_data.append(p.position.x)
         y_data.append(p.position.y)
         angles = euler_from_quaternion([p.orientation.x, p.orientation.y, p.orientation.z, p.orientation.w]);
         rot_data.append(angles[2])
     ln.set_data(x_data, y_data)
-    plt.draw()
 
-def update_pose(pose_msg):
-    global predicted_x, predicted_y
-
-    this_x = pose_msg.pose.pose.position.x
-    this_y = pose_msg.pose.pose.position.y
+    this_x = debug_msg.predicted_pose.position.x
+    this_y = debug_msg.predicted_pose.position.y
     predicted_x.append(this_x)
     predicted_y.append(this_y)
     pln.set_data(predicted_x.get(), predicted_y.get())
-    o = pose_msg.pose.pose.orientation
-    angles = euler_from_quaternion([o.x, o.y, o.z, o.w]);
-    angle = angles[2]
+
+    o = debug_msg.predicted_pose.orientation
+    angle = euler_from_quaternion([o.x, o.y, o.z, o.w])[2]
     dir.set_data([this_x, this_x + math.cos(angle)],[this_y, this_y + math.sin(angle)])
+
+    detections = set()
+    for o in debug_msg.beacons:
+        detections.add(o)
+
+    for d in dtns:
+        if d in detections and d in beacon_locations:
+            xs = [predicted_x.newest(), beacon_locations[d][0]]
+            ys = [predicted_y.newest(), beacon_locations[d][1]]
+            dtns[d].set_data(xs,ys)
+        else:
+            dtns[d].set_data([], [])
     plt.draw()
 
 def update_ground_truth(ground_truth_msg):
@@ -110,20 +115,6 @@ def update_ground_truth(ground_truth_msg):
     ground_truth_y.append(ground_truth_msg.pose.pose.position.y)
     gtn.set_data(ground_truth_x.get(), ground_truth_y.get())
     plt.draw()
-
-def update_detections(detection_msg):
-    global predicted_x, predicted_y, beacon_locations, dtns
-    detections = set()
-    for o in detection_msg.objects:
-        detections.add(o.id)
-
-    for d in dtns:
-        if d in detections and d in beacon_locations:
-            xs = [predicted_x.newest(), beacon_locations[d][0]]
-            ys = [predicted_y.newest(), beacon_locations[d][1]]
-            dtns[d].set_data(xs,ys)
-        else:
-            dtns[d].set_data([], [])
 
 def update_match_data(match_data_msg):
     global beacon_locations, beacon_locations_blue, beacon_locations_red
@@ -192,10 +183,8 @@ def main():
 
     beacon_locations = beacon_locations_blue
 
-    sub_particles = rospy.Subscriber(particles_topic, PoseArray, update_particles)
-    sub_pose = rospy.Subscriber(pf_pose_topic, PoseWithCovarianceStamped, update_pose)
+    sub_debug = rospy.Subscriber(debug_topic, PFDebug, update_debug)
     sub_ground_truth = rospy.Subscriber(ground_truth_topic, Odometry, update_ground_truth)
-    sub_detection = rospy.Subscriber(detections_topic, Detection, update_detections)
     sub_match_data = rospy.Subscriber(match_data_topic, MatchSpecificData, update_match_data)
 
     plt.show()
