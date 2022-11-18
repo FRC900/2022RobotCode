@@ -24,6 +24,8 @@ class TeleopCmdVel
 				joystick_values.insert(atan2(1.0, -0.5), store_xy(-0.5, 1.0));
 				joystick_values.insert(atan2(-1.0, 0.5), store_xy(0.5, -1.0));
 				joystick_values.insert(atan2(1.0, 0.5), store_xy(0.5, 1.0));
+				joystick_values.insert(M_PI, store_xy(-1.0, 0.0));
+				joystick_values.insert(-M_PI, store_xy(-1.0, 0.0));
 			}
 
 		void setRobotOrient(const bool &robot_orient, const double &offset_angle)
