@@ -31,7 +31,7 @@ ParticleFilter::ParticleFilter(const WorldModel& w,
                                pos_dist_(0, ns),
                                rot_dist_(0, rs),
                                rotation_threshold_(rt),
-                               rot_thresh_dist_(0, rt),
+                               rot_thresh_dist_(0, rt / 2.), // divide by 2 so ~95% of set particles are within rt radians of the imu yaw
                                world_(w) {
   init(boundaries);
 }
@@ -229,7 +229,7 @@ bool ParticleFilter::set_rotation(double rot) {
 #endif
   for (Particle& p : particles_) {
     if (fabs(angles::shortest_angular_distance(p.rot_, rot)) > rotation_threshold_) {
-      p.rot_ = rot;
+      p.rot_ = rot + rot_thresh_dist_(rng_);
     }
   }
   noise_rot();
