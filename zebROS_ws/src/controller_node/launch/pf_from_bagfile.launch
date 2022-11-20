@@ -17,6 +17,7 @@
         /frcrobot_rio/match_data
         /imu/zeroed_imu
         /goal_detection/goal_detect_msg
+        /tf_object_detection/object_detection_world
         /zed_objdetect/imu/data 
         /tf
         /tf_static" 
@@ -47,6 +48,7 @@
   <node pkg="tf" type="static_transform_publisher" name="zed_objdetect_left_camera_frame_to_zed_objdetect_imu_link" args="-0.0020000000949949026 -0.023000003769993782 0.0002200000308221206 0.9999977350234985 -0.00021143197955098003 -0.0003662109375 -0.002078782534226775 zed_objdetect_left_camera_frame zed_objdetect_imu_link 100" />
   <include file="$(find controller_node)/launch/pf_localization.launch">
     <arg name="vis" value="True"/>
+    <arg name="pf_camera_topic" value="/tf_object_detection/object_detection_world" />
   </include>
 
 
