@@ -72,8 +72,9 @@ class AutoNode {
 		//All actions check if(auto_started && !auto_stopped) before proceeding.
 		// define preemptAll_
 		std::function<void()> preemptAll_;
+		ros::rate r; // initialize later with config val
 
-		std::atomic<int> auto_state_(NOT_READY); //This state is published by the publish thread
+		std::atomic<int> auto_state_; //This state is published by the publish thread
 		std::map<std::string, nav_msgs::Path> premade_paths_;
 		// Inital waypoints used to make the paths, when passed into the path follower allows for more persise control
 		// Can use for things like "start intake after X waypoint or X percent through"
@@ -87,11 +88,11 @@ class AutoNode {
 		// Map of the auto action to the function to be called
 		// Edit here if for changing auto year to year
 		std::unordered_map<std::string, std::function<bool(XmlRpc::XmlRpcValue, std::string)>> functionMap_ = {
-			{"pause", &AutoNode::pausefn},
-			{"intaking_actionlib_server", &AutoNode::intakefn},
-			{"shooting_actionlib_server", &AutoNode::shootfn},
-			{"path", &AutoNode::pathfn},
-			{"cmd_vel", &AutoNode::cmdvelfn},
+			{"pause", AutoNode::pausefn},
+			{"intaking_actionlib_server", AutoNode::intakefn},
+			{"shooting_actionlib_server", AutoNode::shootfn},
+			{"path", AutoNode::pathfn},
+			{"cmd_vel", AutoNode::cmdvelfn},
 		};
 		
 	public:
@@ -108,23 +109,25 @@ class AutoNode {
 
 		//subscribers
 		//rio match data (to know if we're in auto period)
-		match_data_sub_ = nh_.subscribe("/frcrobot_rio/match_data", 1, &AutoNode::matchDataCallback);
+		match_data_sub_ = nh_.subscribe("/frcrobot_rio/match_data", 1, &AutoNode::matchDataCallback, this);
 		//dashboard (to get auto mode)
-		auto_mode_sub_ = nh_.subscribe("auto_mode", 1, &AutoNode::updateAutoMode); //TODO get correct topic name (namespace)
-		enable_auto_in_teleop_sub_ = nh_.subscribe("/enable_auto_in_teleop", 1, &AutoNode::enable_auto_in_teleop);
+		auto_mode_sub_ = nh_.subscribe("auto_mode", 1, &AutoNode::updateAutoMode, this); //TODO get correct topic name (namespace)
+		enable_auto_in_teleop_sub_ = nh_.subscribe("/enable_auto_in_teleop", 1, &AutoNode::enable_auto_in_teleop, this);
 
 		// Used to pass in dynamic paths from other nodes
-		path_finder_ = nh_.advertiseService("dynamic_path", &AutoNode::dynamic_path_storage);
+		path_finder_ = nh_.advertiseService("dynamic_path", &AutoNode::dynamic_path_storage, this);
 
 		//auto state
+		auto_state_(NOT_READY);
 		// TODO change to ros_timer
 		auto_state_pub_thread_ = std::thread(publishAutoState, std::ref(nh_));
 
 		//servers
-		stop_auto_server_ = nh_.advertiseService("stop_auto", &AutoNode::stopAuto); //called by teleop node to stop auto execution during teleop if driver wants
-		reset_maps_ = nh_.advertiseService("reset_maps", &AutoNode::resetMaps);
+		// not sure if this is needed or even works
+		stop_auto_server_ = nh_.advertiseService("stop_auto", &AutoNode::stopAuto, this); //called by teleop node to stop auto execution during teleop if driver wants
+		reset_maps_ = nh_.advertiseService("reset_maps", &AutoNode::resetMaps, this);
 
-		preemptAll_ = [&path_ac_, &shooting_ac_, &intaking_ac_](){ // must include all actions called
+		preemptAll_ = [this](){ // must include all actions called
 			path_ac_.cancelGoalsAtAndBeforeTime(ros::Time::now());
 			shooting_ac_.cancelGoalsAtAndBeforeTime(ros::Time::now());
 			intaking_ac_.cancelGoalsAtAndBeforeTime(ros::Time::now());
@@ -160,7 +163,7 @@ class AutoNode {
 	//subscriber callback for dashboard data
 	void updateAutoMode(const behavior_actions::AutoMode::ConstPtr& msg)
 	{
-		auto_mode = msg->auto_mode;
+		auto_mode_ = msg->auto_mode;
 	}
 
 	void enable_auto_in_teleop(const std_msgs::Bool::ConstPtr& msg)
@@ -422,9 +425,9 @@ class AutoNode {
 			ros::spinOnce(); //spin so the subscribers can update
 
 			//read sequence of actions from config
-			if (auto_mode >= 0)
+			if (auto_mode_ >= 0)
 			{
-				if(nh_.getParam("auto_mode_" + std::to_string(auto_mode), auto_steps_))
+				if(nh_.getParam("auto_mode_" + std::to_string(auto_mode_), auto_steps_))
 				{
 					for (size_t j = 0; j < auto_steps_.size(); j++) {
 						XmlRpc::XmlRpcValue action_data;
@@ -536,15 +539,15 @@ class AutoNode {
 				}
 			}
 
-			if(auto_mode > 0){
+			if(auto_mode_ > 0){
 				auto_state_ = READY;
 			}
-			if(auto_started_ && auto_mode <= 0){
+			if(auto_started_ && auto_mode_ <= 0){
 				ROS_ERROR("Auto node - Autonomous period started, please choose an auto mode");
 			}
 
 			// Valid auto mode plus auto_started_ flag ==> actually run auto code, return success
-			if (auto_started_ && (auto_mode > 0)) {
+			if (auto_started_ && (auto_mode_ > 0)) {
 				return true;
 			}
 
@@ -694,7 +697,7 @@ class AutoNode {
 			goal.waypoints = premade_waypoints_[auto_step];
 			goal.waypointsIdx = waypointsIdxs_[auto_step];
 			// Sends the goal and sets feedbackCb to be run when feedback is updated
-			path_ac_.sendGoal(goal, NULL, NULL, &feedbackCb);
+			path_ac_.sendGoal(goal, NULL, NULL, &AutoNode::feedbackCb);
 
 			waitForActionlibServer(path_ac_, 100, "running path");
 			iteration_value --;
@@ -809,13 +812,13 @@ class AutoNode {
 
 			//EXECUTE AUTONOMOUS ACTIONS --------------------------------------------------------------------------
 
-			ROS_INFO_STREAM("Auto node - Executing auto mode " << auto_mode);
+			ROS_INFO_STREAM("Auto node - Executing auto mode " << auto_mode_);
 			auto_state_ = RUNNING;
 
 			auto_steps_.clear(); //stores string of action names to do, read from the auto mode array in the config file
 			//read sequence of actions from config
-			if(!nh_.getParam("auto_mode_" + std::to_string(auto_mode), auto_steps_)){
-				shutdownNode(ERROR, "Couldn't read auto_mode_" + std::to_string(auto_mode) + " config value in auto node");
+			if(!nh_.getParam("auto_mode_" + std::to_string(auto_mode_), auto_steps_)){
+				shutdownNode(ERROR, "Couldn't read auto_mode_" + std::to_string(auto_mode_) + " config value in auto node");
 				return 1;
 			}
 
@@ -844,7 +847,7 @@ class AutoNode {
 						ROS_ERROR_STREAM("Data for action " << auto_steps_[i] << " missing 'type' field");
 					}
 					// Looks up action in the map of functions, then runs the function
-					auto fnIter = functionMap.find(action_data_type);
+					auto fnIter = functionMap_.find(action_data_type);
 					auto autofn = fnIter->second;
 					
 					ROS_INFO_STREAM("auto_node: Running " << std::string(fnIter->first));
