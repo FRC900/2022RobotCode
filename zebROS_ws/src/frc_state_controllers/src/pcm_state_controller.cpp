@@ -92,8 +92,7 @@ public:
 		interval_counter_ = std::make_unique<PeriodicIntervalCounter>(publish_rate_);
 
 		// realtime publisher
-		realtime_pub_.reset(new
-							realtime_tools::RealtimePublisher<frc_msgs::PCMState>(root_nh, "pcm_states", 4));
+		realtime_pub_ = std::make_unique<realtime_tools::RealtimePublisher<frc_msgs::PCMState>>(root_nh, "pcm_states", 2);
 
 		// get joints and allocate message
 		auto &m = realtime_pub_->msg_;
