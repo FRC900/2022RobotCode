@@ -93,7 +93,7 @@ class AutoNode {
 		// Edit here if for changing auto year to year
 		// https://stackoverflow.com/questions/8936578/how-to-create-an-unordered-map-for-string-to-function
 		// invoke:
-		// (this->*m["foo"])();
+		// (this->*functionMap_["foo"])();
 		// probably better way to do this
 		std::unordered_map<std::string, bool(AutoNode::*)(XmlRpc::XmlRpcValue, std::string)> functionMap_;
 
@@ -288,8 +288,6 @@ class AutoNode {
 			}
 		}
 	}
-
-
 
 	void shutdownNode(AutoStates state, const std::string &msg)
 	{
@@ -709,8 +707,11 @@ class AutoNode {
 			// Sends the goal and sets feedbackCb to be run when feedback is updated
 			path_ac_.sendGoal(goal, NULL, NULL, &AutoNode::feedbackCb);
 
+			// wait for actionlib server to finish
+			
+
 			waitForActionlibServer(path_ac_, 100, "running path");
-			iteration_value --;
+			iteration_value--;
 		}
 		return true;
 	}
@@ -864,9 +865,6 @@ class AutoNode {
 					// passes in the config data and which auto step is running
 					(this->*functionMap_["action_data_type"])(action_data, std::string(auto_steps_[i]));
 
-					
-		
-
 					//old  autofn(action_data, std::string(auto_steps_[i]));
 
 				}
@@ -880,7 +878,6 @@ class AutoNode {
 				auto_state_ = READY;
 			}
 		}
-
 		return 0;
 	}
 	};
