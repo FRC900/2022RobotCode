@@ -54,6 +54,9 @@ class AutoNode {
 		//auto state
 		// change to ros_timer
 		std::thread auto_state_pub_thread_;
+		ros::Timer auto_state_timer_;
+		ros::Publisher auto_state_pub_; // publish auto state with ros_timer
+		std::atomic<int> auto_state_; //This state is published by the publish thread
 		std::atomic<bool> publish_autostate_{true};
 		//servers
 		ros::ServiceServer stop_auto_server_; //called by teleop node to stop auto execution during teleop if driver wants
@@ -72,9 +75,10 @@ class AutoNode {
 		//All actions check if(auto_started && !auto_stopped) before proceeding.
 		// define preemptAll_
 		std::function<void()> preemptAll_;
-		ros::rate r; // initialize later with config val
+		// would like to make config but not sure how to keep r_ uninitialized for later
+		ros::Rate r_ = ros::Rate(10);
 
-		std::atomic<int> auto_state_; //This state is published by the publish thread
+		
 		std::map<std::string, nav_msgs::Path> premade_paths_;
 		// Inital waypoints used to make the paths, when passed into the path follower allows for more persise control
 		// Can use for things like "start intake after X waypoint or X percent through"
@@ -87,6 +91,13 @@ class AutoNode {
 	
 		// Map of the auto action to the function to be called
 		// Edit here if for changing auto year to year
+		// https://stackoverflow.com/questions/8936578/how-to-create-an-unordered-map-for-string-to-function
+		// invoke:
+		// (this->*m["foo"])();
+		// probably better way to do this
+		std::unordered_map<std::string, bool(AutoNode::*)(XmlRpc::XmlRpcValue, std::string)> functionMap_;
+
+		/*
 		std::unordered_map<std::string, std::function<bool(XmlRpc::XmlRpcValue, std::string)>> functionMap_ = {
 			{"pause", AutoNode::pausefn},
 			{"intaking_actionlib_server", AutoNode::intakefn},
@@ -94,6 +105,7 @@ class AutoNode {
 			{"path", AutoNode::pathfn},
 			{"cmd_vel", AutoNode::cmdvelfn},
 		};
+		*/
 		
 	public:
 		AutoNode(const ros::NodeHandle &nh) 
@@ -101,8 +113,8 @@ class AutoNode {
 		, path_ac_("/path_follower/path_follower_server", true)
 		, shooting_ac_("/shooting2022/shooting2022_server", true)
 		, intaking_ac_("/intaking2022/intaking2022_server", true)
-		// Constructor
-		{
+	// Constructor
+	{
 		spline_gen_cli_ = nh_.serviceClient<base_trajectory_msgs::GenerateSpline>("/path_follower/base_trajectory/spline_gen", false, service_connection_header);
 		cmd_vel_pub_ = nh_.advertise<geometry_msgs::Twist>("cmd_vel", 1);
 		brake_srv_ = nh_.serviceClient<std_srvs::Empty>("/frcrobot_jetson/swerve_drive_controller/brake", false, service_connection_header);
@@ -118,21 +130,38 @@ class AutoNode {
 		path_finder_ = nh_.advertiseService("dynamic_path", &AutoNode::dynamic_path_storage, this);
 
 		//auto state
-		auto_state_(NOT_READY);
-		// TODO change to ros_timer
-		auto_state_pub_thread_ = std::thread(publishAutoState, std::ref(nh_));
+		auto_state_ = NOT_READY;
+		// read param 
+		
+		#if 0 // attempt to config rate
+		int auto_ros_rate = 10;
+		if (!nh_.getParam("ros_rate", auto_ros_rate))
+		{
+			ROS_ERROR_STREAM("Could not read param "
+								<< "ros_rate"
+								<< " in auto_node");
+		}
+		r_ = ros::Rate(auto_ros_rate);
+		#endif
+		auto_state_pub_ = nh_.advertise<behavior_actions::AutoState>("auto_state", 1);
+		auto_state_timer_ = nh_.createTimer(ros::Duration(0.1), &AutoNode::publishAutoState, this);
+
+		// auto_state_pub_thread_ = std::thread(publishAutoState, std::ref(nh_));
 
 		//servers
 		// not sure if this is needed or even works
 		stop_auto_server_ = nh_.advertiseService("stop_auto", &AutoNode::stopAuto, this); //called by teleop node to stop auto execution during teleop if driver wants
 		reset_maps_ = nh_.advertiseService("reset_maps", &AutoNode::resetMaps, this);
 
+		functionMap_["pause"] = &AutoNode::pausefn;
+
+		// cool trick to bring all class variables into scope of lambda
 		preemptAll_ = [this](){ // must include all actions called
 			path_ac_.cancelGoalsAtAndBeforeTime(ros::Time::now());
 			shooting_ac_.cancelGoalsAtAndBeforeTime(ros::Time::now());
 			intaking_ac_.cancelGoalsAtAndBeforeTime(ros::Time::now());
 		};
-		}
+	}
 
 	//FUNCTIONS -------
 
@@ -180,8 +209,9 @@ class AutoNode {
 		return true;
 	}
 
-	void doPublishAutostate(ros::Publisher &state_pub)
+	void DoPublishAutostate()
 	{
+		// we don't actually care about the event much
 		behavior_actions::AutoState msg;
 		msg.header.stamp = ros::Time::now();
 		msg.id = auto_state_;
@@ -197,36 +227,21 @@ class AutoNode {
 						ROS_ERROR("Unknown auto state - weirdness in auto_node");
 						break;
 		}
-		state_pub.publish(msg);
+		auto_state_pub_.publish(msg);
 	}
 
 	//function to publish auto node state (run on a separate thread)
 	//this is read by the dashboard to display it to the driver
 	
-	void publishAutoState(ros::NodeHandle &nh_)
-	{
-	#ifdef __linux__
-		// Run status thread at idle priority
-		struct sched_param sp{};
-		sched_setscheduler(0, SCHED_IDLE, &sp);
-
-		//give the thread a name
-		pthread_setname_np(pthread_self(), "auto_state_pub");
-	#endif
-
-		//publish
-		ros::Publisher state_pub = nh_.advertise<behavior_actions::AutoState>("auto_state", 1, true);
-
-		publish_autostate_ = true;
-		while(publish_autostate_) {
-			doPublishAutostate(state_pub);
-			if (publish_autostate_) {
-				r.sleep();
-			}
+	void publishAutoState(const ros::TimerEvent& event)
+	{	
+		if (publish_autostate_) {
+			DoPublishAutostate();
 		}
-		// Force one last message to go out before exiting
-		doPublishAutostate(state_pub);
-		r.sleep();
+		else {
+			ROS_WARN("AutoNode::publishAutoState() publishing last message");
+			DoPublishAutostate(); // should be the last publish
+		}
 	}
 
 
@@ -236,7 +251,6 @@ class AutoNode {
 		//activity is a description of what we're waiting for, e.g. "waiting for mechanism to extend" - helps identify where in the server this was called (for error msgs)
 	{
 		const double request_time = ros::Time::now().toSec();
-		ros::Rate r(10); //TODO config?
 
 		//wait for actionlib server to finish
 		std::string state;
@@ -270,7 +284,7 @@ class AutoNode {
 			}
 			else { //if didn't succeed and nothing went wrong, keep waiting
 				ros::spinOnce();
-				r.sleep();
+				r_.sleep();
 			}
 		}
 	}
@@ -288,9 +302,7 @@ class AutoNode {
 		}
 		auto_state_ = state;
 		publish_autostate_ = false; // publish last message and exit from autostate publisher thread
-		if(auto_state_pub_thread_.joinable()) {
-			auto_state_pub_thread_.join(); // waits until auto state publisher thread finishes
-		}
+		r_.sleep();
 		exit(0);
 	}
 
@@ -393,15 +405,13 @@ class AutoNode {
 
 	bool waitForAutoEnd() // returns true if no errors
 	{
-		ros::spinOnce();
 
-		ros::Rate r(20);
 		bool isOk = ros::ok();
 		while (isOk && !auto_stopped_ && auto_started_)
 		{
 			isOk = ros::ok();
 			ros::spinOnce(); // spin so the subscribers can update
-			r.sleep(); // wait for 1/20 of a second
+			r_.sleep(); // wait for 1/20 of a second
 		}
 		if (!isOk) { // ROS not being ok is an error, return false
 			return false;
@@ -412,7 +422,6 @@ class AutoNode {
 	bool waitForAutoStart(ros::NodeHandle nh_)
 	{
 		ros::spinOnce();
-		ros::Rate r(20);
 		// In sim, time starts at 0. We subtract 2 seconds from the currentt time
 		// when fetching transforms to make sure they've had a chance to be published
 		// Make sure we don't ever use a time less than 0 because of this by skipping
@@ -551,7 +560,7 @@ class AutoNode {
 				return true;
 			}
 
-			r.sleep();
+			r_.sleep();
 		}
 
 		// shutdownNode(DONE, "Auto node - code stopped before execution");
@@ -612,7 +621,6 @@ class AutoNode {
 	// CODE FOR ACTIONS HERE --------------------------------------------------
 	// Do not name this function "pause" will not work
 	bool pausefn(XmlRpc::XmlRpcValue action_data, std::string auto_step) {
-		ros::Rate r(10);
 		const double start_time = ros::Time::now().toSec();
 
 		//read duration - user could've entered a double or an int, we don't know which
@@ -636,7 +644,7 @@ class AutoNode {
 		while (ros::Time::now().toSec() - start_time < duration && !auto_stopped_ && ros::ok())
 		{
 			ros::spinOnce();
-			r.sleep();
+			r_.sleep();
 		}
 		return true;
 	}
@@ -661,7 +669,8 @@ class AutoNode {
 			intaking_ac_.sendGoal(goal);
 		}
 	}
-
+	
+	// will never be used again but would be cool to make it AlignedShooting
 	bool shootfn(XmlRpc::XmlRpcValue action_data, std::string auto_step) {
 		if(!shooting_ac_.waitForServer(ros::Duration(5))){
 			
@@ -670,7 +679,8 @@ class AutoNode {
 		} //for some reason this is necessary, even if the server has been up and running for a while
 		behavior_actions::Shooting2022Goal goal;
 		goal.num_cargo = 2;
-		goal.low_goal = false;
+		goal.eject = false;
+		goal.distance = 1.48; // hub
 
 		shooting_ac_.sendGoal(goal);
 		waitForActionlibServer(shooting_ac_, 100, "shooting server");
@@ -801,7 +811,6 @@ class AutoNode {
 			ROS_ERROR("Wait (15 sec) timed out, for Spline Gen Service in auto_node");
 		}
 
-
 		while(true) { // will exit when shutdownNode is called
 			//WAIT FOR MATCH TO START --------------------------------------------------------------------------
 			ROS_INFO("Auto node - waiting for autonomous to start");
@@ -849,10 +858,16 @@ class AutoNode {
 					// Looks up action in the map of functions, then runs the function
 					auto fnIter = functionMap_.find(action_data_type);
 					auto autofn = fnIter->second;
-					
+
 					ROS_INFO_STREAM("auto_node: Running " << std::string(fnIter->first));
+					// amazing syntax 
 					// passes in the config data and which auto step is running
-					autofn(action_data, std::string(auto_steps_[i]));
+					(this->*functionMap_["action_data_type"])(action_data, std::string(auto_steps_[i]));
+
+					
+		
+
+					//old  autofn(action_data, std::string(auto_steps_[i]));
 
 				}
 			}
