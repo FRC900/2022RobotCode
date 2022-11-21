@@ -33,9 +33,18 @@ enum AutoStates {
 
 class AutoNode { 
 	private:
+		// ---------------- START probably not changing year to year ----------------
+
 		ros::NodeHandle nh_;
-				
-		//VARIABLES ---------------------------------------------------------
+
+		ros::Timer auto_state_timer_;
+		ros::Publisher auto_state_pub_; // publish auto state with ros_timer
+		std::atomic<int> auto_state_; //This state is published by the publish thread
+		std::atomic<bool> publish_autostate_{true};
+		//servers
+		ros::ServiceServer stop_auto_server_; //called by teleop node to stop auto execution during teleop if driver wants
+		ros::ServiceServer reset_maps_;
+
 		const std::map<std::string, std::string> service_connection_header{{"tcp_nodelay", "1"}};
 		ros::ServiceClient spline_gen_cli_;
 		ros::Publisher cmd_vel_pub_;
@@ -47,26 +56,8 @@ class AutoNode {
 		//dashboard (to get auto mode)
 		ros::Subscriber auto_mode_sub_;
 		ros::Subscriber enable_auto_in_teleop_sub_;
-
-		// Used to pass in dynamic paths from other nodes
-		ros::ServiceServer path_finder_;
-
-		//auto state
-		// change to ros_timer
-		std::thread auto_state_pub_thread_;
-		ros::Timer auto_state_timer_;
-		ros::Publisher auto_state_pub_; // publish auto state with ros_timer
-		std::atomic<int> auto_state_; //This state is published by the publish thread
-		std::atomic<bool> publish_autostate_{true};
-		//servers
-		ros::ServiceServer stop_auto_server_; //called by teleop node to stop auto execution during teleop if driver wants
-		ros::ServiceServer reset_maps_;
-
-		//actionlib clients
-		actionlib::SimpleActionClient<path_follower_msgs::PathAction> path_ac_; //TODO fix this path
-		actionlib::SimpleActionClient<behavior_actions::Shooting2022Action> shooting_ac_;
-		actionlib::SimpleActionClient<behavior_actions::Intaking2022Action> intaking_ac_;
-
+		
+		// auto mode and state
 		int auto_mode_ = -1; //-1 if nothing selected
 		std::vector<std::string> auto_steps_; //stores string of action names to do, read from the auto mode array in the config file
 		bool enable_teleop_ = false;
@@ -74,11 +65,29 @@ class AutoNode {
 		bool auto_stopped_ = false; //set to true if driver stops auto (callback: stopAuto() ) - note: this node will keep doing actions during teleop if not finished and the driver doesn't stop auto
 		//All actions check if(auto_started && !auto_stopped) before proceeding.
 		// define preemptAll_
+
 		std::function<void()> preemptAll_;
 		// would like to make config but not sure how to keep r_ uninitialized for later
 		ros::Rate r_ = ros::Rate(10);
+		// Used to pass in dynamic paths from other nodes
+		// Map of the auto action to the function to be called
+		// Edit here if for changing auto year to year
+		// https://stackoverflow.com/questions/8936578/how-to-create-an-unordered-map-for-string-to-function
+		// invoke:
+		// (this->*functionMap_["foo"])();
+		// probably better way to do this
+		std::unordered_map<std::string, bool(AutoNode::*)(XmlRpc::XmlRpcValue, std::string)> functionMap_;
+		ros::ServiceServer path_finder_;
 
-		
+		// ---------------- END probably not changing year to year ---------------- 
+
+		// START probably changing year to year, mostly year specific actions but also custom stuff based on what is needed
+		//actionlib clients
+		actionlib::SimpleActionClient<path_follower_msgs::PathAction> path_ac_; //TODO fix this path
+		actionlib::SimpleActionClient<behavior_actions::Shooting2022Action> shooting_ac_;
+		actionlib::SimpleActionClient<behavior_actions::Intaking2022Action> intaking_ac_;
+
+		// path follower and feedback
 		std::map<std::string, nav_msgs::Path> premade_paths_;
 		// Inital waypoints used to make the paths, when passed into the path follower allows for more persise control
 		// Can use for things like "start intake after X waypoint or X percent through"
@@ -88,37 +97,21 @@ class AutoNode {
 		int old_waypoint_ = 0;
 		double old_percent_complete_ = 0.0;
 		double old_waypoint_percent_ = 0.0;
-	
-		// Map of the auto action to the function to be called
-		// Edit here if for changing auto year to year
-		// https://stackoverflow.com/questions/8936578/how-to-create-an-unordered-map-for-string-to-function
-		// invoke:
-		// (this->*functionMap_["foo"])();
-		// probably better way to do this
-		std::unordered_map<std::string, bool(AutoNode::*)(XmlRpc::XmlRpcValue, std::string)> functionMap_;
+		// END probably changing year to year ----------------
 
-		/*
-		std::unordered_map<std::string, std::function<bool(XmlRpc::XmlRpcValue, std::string)>> functionMap_ = {
-			{"pause", AutoNode::pausefn},
-			{"intaking_actionlib_server", AutoNode::intakefn},
-			{"shooting_actionlib_server", AutoNode::shootfn},
-			{"path", AutoNode::pathfn},
-			{"cmd_vel", AutoNode::cmdvelfn},
-		};
-		*/
-		
 	public:
 		AutoNode(const ros::NodeHandle &nh) 
 		: nh_(nh)
 		, path_ac_("/path_follower/path_follower_server", true)
 		, shooting_ac_("/shooting2022/shooting2022_server", true)
 		, intaking_ac_("/intaking2022/intaking2022_server", true)
+
 	// Constructor
 	{
+		// START probably not changing year to year ----------------
 		spline_gen_cli_ = nh_.serviceClient<base_trajectory_msgs::GenerateSpline>("/path_follower/base_trajectory/spline_gen", false, service_connection_header);
 		cmd_vel_pub_ = nh_.advertise<geometry_msgs::Twist>("cmd_vel", 1);
 		brake_srv_ = nh_.serviceClient<std_srvs::Empty>("/frcrobot_jetson/swerve_drive_controller/brake", false, service_connection_header);
-
 		//subscribers
 		//rio match data (to know if we're in auto period)
 		match_data_sub_ = nh_.subscribe("/frcrobot_rio/match_data", 1, &AutoNode::matchDataCallback, this);
@@ -145,15 +138,15 @@ class AutoNode {
 		#endif
 		auto_state_pub_ = nh_.advertise<behavior_actions::AutoState>("auto_state", 1);
 		auto_state_timer_ = nh_.createTimer(ros::Duration(0.1), &AutoNode::publishAutoState, this);
-
-		// auto_state_pub_thread_ = std::thread(publishAutoState, std::ref(nh_));
-
 		//servers
 		// not sure if this is needed or even works
 		stop_auto_server_ = nh_.advertiseService("stop_auto", &AutoNode::stopAuto, this); //called by teleop node to stop auto execution during teleop if driver wants
 		reset_maps_ = nh_.advertiseService("reset_maps", &AutoNode::resetMaps, this);
+		// END probably not changing year to year ----------------
 
-		// better way?
+
+		// START change year to year
+		// better way to initalize?
 		functionMap_["pause"] = &AutoNode::pausefn;
 		functionMap_["intaking_actionlib_server"] = &AutoNode::intakefn;
 		functionMap_["shooting_actionlib_server"] = &AutoNode::shootfn;
@@ -166,9 +159,14 @@ class AutoNode {
 			shooting_ac_.cancelGoalsAtAndBeforeTime(ros::Time::now());
 			intaking_ac_.cancelGoalsAtAndBeforeTime(ros::Time::now());
 		};
+		// END change year to year
 	}
 
 	//FUNCTIONS -------
+	// lots of stuff for reading params, waiting for actionlib servers, etc that
+	// can be kept the same year to year, most of the stuff to change will be in the function map and what they do
+	// and in the config 
+	// ---------------- START NOT CHANGING year to year ----------------
 
 	//server callback for stop autonomous execution
 	bool stopAuto(std_srvs::Empty::Request &/*req*/,
@@ -421,6 +419,8 @@ class AutoNode {
 		}
 		return true;
 	}
+
+	// ---------------- END NOT CHANGING year to year ----------------
 
 	bool waitForAutoStart(ros::NodeHandle nh_)
 	{
@@ -810,8 +810,9 @@ class AutoNode {
 		return true;
 	}
 
+
 	int init()
-	{
+	{	
 		if (!spline_gen_cli_.waitForExistence(ros::Duration(15.0)))
 		{
 			ROS_ERROR("Wait (15 sec) timed out, for Spline Gen Service in auto_node");
@@ -849,7 +850,6 @@ class AutoNode {
 						//shutdownNode(ERROR, "Auto node - Couldn't read data for '" + auto_steps_[i] + "' auto action from config file");
 						//return 1;
 					}
-
 					
 					//figure out what to do based on the action type, and do it
 					std::string action_data_type;
