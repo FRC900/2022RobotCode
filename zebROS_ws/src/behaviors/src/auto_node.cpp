@@ -153,7 +153,12 @@ class AutoNode {
 		stop_auto_server_ = nh_.advertiseService("stop_auto", &AutoNode::stopAuto, this); //called by teleop node to stop auto execution during teleop if driver wants
 		reset_maps_ = nh_.advertiseService("reset_maps", &AutoNode::resetMaps, this);
 
+		// better way?
 		functionMap_["pause"] = &AutoNode::pausefn;
+		functionMap_["intaking_actionlib_server"] = &AutoNode::intakefn;
+		functionMap_["shooting_actionlib_server"] = &AutoNode::shootfn;
+		functionMap_["path"] = &AutoNode::pathfn;
+		functionMap_["cmd_vel"] = &AutoNode::cmdvelfn;
 
 		// cool trick to bring all class variables into scope of lambda
 		preemptAll_ = [this](){ // must include all actions called
@@ -652,13 +657,13 @@ class AutoNode {
 		//for some reason this is necessary, even if the server has been up and running for a while
 		if(!intaking_ac_.waitForServer(ros::Duration(5))){
 			shutdownNode(ERROR,"Auto node - couldn't find intaking actionlib server");
-			return 1;
+			return false;
 		}
 
 		if (!action_data.hasMember("goal"))
 		{
 			shutdownNode(ERROR,"Auto node - intaking_actionlib_server call missing \"goal\" field");
-			return 1;
+			return false;
 		}
 		if(action_data["goal"] == "stop") {
 			intaking_ac_.cancelGoalsAtAndBeforeTime(ros::Time::now());
@@ -666,6 +671,7 @@ class AutoNode {
 			behavior_actions::Intaking2022Goal goal;
 			intaking_ac_.sendGoal(goal);
 		}
+		return true;
 	}
 	
 	// will never be used again but would be cool to make it AlignedShooting
@@ -705,11 +711,9 @@ class AutoNode {
 			goal.waypoints = premade_waypoints_[auto_step];
 			goal.waypointsIdx = waypointsIdxs_[auto_step];
 			// Sends the goal and sets feedbackCb to be run when feedback is updated
-			path_ac_.sendGoal(goal, NULL, NULL, &AutoNode::feedbackCb);
+			path_ac_.sendGoal(goal, NULL, NULL, boost::bind(&AutoNode::feedbackCb, this, _1));
 
 			// wait for actionlib server to finish
-			
-
 			waitForActionlibServer(path_ac_, 100, "running path");
 			iteration_value--;
 		}
@@ -803,6 +807,7 @@ class AutoNode {
 			ROS_ERROR_STREAM("BrakeSrv call failed in auto cmd_vel step " << auto_step);
 		}
 		ROS_INFO_STREAM("Auto action " << auto_step << " finished");
+		return true;
 	}
 
 	int init()
@@ -856,16 +861,18 @@ class AutoNode {
 					{
 						ROS_ERROR_STREAM("Data for action " << auto_steps_[i] << " missing 'type' field");
 					}
-					// Looks up action in the map of functions, then runs the function
-					auto fnIter = functionMap_.find(action_data_type);
-					auto autofn = fnIter->second;
 
-					ROS_INFO_STREAM("auto_node: Running " << std::string(fnIter->first));
+					ROS_INFO_STREAM("auto_node: Running " << action_data_type);
 					// amazing syntax 
 					// passes in the config data and which auto step is running
-					(this->*functionMap_["action_data_type"])(action_data, std::string(auto_steps_[i]));
-
-					//old  autofn(action_data, std::string(auto_steps_[i]));
+					bool result = (this->*functionMap_[action_data_type])(action_data, std::string(auto_steps_[i]));
+					if (!result)
+					{
+						std::string error_msg = "Auto node - Error running auto action " + auto_steps_[i];
+						ROS_ERROR_STREAM(error_msg);
+						shutdownNode(ERROR, error_msg);
+						return 1;
+					}
 
 				}
 			}
@@ -879,14 +886,13 @@ class AutoNode {
 			}
 		}
 		return 0;
-	}
+		}
 	};
 
 
 
 int main(int argc, char** argv) {
 	//create node
-
 	ros::init(argc, argv, "auto_node");
 	ros::NodeHandle nh;
 	AutoNode autonode(nh);
