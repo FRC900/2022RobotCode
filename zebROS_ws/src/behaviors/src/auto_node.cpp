@@ -580,7 +580,7 @@ class AutoNode {
 
 	// Called everytime feedback is published
 	void feedbackCb(const path_follower_msgs::PathFeedbackConstPtr& feedback) {
-		ROS_INFO_STREAM("Got path_follower feedback!");
+		// ROS_INFO_STREAM("Got path_follower feedback!");
 
 
 		//ROS_INFO("Total Percent complete %f", (feedback->percent_complete));
