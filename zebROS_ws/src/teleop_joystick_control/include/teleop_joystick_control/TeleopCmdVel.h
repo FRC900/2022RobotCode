@@ -64,6 +64,7 @@ class TeleopCmdVel
 
 			// Convert to polar coordinates
 			double direction = atan2(leftStickY, leftStickX);
+			//ROS_INFO_STREAM(__LINE__ << " direction:"  << direction);
 
 			// Do a dead zone check on the magnitude of the velocity,
 			// then scale it by a power function to increase resolution
@@ -73,7 +74,8 @@ class TeleopCmdVel
 			// output needed to move the robot and 100% to the max
 			// configured speed
 			double magnitude = dead_zone_check(hypot(leftStickX, leftStickY), config.joystick_deadzone);
-			magnitude /= joystick_values[magnitude].hypot();
+			//ROS_INFO_STREAM(__LINE__ << " magnitude:"  << magnitude);
+			magnitude /= joystick_values[direction].hypot();
 			//ROS_INFO_STREAM(__LINE__ << " magnitude:"  << magnitude);
 			if (magnitude != 0)
 			{
