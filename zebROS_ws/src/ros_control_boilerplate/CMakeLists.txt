@@ -97,7 +97,7 @@ set (FRCROBOT_HW_MAIN_SRCS
 )
 
 set (ALLWPILIB ../../../allwpilib)
-set (WPI_SYSROOT $ENV{HOME}/wpilib/2022/roborio/arm-frc2022-linux-gnueabi)
+set (WPI_SYSROOT $ENV{HOME}/wpilib/2023/roborio/arm-frc2023-linux-gnueabi)
 include_directories(
 	include
 	${catkin_INCLUDE_DIRS}
@@ -156,8 +156,11 @@ include_directories(${ALLWPILIB}/hal/src/main/native/include)
 # Used to find main frc/*.h, frc2/*.h, hal/*.h and wpi/*.h
 include_directories(${ALLWPILIB}/wpilibc/src/main/native/include)
 include_directories(${ALLWPILIB}/wpimath/src/main/native/include)
+include_directories(${ALLWPILIB}/wpimath/src/main/native/thirdparty/gcem/include)
 include_directories(${ALLWPILIB}/wpiutil/src/main/native/include)
-include_directories(${ALLWPILIB}/wpiutil/src/main/native/fmtlib/include)
+include_directories(${ALLWPILIB}/wpiutil/src/main/native/thirdparty/fmtlib/include)
+include_directories(${ALLWPILIB}/wpiutil/src/main/native/thirdparty/llvm/include)
+
 include_directories(${WPI_SYSROOT}/include/wpilib)
 
 # Non-rio builds are more complex - we have to grab appropriate
@@ -182,17 +185,17 @@ if (NOT "${ARM_PREFIX}" STREQUAL "arm-frc2022-linux-gnueabi")
 		${ALLWPILIB}/wpilibc/src/main/native/cpp/Solenoid.cpp
 		${ALLWPILIB}/wpimath/src/main/native/cpp/geometry/Rotation2d.cpp
 		${ALLWPILIB}/wpiutil/src/main/native/cpp/fs.cpp
-		${ALLWPILIB}/wpiutil/src/main/native/cpp/llvm/ErrorHandling.cpp
-		${ALLWPILIB}/wpiutil/src/main/native/cpp/llvm/Hashing.cpp
-		${ALLWPILIB}/wpiutil/src/main/native/cpp/llvm/ManagedStatic.cpp
-		${ALLWPILIB}/wpiutil/src/main/native/cpp/llvm/raw_ostream.cpp
-		${ALLWPILIB}/wpiutil/src/main/native/cpp/llvm/SmallPtrSet.cpp
-		${ALLWPILIB}/wpiutil/src/main/native/cpp/llvm/SmallVector.cpp
-		${ALLWPILIB}/wpiutil/src/main/native/cpp/llvm/StringMap.cpp
+		#${ALLWPILIB}/wpiutil/src/main/native/cpp/llvm/ErrorHandling.cpp
 		${ALLWPILIB}/wpiutil/src/main/native/cpp/StackTraceWrap.cpp
 		${ALLWPILIB}/wpiutil/src/main/native/unix/Demangle.cpp
 		${ALLWPILIB}/wpiutil/src/main/native/unix/StackTrace.cpp
-		${ALLWPILIB}/wpiutil/src/main/native/fmtlib/src/format.cpp
+		${ALLWPILIB}/wpiutil/src/main/native/thirdparty/fmtlib/src/format.cpp
+		${ALLWPILIB}/wpiutil/src/main/native/thirdparty/llvm/cpp/llvm/Hashing.cpp
+		#${ALLWPILIB}/wpiutil/src/main/native/thirdparty/llvm/cpp/llvm/ManagedStatic.cpp
+		${ALLWPILIB}/wpiutil/src/main/native/thirdparty/llvm/cpp/llvm/raw_ostream.cpp
+		${ALLWPILIB}/wpiutil/src/main/native/thirdparty/llvm/cpp/llvm/SmallPtrSet.cpp
+		${ALLWPILIB}/wpiutil/src/main/native/thirdparty/llvm/cpp/llvm/SmallVector.cpp
+		${ALLWPILIB}/wpiutil/src/main/native/thirdparty/llvm/cpp/llvm/StringMap.cpp
 	)
     set(FRC_COMMON_WPILIB frc_common_wpilib)
 
@@ -330,7 +333,7 @@ if (NOT (("${ARM_PREFIX}" STREQUAL "arm-frc2022-linux-gnueabi") OR
 		${ALLWPILIB}/wpilibc/src/main/native/cpp/simulation/RoboRioSim.cpp
 		${ALLWPILIB}/wpilibc/src/main/native/cpp/Timer.cpp
 		${ALLWPILIB}/wpilibc/src/main/native/cpp/Watchdog.cpp
-		${ALLWPILIB}/wpiutil/src/main/native/cpp/StringExtras.cpp
+		${ALLWPILIB}/wpiutil/src/main/native/thirdparty/llvm/cpp/llvm/StringExtras.cpp
 		${ALLWPILIB}/wpiutil/src/main/native/cpp/timestamp.cpp
 		${ALLWPILIB}/wpiutil/src/main/native/unix/Demangle.cpp
 		${ALLWPILIB}/wpiutil/src/main/native/unix/StackTrace.cpp
