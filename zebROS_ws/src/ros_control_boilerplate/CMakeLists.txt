@@ -156,8 +156,9 @@ include_directories(${ALLWPILIB}/hal/src/main/native/include)
 # Used to find main frc/*.h, frc2/*.h, hal/*.h and wpi/*.h
 include_directories(${ALLWPILIB}/wpilibc/src/main/native/include)
 include_directories(${ALLWPILIB}/wpimath/src/main/native/include)
-include_directories(${ALLWPILIB}/wpimath/src/main/native/thirdparty/gcem/include)
 include_directories(${ALLWPILIB}/wpiutil/src/main/native/include)
+include_directories(${ALLWPILIB}/wpimath/src/main/native/thirdparty/gcem/include)
+include_directories(${ALLWPILIB}/wpiutil/src/main/native/thirdparty/json/include)
 include_directories(${ALLWPILIB}/wpiutil/src/main/native/thirdparty/fmtlib/include)
 include_directories(${ALLWPILIB}/wpiutil/src/main/native/thirdparty/llvm/include)
 

@@ -129,6 +129,8 @@ FRCRobotInterface::~FRCRobotInterface()
 
 bool FRCRobotInterface::initDevices(ros::NodeHandle root_nh)
 {
+	wpi::math::MathSharedStore::SetMathShared(std::make_unique<WPILibMathShared>());
+
 	if (run_hal_robot_)
 	{
 		// Make sure to initialize WPIlib code before creating
