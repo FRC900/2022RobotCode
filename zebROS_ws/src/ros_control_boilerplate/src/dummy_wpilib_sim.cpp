@@ -11,12 +11,16 @@ NT_Inst GetDefaultInstance()
 Value::Value()
 {
 }
+#if 0
 Value::Value(NT_Type /*type*/, uint64_t /*time*/, const private_init&)
 {
 }
+#endif
+#if 0
 Value::~Value()
 {
 }
+#endif
 
 NetworkTableEntry NetworkTable::GetEntry(std::string_view /*key*/) const
 {

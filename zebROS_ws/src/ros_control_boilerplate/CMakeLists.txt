@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.0.2)
 project(ros_control_boilerplate)
 
+unset(CMAKE_CXX_STANDARD CACHE)
+set(CMAKE_CXX_STANDARD 20)
 include ("../cmake_modules/CMakeOpt.cmake")
 
 find_package(catkin REQUIRED COMPONENTS
@@ -83,6 +85,7 @@ add_library(frc_robot_interface STATIC
 	src/read_config.cpp
 	src/rev_convert.cpp
 	src/ros_iterative_robot.cpp
+	src/ros_math_shared.cpp
 	src/talon_convert.cpp
 )
 
@@ -184,19 +187,26 @@ if (NOT "${ARM_PREFIX}" STREQUAL "arm-frc2022-linux-gnueabi")
 		${ALLWPILIB}/wpilibc/src/main/native/cpp/RobotController.cpp
 		${ALLWPILIB}/wpilibc/src/main/native/cpp/SensorUtil.cpp
 		${ALLWPILIB}/wpilibc/src/main/native/cpp/Solenoid.cpp
+		${ALLWPILIB}/wpilibc/src/main/native/cpp/event/BooleanEvent.cpp
+		${ALLWPILIB}/wpilibc/src/main/native/cpp/event/EventLoop.cpp
+		${ALLWPILIB}/wpilibc/src/main/native/cpp/motorcontrol/MotorController.cpp
+		${ALLWPILIB}/wpimath/src/main/native/cpp/MathShared.cpp
+		${ALLWPILIB}/wpimath/src/main/native/cpp/filter/Debouncer.cpp
 		${ALLWPILIB}/wpimath/src/main/native/cpp/geometry/Rotation2d.cpp
 		${ALLWPILIB}/wpiutil/src/main/native/cpp/fs.cpp
-		#${ALLWPILIB}/wpiutil/src/main/native/cpp/llvm/ErrorHandling.cpp
 		${ALLWPILIB}/wpiutil/src/main/native/cpp/StackTraceWrap.cpp
-		${ALLWPILIB}/wpiutil/src/main/native/unix/Demangle.cpp
-		${ALLWPILIB}/wpiutil/src/main/native/unix/StackTrace.cpp
+		${ALLWPILIB}/wpiutil/src/main/native/cpp/Synchronization.cpp
+		${ALLWPILIB}/wpiutil/src/main/native/cpp/timestamp.cpp
 		${ALLWPILIB}/wpiutil/src/main/native/thirdparty/fmtlib/src/format.cpp
 		${ALLWPILIB}/wpiutil/src/main/native/thirdparty/llvm/cpp/llvm/Hashing.cpp
-		#${ALLWPILIB}/wpiutil/src/main/native/thirdparty/llvm/cpp/llvm/ManagedStatic.cpp
 		${ALLWPILIB}/wpiutil/src/main/native/thirdparty/llvm/cpp/llvm/raw_ostream.cpp
+		${ALLWPILIB}/wpiutil/src/main/native/thirdparty/llvm/cpp/llvm/ErrorHandling.cpp
+		${ALLWPILIB}/wpiutil/src/main/native/thirdparty/llvm/cpp/llvm/MemAlloc.cpp
 		${ALLWPILIB}/wpiutil/src/main/native/thirdparty/llvm/cpp/llvm/SmallPtrSet.cpp
 		${ALLWPILIB}/wpiutil/src/main/native/thirdparty/llvm/cpp/llvm/SmallVector.cpp
 		${ALLWPILIB}/wpiutil/src/main/native/thirdparty/llvm/cpp/llvm/StringMap.cpp
+		${ALLWPILIB}/wpiutil/src/main/native/unix/Demangle.cpp
+		${ALLWPILIB}/wpiutil/src/main/native/unix/StackTrace.cpp
 	)
     set(FRC_COMMON_WPILIB frc_common_wpilib)
 
@@ -354,8 +364,10 @@ if (NOT (("${ARM_PREFIX}" STREQUAL "arm-frc2022-linux-gnueabi") OR
 		${FRC_COMMON_WPILIB}
 		${CTRE_LIB_DIR}/libCTRE_PhoenixSim.so
 		${CTRE_LIB_DIR}/libCTRE_PhoenixCCISim.so
+		${CTRE_LIB_DIR}/libCTRE_PhoenixTools_Sim.so
 		${CTRE_LIB_DIR}/libCTRE_Phoenix_WPISim.so
 		${CTRE_LIB_DIR}/libCTRE_SimCANCoder.so
+        ${CTRE_LIB_DIR}/libCTRE_SimPigeonIMU.so
 		${CTRE_LIB_DIR}/libCTRE_SimTalonFX.so
 		${CTRE_LIB_DIR}/libCTRE_SimTalonSRX.so
 		${CTRE_LIB_DIR}/libCTRE_SimVictorSPX.so
@@ -388,6 +400,7 @@ target_link_libraries(frcrobot_hw_main
 	${FRC_COMMON_WPILIB}
 	${CTRE_LIB_DIR}/libCTRE_Phoenix.so
 	${CTRE_LIB_DIR}/libCTRE_PhoenixCCI.so
+	${CTRE_LIB_DIR}/libCTRE_PhoenixTools.so
 	${CTRE_LIB_DIR}/libCTRE_Phoenix_WPI.so
 	${PLATFORM_SPECIFIC_LIBS}
 	${catkin_LIBRARIES}

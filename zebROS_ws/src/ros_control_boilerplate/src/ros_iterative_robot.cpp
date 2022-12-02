@@ -23,16 +23,14 @@ namespace ros_control_boilerplate
 		{
 			ROS_WARN("Setting HAL Notifier RT priority to 40 failed\n");
 		}
-		if (IsReal())
-		{
-			std::FILE* file = nullptr;
-			file = std::fopen("/tmp/frc_versions/FRC_Lib_Version.ini", "w");
+		std::FILE *file = nullptr;
+		file = std::fopen("/tmp/frc_versions/FRC_Lib_Version.ini", "w");
 
-			if (file != nullptr) {
-				std::fputs("C++ ", file);
-				std::fputs(GetWPILibVersion(), file);
-				std::fclose(file);
-			}
+		if (file != nullptr)
+		{
+			std::fputs("C++ ", file);
+			std::fputs(GetWPILibVersion(), file);
+			std::fclose(file);
 		}
 
 		HAL_Report(HALUsageReporting::kResourceType_Framework, HALUsageReporting::kFramework_ROS);
