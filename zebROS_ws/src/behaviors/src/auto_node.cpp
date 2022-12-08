@@ -14,6 +14,9 @@
 #include "behavior_actions/Intaking2022Action.h"
 #include <behavior_actions/DynamicPath.h>
 #include <path_follower_msgs/PathAction.h>
+#include <path_follower_msgs/holdPositionAction.h>
+#include <tf2/LinearMath/Quaternion.h>
+#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 
 #include <thread>
 #include <atomic>
@@ -141,7 +144,7 @@ void publishAutoState(ros::NodeHandle &nh)
 
 //function to wait while an actionlib server is running
 template <class T>
-void waitForActionlibServer(T &action_client, double timeout, const std::string &activity)
+void waitForActionlibServer(T &action_client, double timeout, const std::string &activity, boost::optional<const bool&> stop_waiting = boost::optional<const bool&>())
 	//activity is a description of what we're waiting for, e.g. "waiting for mechanism to extend" - helps identify where in the server this was called (for error msgs)
 {
 	const double request_time = ros::Time::now().toSec();
@@ -176,6 +179,12 @@ void waitForActionlibServer(T &action_client, double timeout, const std::string 
 		else if (auto_stopped){
 			ROS_WARN_STREAM("Auto node - auto_stopped set");
 			action_client.cancelGoalsAtAndBeforeTime(ros::Time::now());
+		}
+		else if (stop_waiting){
+			if (stop_waiting.get()) {
+				ROS_INFO_STREAM("Auto node (waitForActionlibServer) - " << activity << " said this function can exit now");
+				break;
+			}
 		}
 		else { //if didn't succeed and nothing went wrong, keep waiting
 			ros::spinOnce();
@@ -514,10 +523,12 @@ int main(int argc, char** argv)
 	actionlib::SimpleActionClient<path_follower_msgs::PathAction> path_ac("/path_follower/path_follower_server", true); //TODO fix this path
 	actionlib::SimpleActionClient<behavior_actions::Shooting2022Action> shooting_ac("/shooting/shooting_server_2022", true);
 	actionlib::SimpleActionClient<behavior_actions::Intaking2022Action> intaking_ac("/intaking/intaking_server_2022", true);
-	preemptAll = [&path_ac, &shooting_ac, &intaking_ac](){ // must include all actions called
+	actionlib::SimpleActionClient<path_follower_msgs::holdPositionAction> distance_ac("/hold_distance/hold_position_server", true);
+	preemptAll = [&path_ac, &shooting_ac, &intaking_ac, &distance_ac](){ // must include all actions called
 		path_ac.cancelGoalsAtAndBeforeTime(ros::Time::now());
 		shooting_ac.cancelGoalsAtAndBeforeTime(ros::Time::now());
 		intaking_ac.cancelGoalsAtAndBeforeTime(ros::Time::now());
+		distance_ac.cancelGoalsAtAndBeforeTime(ros::Time::now());
 	};
 
 	//other variables
@@ -615,6 +626,47 @@ int main(int argc, char** argv)
 						behavior_actions::Intaking2022Goal goal;
 						intaking_ac.sendGoal(goal);
 					}
+				}
+				else if(action_data_type == "hold_distance_actionlib_server")
+				{
+					//for some reason this is necessary, even if the server has been up and running for a while
+					if(!distance_ac.waitForServer(ros::Duration(5))){
+						shutdownNode(ERROR,"Auto node - couldn't find intaking actionlib server");
+						return 1;
+					}
+					if (!action_data.hasMember("goal"))
+					{
+						shutdownNode(ERROR,"Auto node - hold_distance_actionlib_server call missing \"goal\" field");
+						return 1;
+					}
+
+					path_follower_msgs::holdPositionGoal goal;
+					double yaw;
+					if (!readFloatParam("x", action_data["goal"], goal.pose.position.x)) {
+						shutdownNode(ERROR,"Auto node - hold_distance_actionlib_server.goal missing \"x\" field");
+						return 1;
+					}
+					if (!readFloatParam("y", action_data["goal"], goal.pose.position.y)) {
+						shutdownNode(ERROR,"Auto node - hold_distance_actionlib_server.goal missing \"y\" field");
+						return 1;
+					}
+					if (!readFloatParam("yaw", action_data["goal"], yaw)) {
+						shutdownNode(ERROR,"Auto node - hold_distance_actionlib_server.goal missing \"yaw\" field");
+						return 1;
+					}
+					bool aligned = false;
+					tf2::Quaternion quaternion;
+					quaternion.setRPY(0, 0, yaw);
+					goal.pose.orientation.x = quaternion.x();
+					goal.pose.orientation.y = quaternion.y();
+					goal.pose.orientation.z = quaternion.z();
+					goal.pose.orientation.w = quaternion.w();
+					goal.isAbsoluteCoord = true;
+					distance_ac.sendGoal(goal,
+			                         actionlib::SimpleActionClient<path_follower_msgs::holdPositionAction>::SimpleDoneCallback(),
+			                         actionlib::SimpleActionClient<path_follower_msgs::holdPositionAction>::SimpleActiveCallback(),
+			                         [&](const path_follower_msgs::holdPositionFeedbackConstPtr &feedback){ aligned = feedback->isAligned; });
+					waitForActionlibServer(distance_ac, 100, "hold distance server", aligned);
 				}
 				else if(action_data_type == "shooting_actionlib_server")
 				{

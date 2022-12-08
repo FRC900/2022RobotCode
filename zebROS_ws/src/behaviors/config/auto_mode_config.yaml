@@ -244,6 +244,13 @@ start_intaking:
     goal:
         "start"
 
+drive_to_wall:
+    type: "hold_distance_actionlib_server"
+    goal:
+        x: 0.3
+        y: 0.3
+        yaw: 0.0
+
 stop_intaking:
     type: "intaking_actionlib_server"
     goal:
