@@ -10,6 +10,7 @@ find_package(catkin REQUIRED COMPONENTS
   cmake_modules
   controller_manager
   control_msgs
+  eigen_conversions
   frc_msgs
   frc_interfaces
   hardware_interface
@@ -124,12 +125,13 @@ if ("${ARM_PREFIX}" STREQUAL "arm-frc2023-linux-gnueabi")
 		${WPI_SHARED_LIB_DIR}/libwpilibc.so
 		${WPI_SHARED_LIB_DIR}/libwpiHal.so
 		${WPI_SHARED_LIB_DIR}/libwpimath.so
+		${WPI_SHARED_LIB_DIR}/libwpinet.so
 		${WPI_SHARED_LIB_DIR}/libwpiutil.so
-		${WPI_SHARED_LIB_DIR}/libvisa.so.21.0.0
+		${WPI_SHARED_LIB_DIR}/libvisa.so.22.5.0
 		${WPI_SHARED_LIB_DIR}/libembcanshim.so
 		${WPI_SHARED_LIB_DIR}/libfpgalvshim.so
-		${WPI_SHARED_LIB_DIR}/libFRC_NetworkCommunication.so.22.0.0
-		${WPI_SHARED_LIB_DIR}/libRoboRIO_FRC_ChipObject.so.22.0.0
+		${WPI_SHARED_LIB_DIR}/libFRC_NetworkCommunication.so.23.0.0
+		${WPI_SHARED_LIB_DIR}/libRoboRIO_FRC_ChipObject.so.23.0.0
 		${WPI_SYSROOT}/lib/navx/linux/athena/static/libnavx_frc.a
 	)
 	set (FRCROBOT_HW_MAIN_SRCS ${FRCROBOT_HW_MAIN_SRCS}
