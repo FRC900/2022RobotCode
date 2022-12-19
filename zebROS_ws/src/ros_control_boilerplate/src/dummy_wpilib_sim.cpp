@@ -1,6 +1,5 @@
 #include "networktables/NetworkTable.h"
 #include "networktables/NetworkTableInstance.h"
-#include "networktables/NetworkTableValue.h"
 namespace nt
 {
 NT_Inst GetDefaultInstance()
@@ -8,34 +7,36 @@ NT_Inst GetDefaultInstance()
 	static NT_Inst nti;
 	return nti;
 }
-Value::Value()
-{
-}
-#if 0
-Value::Value(NT_Type /*type*/, uint64_t /*time*/, const private_init&)
-{
-}
-#endif
-#if 0
-Value::~Value()
-{
-}
-#endif
 
-NetworkTableEntry NetworkTable::GetEntry(std::string_view /*key*/) const
-{
-	return NetworkTableEntry();
-}
 std::shared_ptr<NetworkTable> NetworkTableInstance::GetTable(std::string_view /*key*/) const
 {
 	return std::make_shared<NetworkTable>(0, "", NetworkTable::private_init{});
 }
-void SetEntryTypeValue(NT_Entry /*entry*/, std::shared_ptr<Value> /*value*/)
+
+Topic NetworkTable::GetTopic(std::string_view) const {
+  return Topic{};
+}
+
+void Release(NT_Handle)
 {
 }
-bool SetEntryValue(NT_Entry /*entry*/, std::shared_ptr<Value> /*value*/)
+
+bool SetBoolean(unsigned int, bool, long)
 {
 	return true;
 }
+bool SetInteger(unsigned int, long, long)
+{
+	return true;
+}
+bool SetString(unsigned int, std::string_view, long)
+{
+	return true;
 }
 
+NT_Publisher Publish(NT_Topic , NT_Type , std::string_view ,
+                     std::span<const PubSubOption> ) {
+  return {};
+}
+
+}

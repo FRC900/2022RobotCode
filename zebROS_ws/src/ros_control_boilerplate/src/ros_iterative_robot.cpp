@@ -19,10 +19,12 @@ namespace ros_control_boilerplate
 			ROS_ERROR("FATAL ERROR: HAL could not be initialized");
 			std::terminate();
 		}
+		#if 0
 		if (!frc::Notifier::SetHALThreadPriority(true, 40))
 		{
 			ROS_WARN("Setting HAL Notifier RT priority to 40 failed\n");
 		}
+		#endif
 		std::FILE *file = nullptr;
 		file = std::fopen("/tmp/frc_versions/FRC_Lib_Version.ini", "w");
 

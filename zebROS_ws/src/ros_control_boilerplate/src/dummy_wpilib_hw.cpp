@@ -119,6 +119,15 @@ void frc::DriverStation::RefreshData() {
 	ROS_ERROR_STREAM("frc::DriverStation::RefreshData() called on unsupported platform");
 }
 
+void HAL_ProvideNewDataEventHandle(WPI_EventHandle handle)
+{
+	ROS_ERROR_STREAM("HAL_ProvideNewDataEventHandle() called on unspported platform");
+}
+void HAL_RemoveNewDataEventHandle(WPI_EventHandle handle)
+{
+	ROS_ERROR_STREAM("HAL_RemoveNewDataEventHandle() called on unspported platform");
+}
+
 
 #include <frc/GenericHID.h>
 frc::GenericHID::GenericHID(int)
@@ -437,23 +446,10 @@ units::second_t frc::Timer::GetFPGATimestamp()
 //#include "visa/visa.h"
 
 extern "C" {
-
 const char* HAL_GetErrorMessage(int32_t code) {
   switch (code) {
     case 0:
       return "";
-    case CTR_RxTimeout:
-      return CTR_RxTimeout_MESSAGE;
-    case CTR_TxTimeout:
-      return CTR_TxTimeout_MESSAGE;
-    case CTR_InvalidParamValue:
-      return CTR_InvalidParamValue_MESSAGE;
-    case CTR_UnexpectedArbId:
-      return CTR_UnexpectedArbId_MESSAGE;
-    case CTR_TxFailed:
-      return CTR_TxFailed_MESSAGE;
-    case CTR_SigNotUpdated:
-      return CTR_SigNotUpdated_MESSAGE;
     case NiFpga_Status_FifoTimeout:
       return NiFpga_Status_FifoTimeout_MESSAGE;
     case NiFpga_Status_TransferAborted:
@@ -562,6 +558,14 @@ const char* HAL_GetErrorMessage(int32_t code) {
       return HAL_CAN_BUFFER_OVERRUN_MESSAGE;
     case HAL_LED_CHANNEL_ERROR:
       return HAL_LED_CHANNEL_ERROR_MESSAGE;
+    case HAL_INVALID_DMA_STATE:
+      return HAL_INVALID_DMA_STATE_MESSAGE;
+    case HAL_INVALID_DMA_ADDITION:
+      return HAL_INVALID_DMA_ADDITION_MESSAGE;
+    case HAL_USE_LAST_ERROR:
+      return HAL_USE_LAST_ERROR_MESSAGE;
+    case HAL_CONSOLE_OUT_ENABLED_ERROR:
+      return HAL_CONSOLE_OUT_ENABLED_ERROR_MESSAGE;
     default:
       return "Unknown error status";
   }
