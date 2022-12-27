@@ -1,0 +1,7 @@
+use test code to derive ds number, light locations
+add orientation and fov to beacons
+test camera fov code
+add fov as a param
+add fov code to positionbeacon, maybe refactor base class
+heatmap colors for pf vis beacon lines
+why are we seeing numeric object IDs?
