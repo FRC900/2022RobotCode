@@ -67,7 +67,7 @@ class AutoNode {
 		// define preemptAll_
 
 		std::function<void()> preemptAll_;
-		// would like to make config but not sure how to keep r_ uninitialized for later
+		// I don't really see us ever actually needing to config this, but it is pretty easy to do
 		ros::Rate r_ = ros::Rate(10);
 		// Used to pass in dynamic paths from other nodes
 		// Map of the auto action to the function to be called
@@ -76,7 +76,7 @@ class AutoNode {
 		// invoke:
 		// (this->*functionMap_["foo"])();
 		// probably better way to do this
-		std::unordered_map<std::string, bool(AutoNode::*)(XmlRpc::XmlRpcValue, std::string)> functionMap_;
+		std::unordered_map<std::string, bool(AutoNode::*)(XmlRpc::XmlRpcValue, const std::string&)> functionMap_;
 		ros::ServiceServer path_finder_;
 
 		// ---------------- END probably not changing year to year ---------------- 
@@ -174,6 +174,7 @@ class AutoNode {
 	{
 		ROS_INFO("Auto node - Stopping code");
 		auto_stopped_ = true;
+		preemptAll_();
 		return true;
 	}
 
@@ -212,11 +213,11 @@ class AutoNode {
 		return true;
 	}
 
-	void DoPublishAutostate()
+	void DoPublishAutostate(const ros::TimerEvent& event)
 	{
 		// we don't actually care about the event much
 		behavior_actions::AutoState msg;
-		msg.header.stamp = ros::Time::now();
+		msg.header.stamp = event.current_real;
 		msg.id = auto_state_;
 
 		switch(auto_state_){
@@ -239,11 +240,11 @@ class AutoNode {
 	void publishAutoState(const ros::TimerEvent& event)
 	{	
 		if (publish_autostate_) {
-			DoPublishAutostate();
+			DoPublishAutostate(event);
 		}
 		else {
 			ROS_WARN("AutoNode::publishAutoState() publishing last message");
-			DoPublishAutostate(); // should be the last publish
+			DoPublishAutostate(event); // should be the last publish
 		}
 	}
 
@@ -303,6 +304,7 @@ class AutoNode {
 		}
 		auto_state_ = state;
 		publish_autostate_ = false; // publish last message and exit from autostate publisher thread
+		preemptAll_();
 		r_.sleep();
 		exit(0);
 	}
@@ -422,6 +424,119 @@ class AutoNode {
 
 	// ---------------- END NOT CHANGING year to year ----------------
 
+	// Called before auto actually starts, runs the path planner and stores the path in premade_paths_
+ 	bool preLoadPath() {
+		for (size_t j = 0; j < auto_steps_.size(); j++) {
+			XmlRpc::XmlRpcValue action_data;
+			if(!nh_.getParam(auto_steps_[j], action_data)) {
+				continue;
+			}
+			if (!(action_data["type"] == "path")) {
+				continue;
+			}
+			if (premade_paths_.find(auto_steps_[j]) != premade_paths_.end()) {
+				continue;
+			}
+			if (!action_data.hasMember("goal"))
+			{
+				ROS_ERROR_STREAM("auto_node : path " << auto_steps_[j] << " has no 'goal' data");
+				return false;
+			}
+			XmlRpc::XmlRpcValue path_goal = action_data["goal"];
+			if (!action_data["goal"].hasMember("points"))
+			{
+				ROS_ERROR_STREAM("auto_node : path " << auto_steps_[j] << " has no points?");
+				return false;
+			}
+			XmlRpc::XmlRpcValue points_config = path_goal["points"];
+
+			// Generate the waypoints of the spline
+			base_trajectory_msgs::GenerateSpline spline_gen_srv;
+			const size_t point_num = points_config.size() + 1;
+			spline_gen_srv.request.points.resize(point_num);
+			spline_gen_srv.request.points[0].positions.resize(3);
+			spline_gen_srv.request.points[0].positions[0] = 0;
+			spline_gen_srv.request.points[0].positions[1] = 0;
+			spline_gen_srv.request.points[0].positions[2] = 0;
+			for (size_t i = 0; i < point_num-1; i++)
+			{
+				spline_gen_srv.request.points[i+1].positions.resize(3);
+				if (!extractFloatVal(points_config[i][0], spline_gen_srv.request.points[i+1].positions[0]))
+				{
+					ROS_INFO_STREAM("Error converting path point[" << i << "].x to double");
+					break;
+				}
+				if (!extractFloatVal(points_config[i][1], spline_gen_srv.request.points[i+1].positions[1]))
+				{
+					ROS_INFO_STREAM("Error converting path point[" << i << "].y to double");
+					break;
+				}
+				if (!extractFloatVal(points_config[i][2], spline_gen_srv.request.points[i+1].positions[2]))
+				{
+					ROS_INFO_STREAM("Error converting path point[" << i << "].orientation to double");
+					break;
+				}
+			}
+
+			std::string frame_id;
+			readStringParam("frame_id", path_goal, frame_id);
+
+			spline_gen_srv.request.header.frame_id = frame_id;
+			spline_gen_srv.request.header.stamp = ros::Time::now() - ros::Duration(2); // TODO -fixme
+
+			bool optimize_final_velocity{false};
+			readBoolParam("optimize_final_velocity", path_goal, optimize_final_velocity);
+			spline_gen_srv.request.optimize_final_velocity = optimize_final_velocity;
+
+			if (path_goal.hasMember("point_frame_id"))
+			{
+				XmlRpc::XmlRpcValue xml_point_frame_ids = path_goal["point_frame_id"];
+				if (!xml_point_frame_ids.valid())
+					throw std::runtime_error("point_frame_ids not valid");
+				if (xml_point_frame_ids.getType() != XmlRpc::XmlRpcValue::TypeArray)
+					throw std::runtime_error("point_frame_ids not an array");
+
+				for (int i = 0; i < xml_point_frame_ids.size(); i++)
+				{
+					std::string point_frame_id = xml_point_frame_ids[i];
+					spline_gen_srv.request.point_frame_id.push_back(point_frame_id);
+				}
+			}
+			if (path_goal.hasMember("path_offset_limit"))
+			{
+				XmlRpc::XmlRpcValue xml_path_offset_limits = path_goal["path_offset_limit"];
+				if (!xml_path_offset_limits.valid())
+					throw std::runtime_error("path_offset_limits not valid");
+				if (xml_path_offset_limits.getType() != XmlRpc::XmlRpcValue::TypeArray)
+					throw std::runtime_error("path_offset_limits not an array");
+
+				// Add empty offset limit for initial 0,0,0 waypoint
+				spline_gen_srv.request.path_offset_limit.push_back(base_trajectory_msgs::PathOffsetLimit());
+				for (int i = 0; i < xml_path_offset_limits.size(); i++)
+				{
+					base_trajectory_msgs::PathOffsetLimit path_offset_msg;
+					readFloatParam("min_x", xml_path_offset_limits[i], path_offset_msg.min_x);
+					readFloatParam("max_x", xml_path_offset_limits[i], path_offset_msg.max_x);
+					readFloatParam("min_y", xml_path_offset_limits[i], path_offset_msg.min_y);
+					readFloatParam("max_y", xml_path_offset_limits[i], path_offset_msg.max_y);
+
+					spline_gen_srv.request.path_offset_limit.push_back(path_offset_msg);
+				}
+			}
+
+			ROS_INFO_STREAM("auto_node : calling spline_gen_cli_ with " << spline_gen_srv.request);
+			if (!spline_gen_cli_.call(spline_gen_srv))
+			{
+				ROS_ERROR_STREAM("Can't call spline gen service in path_follower_server");
+				return false;
+			}
+			premade_paths_[auto_steps_[j]] = spline_gen_srv.response.path;
+			premade_waypoints_[auto_steps_[j]] = spline_gen_srv.response.waypoints;
+			waypointsIdxs_[auto_steps_[j]] = spline_gen_srv.response.waypointsIdx;
+		}
+		return true;
+	}
+	
 	bool waitForAutoStart(ros::NodeHandle nh_)
 	{
 		ros::spinOnce();
@@ -435,134 +550,25 @@ class AutoNode {
 		while( ros::ok() && !auto_stopped_ )
 		{
 			ros::spinOnce(); //spin so the subscribers can update
-
 			//read sequence of actions from config
 			if (auto_mode_ >= 0)
 			{
-				if(nh_.getParam("auto_mode_" + std::to_string(auto_mode_), auto_steps_))
-				{
-					for (size_t j = 0; j < auto_steps_.size(); j++) {
-						XmlRpc::XmlRpcValue action_data;
-						if(nh_.getParam(auto_steps_[j], action_data)) {
-							if(action_data["type"] == "path") {
-								if (premade_paths_.find(auto_steps_[j]) != premade_paths_.end()) {
-									continue;
-								}
-								if (!action_data.hasMember("goal"))
-								{
-									ROS_ERROR_STREAM("auto_node : path " << auto_steps_[j] << " has no 'goal' data");
-									return false;
-								}
-								XmlRpc::XmlRpcValue path_goal = action_data["goal"];
-								if (!action_data["goal"].hasMember("points"))
-								{
-									ROS_ERROR_STREAM("auto_node : path " << auto_steps_[j] << " has no points?");
-									return false;
-								}
-								XmlRpc::XmlRpcValue points_config = path_goal["points"];
-
-								// Generate the waypoints of the spline
-								base_trajectory_msgs::GenerateSpline spline_gen_srv;
-								const size_t point_num = points_config.size() + 1;
-								spline_gen_srv.request.points.resize(point_num);
-								spline_gen_srv.request.points[0].positions.resize(3);
-								spline_gen_srv.request.points[0].positions[0] = 0;
-								spline_gen_srv.request.points[0].positions[1] = 0;
-								spline_gen_srv.request.points[0].positions[2] = 0;
-								for (size_t i = 0; i < point_num-1; i++)
-								{
-									spline_gen_srv.request.points[i+1].positions.resize(3);
-									if (!extractFloatVal(points_config[i][0], spline_gen_srv.request.points[i+1].positions[0]))
-									{
-										ROS_INFO_STREAM("Error converting path point[" << i << "].x to double");
-										break;
-									}
-									if (!extractFloatVal(points_config[i][1], spline_gen_srv.request.points[i+1].positions[1]))
-									{
-										ROS_INFO_STREAM("Error converting path point[" << i << "].y to double");
-										break;
-									}
-									if (!extractFloatVal(points_config[i][2], spline_gen_srv.request.points[i+1].positions[2]))
-									{
-										ROS_INFO_STREAM("Error converting path point[" << i << "].orientation to double");
-										break;
-									}
-								}
-
-								std::string frame_id;
-								readStringParam("frame_id", path_goal, frame_id);
-
-								spline_gen_srv.request.header.frame_id = frame_id;
-								spline_gen_srv.request.header.stamp = ros::Time::now() - ros::Duration(2); // TODO -fixme
-
-								bool optimize_final_velocity{false};
-								readBoolParam("optimize_final_velocity", path_goal, optimize_final_velocity);
-								spline_gen_srv.request.optimize_final_velocity = optimize_final_velocity;
-
-								if (path_goal.hasMember("point_frame_id"))
-								{
-									XmlRpc::XmlRpcValue xml_point_frame_ids = path_goal["point_frame_id"];
-									if (!xml_point_frame_ids.valid())
-										throw std::runtime_error("point_frame_ids not valid");
-									if (xml_point_frame_ids.getType() != XmlRpc::XmlRpcValue::TypeArray)
-										throw std::runtime_error("point_frame_ids not an array");
-
-									for (int i = 0; i < xml_point_frame_ids.size(); i++)
-									{
-										std::string point_frame_id = xml_point_frame_ids[i];
-										spline_gen_srv.request.point_frame_id.push_back(point_frame_id);
-									}
-								}
-								if (path_goal.hasMember("path_offset_limit"))
-								{
-									XmlRpc::XmlRpcValue xml_path_offset_limits = path_goal["path_offset_limit"];
-									if (!xml_path_offset_limits.valid())
-										throw std::runtime_error("path_offset_limits not valid");
-									if (xml_path_offset_limits.getType() != XmlRpc::XmlRpcValue::TypeArray)
-										throw std::runtime_error("path_offset_limits not an array");
-
-									// Add empty offset limit for initial 0,0,0 waypoint
-									spline_gen_srv.request.path_offset_limit.push_back(base_trajectory_msgs::PathOffsetLimit());
-									for (int i = 0; i < xml_path_offset_limits.size(); i++)
-									{
-										base_trajectory_msgs::PathOffsetLimit path_offset_msg;
-										readFloatParam("min_x", xml_path_offset_limits[i], path_offset_msg.min_x);
-										readFloatParam("max_x", xml_path_offset_limits[i], path_offset_msg.max_x);
-										readFloatParam("min_y", xml_path_offset_limits[i], path_offset_msg.min_y);
-										readFloatParam("max_y", xml_path_offset_limits[i], path_offset_msg.max_y);
-
-										spline_gen_srv.request.path_offset_limit.push_back(path_offset_msg);
-									}
-								}
-
-								ROS_INFO_STREAM("auto_node : calling spline_gen_cli_ with " << spline_gen_srv.request);
-								if (!spline_gen_cli_.call(spline_gen_srv))
-								{
-									ROS_ERROR_STREAM("Can't call spline gen service in path_follower_server");
-									return false;
-								}
-								premade_paths_[auto_steps_[j]] = spline_gen_srv.response.path;
-								premade_waypoints_[auto_steps_[j]] = spline_gen_srv.response.waypoints;
-								waypointsIdxs_[auto_steps_[j]] = spline_gen_srv.response.waypointsIdx;
-								
-							}
-						}
+				if(nh_.getParam("auto_mode_" + std::to_string(auto_mode_), auto_steps_)) {
+					if (!preLoadPath()) {
+						return false;
 					}
-				}
+				} 
 			}
-
 			if(auto_mode_ > 0){
 				auto_state_ = READY;
 			}
 			if(auto_started_ && auto_mode_ <= 0){
 				ROS_ERROR("Auto node - Autonomous period started, please choose an auto mode");
 			}
-
 			// Valid auto mode plus auto_started_ flag ==> actually run auto code, return success
 			if (auto_started_ && (auto_mode_ > 0)) {
 				return true;
 			}
-
 			r_.sleep();
 		}
 
@@ -623,7 +629,7 @@ class AutoNode {
 
 	// CODE FOR ACTIONS HERE --------------------------------------------------
 	// Do not name this function "pause" will not work
-	bool pausefn(XmlRpc::XmlRpcValue action_data, std::string auto_step) {
+	bool pausefn(XmlRpc::XmlRpcValue action_data, const std::string& auto_step) {
 		const double start_time = ros::Time::now().toSec();
 
 		//read duration - user could've entered a double or an int, we don't know which
@@ -652,7 +658,7 @@ class AutoNode {
 		return true;
 	}
 
-	bool intakefn(XmlRpc::XmlRpcValue action_data, std::string auto_step) {
+	bool intakefn(XmlRpc::XmlRpcValue action_data, const std::string& auto_step) {
 		
 		//for some reason this is necessary, even if the server has been up and running for a while
 		if(!intaking_ac_.waitForServer(ros::Duration(5))){
@@ -675,7 +681,7 @@ class AutoNode {
 	}
 	
 	// will never be used again but would be cool to make it AlignedShooting
-	bool shootfn(XmlRpc::XmlRpcValue action_data, std::string auto_step) {
+	bool shootfn(XmlRpc::XmlRpcValue action_data, const std::string&  auto_step) {
 		if(!shooting_ac_.waitForServer(ros::Duration(5))){
 			
 			shutdownNode(ERROR, "Auto node - couldn't find shooting actionlib server");
@@ -691,7 +697,7 @@ class AutoNode {
 		return true;
 	}
 
-	bool pathfn(XmlRpc::XmlRpcValue action_data, std::string auto_step) {
+	bool pathfn(XmlRpc::XmlRpcValue action_data, const std::string&  auto_step) {
 		if(!path_ac_.waitForServer(ros::Duration(5))){
 			shutdownNode(ERROR, "Couldn't find path server");
 			return false;
@@ -720,7 +726,7 @@ class AutoNode {
 		return true;
 	}
 
-	bool cmdvelfn(XmlRpc::XmlRpcValue action_data, std::string auto_step) {
+	bool cmdvelfn(XmlRpc::XmlRpcValue action_data, const std::string&  auto_step) {
 		#if 0 // doesn't work in sim
 		if(!brake_srv_.waitForExistence(ros::Duration(15)))
 		{
@@ -856,23 +862,24 @@ class AutoNode {
 					if (action_data.hasMember("type"))
 					{
 						action_data_type = static_cast<std::string>(action_data["type"]);
+							ROS_INFO_STREAM("auto_node: Running " << action_data_type);
+						// amazing syntax 
+						// passes in the config data and which auto step is running
+						bool result = (this->*functionMap_[action_data_type])(action_data, std::string(auto_steps_[i]));
+						if (!result)
+						{
+							std::string error_msg = "Auto node - Error running auto action " + auto_steps_[i];
+							ROS_ERROR_STREAM(error_msg);
+							shutdownNode(ERROR, error_msg);
+							return 1;
+						}
 					}
 					else
 					{
 						ROS_ERROR_STREAM("Data for action " << auto_steps_[i] << " missing 'type' field");
 					}
 
-					ROS_INFO_STREAM("auto_node: Running " << action_data_type);
-					// amazing syntax 
-					// passes in the config data and which auto step is running
-					bool result = (this->*functionMap_[action_data_type])(action_data, std::string(auto_steps_[i]));
-					if (!result)
-					{
-						std::string error_msg = "Auto node - Error running auto action " + auto_steps_[i];
-						ROS_ERROR_STREAM(error_msg);
-						shutdownNode(ERROR, error_msg);
-						return 1;
-					}
+
 
 				}
 			}
