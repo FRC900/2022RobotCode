@@ -138,12 +138,12 @@ if ("${ARM_PREFIX}" STREQUAL "arm-frc2023-linux-gnueabi")
 		src/dummy_wpilib_rio.cpp
 	)
 elseif ("${CMAKE_LIBRARY_ARCHITECTURE}" STREQUAL "arm-linux-gnueabihf") # Jetson TK1
-	set (CTRE_LIB_DIR ${WPI_SYSROOT}/lib/ctre/linux/raspbian/shared)    # Who knows if this will work
-	set (REV_LIB_DIR ${WPI_SYSROOT}/lib/rev/linux/raspbian/shared)
+	set (CTRE_LIB_DIR ${WPI_SYSROOT}/lib/ctre/linux/arm32/shared)    # Who knows if this will work
+	set (REV_LIB_DIR ${WPI_SYSROOT}/lib/rev/linux/arm32/shared)
 	find_library(LIB_GPIOD libgpiod.a)
 elseif ("${CMAKE_LIBRARY_ARCHITECTURE}" STREQUAL "aarch64-linux-gnu") # Jetson TX1/TX2/Xavier AGX/Xavier NX
-	set (CTRE_LIB_DIR ${WPI_SYSROOT}/lib/ctre/linux/aarch64bionic/shared)
-	set (REV_LIB_DIR ${WPI_SYSROOT}/lib/rev/linux/aarch64bionic/shared)
+	set (CTRE_LIB_DIR ${WPI_SYSROOT}/lib/ctre/linux/arm64/shared)
+	set (REV_LIB_DIR ${WPI_SYSROOT}/lib/rev/linux/arm64/shared)
 	find_library(LIB_GPIOD libgpiod.a)
 else() # x86-64, hopefully. First person to try and build native on a Mac gets kicked off the team
 	set (CTRE_LIB_DIR ${WPI_SYSROOT}/lib/ctre/linux/x86-64/shared)
@@ -238,8 +238,8 @@ if (NOT "${ARM_PREFIX}" STREQUAL "arm-frc2023-linux-gnueabi")
 			${ALLWPILIB}/wpilibc/src/main/native/cpp/DigitalInput.cpp
 			${ALLWPILIB}/wpilibc/src/main/native/cpp/DigitalOutput.cpp
 			${ALLWPILIB}/wpilibc/src/main/native/cpp/I2C.cpp
-			${ALLWPILIB}/wpiutil/src/main/native/cpp/llvm/ConvertUTF.cpp
-			${ALLWPILIB}/wpiutil/src/main/native/cpp/llvm/ConvertUTFWrapper.cpp
+			${ALLWPILIB}/wpiutil/src/main/native/thirdparty/llvm/cpp/llvm/ConvertUTF.cpp
+			${ALLWPILIB}/wpiutil/src/main/native/thirdparty/llvm/cpp/llvm/ConvertUTFWrapper.cpp
 		)
 	else() # anything we don't want to support GPIO access on - x86, older Jetson, etc
 		set (FRCROBOT_HW_MAIN_SRCS ${FRCROBOT_HW_MAIN_SRCS}
