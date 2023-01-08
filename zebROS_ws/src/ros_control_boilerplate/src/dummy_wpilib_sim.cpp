@@ -1,5 +1,6 @@
 #include "networktables/NetworkTable.h"
 #include "networktables/NetworkTableInstance.h"
+
 namespace nt
 {
 NT_Inst GetDefaultInstance()
@@ -35,7 +36,7 @@ bool SetString(unsigned int, std::string_view, long)
 }
 
 NT_Publisher Publish(NT_Topic , NT_Type , std::string_view ,
-                     std::span<const PubSubOption> ) {
+                     nt::PubSubOptions const & ) {
   return {};
 }
 

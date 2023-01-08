@@ -599,3 +599,14 @@ uint64_t HAL_WaitForNotifierAlarm(HAL_NotifierHandle notifierHandle,
         *status = 0;
         return 1;
 }
+
+size_t HAL_GetSerialNumber(char* buffer, size_t size) {
+		*buffer = '\0';
+		return 0;
+}
+
+size_t HAL_GetComments(char* buffer, size_t size) {
+		*buffer = '\0';
+		return 0;
+}
+
