@@ -252,12 +252,14 @@ if (NOT "${ARM_PREFIX}" STREQUAL "arm-frc2023-linux-gnueabi")
 	add_library(wpilibc src/dummy_library.cpp)
 	add_library(wpiHal  src/dummy_library.cpp)
 	add_library(wpimath src/dummy_library.cpp)
+	add_library(wpinet  src/dummy_library.cpp)
 	add_library(wpiutil src/dummy_library.cpp)
 	install(TARGETS
 		ntcore
 		wpilibc
 		wpiHal
 		wpimath
+		wpinet
 		wpiutil
 
 	  LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
