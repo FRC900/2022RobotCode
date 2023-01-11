@@ -170,17 +170,19 @@ void goalCallback(const field_obj::Detection::ConstPtr& msg, const bool bearingO
   std::vector<std::shared_ptr<BeaconBase>> measurement;
   geometry_msgs::Point location;
   for(const field_obj::Object& p : msg->objects) {
-  if (p.confidence < min_detection_confidence) {
-    continue;
-  }
-  // Filter out detections for which there is no beacon info.  This could be because
-  // the object doesn't have a fixed position (game pieces or robots, etc) or maybe
-  // we just don't have that beacon defined. Filtering those detections out here
-  // saves a lot of time processing them later
-  if (!pf->is_valid_beacon(p.id)) {
-    continue;
-  }
-	tf2::doTransform(p.location, location, zed_to_baselink);
+    if (p.confidence < min_detection_confidence)
+    {
+      continue;
+    }
+    // Filter out detections for which there is no beacon info.  This could be because
+    // the object doesn't have a fixed position (game pieces or robots, etc) or maybe
+    // we just don't have that beacon defined. Filtering those detections out here
+    // saves a lot of time processing them later
+    if (!pf->is_valid_beacon(p.id))
+    {
+      continue;
+    }
+    tf2::doTransform(p.location, location, zed_to_baselink);
     if(bearingOnly) {
       measurement.push_back(std::make_shared<BearingBeacon>(location.x, location.y, p.id));
     } else { 

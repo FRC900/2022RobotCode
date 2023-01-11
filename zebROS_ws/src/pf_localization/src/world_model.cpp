@@ -125,33 +125,17 @@ double WorldModel::total_distance(const Particle& p,
   for (const auto &b : beacons_) {
     rel.push_back(particle_relative_beacon(p, b));
   }
-  //std::cout << "Particle " << p << std::endl;
-  //std::copy(beacons_.cbegin(), beacons_.cend(), std::ostream_iterator<PositionBeacon>(std::cout, " "));
-  //std::cout << std::endl;
-  //for (const auto &r : rel) {
-    //if (!r) {
-      //std::cout << " NA ";
-    //} else {
-      //std::cout << *r << " ";
-    //}
-  //}
-  //std::cout << std::endl;
   // 2-d array of distances between measurements and beacons
   // each column is the distance between a given measurement and each beacon
   // there's a row added for each measurement
   std::vector<std::vector<double>> dists;
   for (const auto &m : measurements) {
     dists.push_back(m->distances(rel));
-    //std::copy(dists.back().cbegin(), dists.back().cend(), std::ostream_iterator<double>(std::cout, " "));
-    //std::cout << std::endl;
   }
-    //std::cout << std::endl;
 
   // Match up measurements with the most likely mapping to a beacon.
   std::vector<int> assignment;
   solver_.Solve(dists, assignment, AssignmentProblemSolver::many_forbidden_assignments);
-  //std::copy(assignment.cbegin(), assignment.cend(), std::ostream_iterator<int>(std::cout, " "));
-  //std::cout << std::endl;
 
   double total_res = 1.;
   size_t num_matches = 0;
@@ -168,7 +152,7 @@ double WorldModel::total_distance(const Particle& p,
       beacons_seen_.insert({b.x_, b.y_, 0});
     }
   }
-  // If any measurements are filtered out, return 0 since this
+  // If any measurements are filtered out, return a low weight since this
   // particle isn't in a position which can even see the targets
   // given the particle's orientation
   if (num_matches < measurements.size()) {
