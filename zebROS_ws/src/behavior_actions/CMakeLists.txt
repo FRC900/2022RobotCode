@@ -61,6 +61,7 @@ add_service_files(
   #resetBallSrv.srv
   DynamicPath.srv
   GamePiecePickup.srv
+  PathToAprilTag.srv
 )
 
 ## Generate actions in the 'action' folder
