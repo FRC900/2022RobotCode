@@ -1,0 +1,45 @@
+<?xml version="1.0"?>
+<launch>
+		<!-- allow us to hook up sim odom topics for stage sim testing -->
+		<arg name="use_sim" default="false"/>
+
+		<group ns="balance_position">
+            <!-- <rosparam file="$(find path_follower)/config/hold_position_config.yaml" command="load"/>-->
+
+            <!-- Radians -->
+            <param name="angle_threshold" value="0.0174533"/>  <!-- 1 degree -->
+
+            <!-- Less complicated verson of hold position, because we can only move X and we use pitch-->
+            <node name="balancer_server" pkg="behaviors" type="2023_balancer_server.py" output="screen">
+                <!-- also found below-->
+                <param name="setpoint_topic" value="position_balance_pid/pitch_cmd_pub"/>
+                <param name="topic_from_plant" value="position_balance_pid/pitch_state_pub" /> 
+                <param name="topic_from_controller" value="position_balance_pid/x_command" /> 
+                <param name="command_timeout" value="0.25" />
+                <param name="enable_topic" value="balance_server_pid/pid_enable" />
+                <param name="name" value="balance_server_pid" />
+                <param name="imu_sub_topic" value="/imu/zeroed_imu" /> 
+            </node>
+
+            <node name="x_position_balance_pid" pkg="pid" type="controller" >
+                <param name="node_name" value="x_position_balance_pid" />
+                <param name="Kp" value="0.1" />
+                <param name="Ki" value="0.0" />
+                <param name="Kd" value="0.0" />
+                <param name="upper_limit" value="10" />
+                <param name="lower_limit" value="-10" />
+                <param name="windup_limit" value="10" />
+                <param name="max_loop_frequency" value="100.0" />
+                <param name="min_loop_frequency" value="100.0" />
+                
+                <param name="topic_from_controller" value="position_balance_pid/x_command" /> <!-- what it wants to do to go closer to desired value -->
+                <param name="setpoint_topic" value="position_balance_pid/pitch_cmd_pub" /> <!-- where we want to be, probably 0-->
+                <param name="topic_from_plant" value="position_balance_pid/pitch_state_pub" /> <!-- current state of sensor -->
+                
+                <remap from="pid_debug" to="x_position_balance_pid/pid_debug" />
+                <remap from="pid_enable" to="x_position_balance_pid/pid_enable" />
+            </node>
+
+        </group>
+
+</launch>

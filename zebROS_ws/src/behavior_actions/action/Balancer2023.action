@@ -1,0 +1,11 @@
+# goal
+uint8 FULL_AUTOL=0
+uint8 HELPER=1 # currently uses a static speed
+uint8 mode
+# implied that if you are calling this, you want to balance
+---
+# result
+---
+# feedback
+float64 error # how far away we are from 0, might not be used
+bool stable_and_balanced # if we are stable and balanced we could maybe stop the server or lock wheels or something

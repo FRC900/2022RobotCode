@@ -52,7 +52,7 @@ LOWEST_MIDDLE_ANGLE = 0.261799
 # how high the highest point of the station is when a robot is driven on it
 # occurs at same time as LOWEST_ANGLE
 MAX_HEIGHT = 0.4064 # meters 
-
+FUDGE_FACTOR = 0.01 # meters
 FLAT_X_LEFT = STATION_OFFSET + RAMP_LEN_X
 FLAT_X_RIGHT = STATION_OFFSET + RAMP_LEN_X + MIDDLE_LENGHT
 FLAT_X_LEFT_PIXEL = int(FLAT_X_LEFT * METER_TO_PIXEL)
@@ -70,22 +70,22 @@ class Point:
 class ChargingStationSim:
     def __init__(self) -> None:
         self.left_wheel = {}
-        self.left_wheel["x"] = 0.5
+        self.left_wheel["x"] = 0.7
         self.left_wheel["y"] = 0
         self.right_wheel = {}
         self.right_wheel["x"] = self.left_wheel["x"] + WHEEL_TO_WHEEL
         self.right_wheel["y"] = 0
         self.angle = 0
+        self.theta = -999
         self.state = States.OFF_LEFT
         self.height = 0
         self.time = 0
-        self.left_ramp_start_XY = (STATION_OFFSET,0)
+        self.left_ramp_start_XY = (STATION_OFFSET, FUDGE_FACTOR)
         self.left_ramp_end_XY = (STATION_OFFSET + RAMP_LEN_X, BALANCED_HEIGHT)
-        self.right_ramp_start_XY = (STATION_OFFSET + RAMP_LEN_X*2+MIDDLE_LENGHT, 0)
+        self.right_ramp_start_XY = (STATION_OFFSET + RAMP_LEN_X*2+MIDDLE_LENGHT, FUDGE_FACTOR)
         self.right_ramp_end_XY = (STATION_OFFSET+RAMP_LEN_X+MIDDLE_LENGHT, BALANCED_HEIGHT)
         self.center_line_left_XY = (STATION_OFFSET + RAMP_LEN_X, BALANCED_HEIGHT)
         self.center_line_right_XY = (STATION_OFFSET + RAMP_LEN_X+MIDDLE_LENGHT, BALANCED_HEIGHT)
-
 
     def round_dict(self, d):
         new_d = {}
@@ -145,7 +145,8 @@ class ChargingStationSim:
         img = self.visualize_lines(img)
 
         cv2.imshow("Test", img)
-        cv2.waitKey(10) 
+        cv2.waitKey(10)
+        #_ = input("Press [enter] to continue.")
 
     def get_pitch(self,):
         return self.angle
@@ -160,9 +161,115 @@ class ChargingStationSim:
         print("off left")
 
         self.linear_move(velocity, timestep)
-        if self.right_wheel["x"] >= STATION_OFFSET and self.state == States.OFF_LEFT:
+        x_diff = self.left_ramp_start_XY[0] - self.right_wheel["x"]
+         
+        height = WHEEL_RADIUS
+        hypot = np.sqrt(x_diff**2 + height**2)
+        print(f"hypot: {hypot} height: {height}, x_diff: {x_diff}, wheel radius: {WHEEL_RADIUS}")
+        if self.right_wheel["x"] >= STATION_OFFSET - FUDGE_FACTOR * 3 and self.state == States.OFF_LEFT:
             self.state = States.ON_RAMP_LEFT_1_WHEEL
+    
+    def on_ramp_left_2_wheels(self, velocity, timestep):
+        # on flat plane but roatated, still easy
+        # we know angle of ramp and velocity (hypot)
+        RAMP_LEN_Y = self.left_ramp_end_XY[1]
+        # calculate ramp angle based on the two points of the ramp
+        RAMP_ANGLE = (np.arctan((RAMP_LEN_Y) / (RAMP_LEN_X)))
+        y_diff = velocity * timestep * math.sin(RAMP_ANGLE) 
+        x_diff = velocity * timestep * math.cos(RAMP_ANGLE)
+        self.left_wheel["y"] += y_diff
+        self.right_wheel["y"] += y_diff
+        self.left_wheel["x"] += x_diff
+        self.right_wheel["x"] += x_diff
+        if self.left_wheel["x"] >= FLAT_X_LEFT:
+            self.state = States.ON_MIDDLE_2_WHEEL
+
+    def calc_ramp_angle(self):
+        RAMP_LEN_Y = self.left_ramp_end_XY[1]
+        # calculate ramp angle based on the two points of the ramp
+        RAMP_ANGLE = (np.arctan((RAMP_LEN_Y) / (RAMP_LEN_X)))
+        return RAMP_ANGLE
+
+    def calc_center_angle(self):
+        middle_x_dist = self.center_line_right_XY[0] - self.center_line_left_XY[0]
+        middle_y_dist = self.center_line_right_XY[1] - self.center_line_left_XY[1]
+        # calculate ramp angle based on the two points of the ramp
+        RAMP_ANGLE = (np.arctan((middle_y_dist) / (middle_x_dist)))
+        return RAMP_ANGLE
+
+    def slip(self, velocity, timestep):
+        RAMP_ANGLE = self.calc_center_angle()
+        print(f"RAMP Angle {RAMP_ANGLE}")
+        # move the robot back depending on the angle of it
+        y_diff = -0.1 * velocity * timestep * math.sin(RAMP_ANGLE) 
+        x_diff = -0.1 * velocity * timestep * math.cos(RAMP_ANGLE)
+        print(f"x_diff {x_diff}, y_diff {y_diff}")
+        # apply slip 
+        self.right_wheel["x"] += x_diff
+        self.right_wheel["y"] += y_diff
+        self.left_wheel["x"] += x_diff
+        self.left_wheel["y"] += y_diff
+
+    def get_center_x(self):
+        # get center of robot
+        center_x = (self.left_wheel["x"] + self.right_wheel["x"]) / 2
+        return center_x
+
+    def get_center_ramp_x(self):
+        # get center of robot
+        center_x = (self.left_ramp_start_XY[0] + self.right_ramp_start_XY[0]) / 2
+        return center_x
+
+    def update_ramp(self, timestep):
+        '''
         
+unless the station is level or on it’s stop, it acts as a lever with the fulcrum being the pivot closest to the robot.
+
+that lever has a fixed counter load (assuming you are the only robot on the station), which is because the higher side of the scale is effectively longer than the lower one
+
+using the angular acceleration of the scale, it’s inertia, and the robot mass, the force exerted on the scale can be calculated with the formula (robot mass / scale inertia * acceleration)
+
+then, using the lever formula Fe * de = Fl * dl, the distance of the robot from the fulcrum can be calculated with distance = counter force / force exerted by robot (note that counter force is really (counter force * counter force distance) but I don’t see a reason to keep them separate)
+        '''
+        # early exit cases: 
+        # the ramp is fully extended one way or the other
+
+        self.center_line_right_XY = (m2["x"], m2["y"])
+
+    def on_middle_2_wheels(self, velocity, timestep):
+        self.update_ramp(timestep)
+        self.slip(velocity, timestep)
+        
+
+    def on_middle_left_1_wheel(self, velocity, timestep):
+        print("on ramp left 1 wheel")
+        # move the right wheel forward
+        rotations = velocity / (WHEEL_RADIUS * 2 * np.pi) # i am still not sure about this 2 * pi, because it simplifies to velocity*timestep * sin/cos(RAMP_ANGLE)
+        circumference = 2 * np.pi * WHEEL_RADIUS          # it looks fine though, and for a flat ramp it is correct as it simplifies to velocity * timestep
+        hypot = rotations * circumference * timestep
+        # ramp len y using pythagorean theorem
+        
+        RAMP_LEN_Y = self.left_ramp_end_XY[1]
+        # calculate ramp angle based on the two points of the ramp
+        RAMP_ANGLE = (np.arctan((RAMP_LEN_Y) / (RAMP_LEN_X)))
+        #RAMP_ANGLE = np.deg2rad(34.5)
+        print(f"RAMP_ANGLE DEG = {np.rad2deg(RAMP_ANGLE)}")
+        #RAMP_ANGLE =
+        y_diff = hypot * np.sin(RAMP_ANGLE)
+        x_diff = hypot * np.cos(RAMP_ANGLE)
+        self.right_wheel["x"] += x_diff
+        self.right_wheel["y"] += y_diff
+        print(f"X diff = {x_diff} Y diff = {y_diff}, hypot = {hypot}, sin = {np.sin(RAMP_ANGLE)}, cos = {np.cos(RAMP_ANGLE)}")
+        # calculate new angle
+        self.angle = (np.arcsin(self.right_wheel["y"] / WHEEL_TO_WHEEL))
+        #assert self.angle <= 31.5
+        # move the left wheel forward
+        #assert self.left_wheel["x"] <= self.right_wheel["x"] - np.sqrt(WHEEL_TO_WHEEL**2 - self.right_wheel["y"]**2)
+        self.left_wheel["x"] = self.right_wheel["x"] - np.sqrt(WHEEL_TO_WHEEL**2 - self.right_wheel["y"]**2)
+        #self.left_wheel["y"] = 0
+        if self.left_wheel["x"] >= STATION_OFFSET - FUDGE_FACTOR * 5 and self.state == States.ON_MIDDLE_LEFT_1_WHEEL:
+            self.state = States.ON_LEFT_2_WHEEL_1_RAMP
+
 
     def on_ramp_left_1_wheel(self, velocity, timestep):
         '''x, y of where wheel touches ramp
@@ -195,6 +302,7 @@ class ChargingStationSim:
         circumference = 2 * np.pi * WHEEL_RADIUS          # it looks fine though, and for a flat ramp it is correct as it simplifies to velocity * timestep
         hypot = rotations * circumference * timestep
         # ramp len y using pythagorean theorem
+
         RAMP_LEN_Y = np.sqrt(DIAG_LENGHT**2 - (RAMP_LEN_X)**2)
         # calculate ramp angle based on the two points of the ramp
         RAMP_ANGLE = (np.arctan((RAMP_LEN_Y) / (RAMP_LEN_X)))
@@ -207,7 +315,7 @@ class ChargingStationSim:
         self.right_wheel["y"] += y_diff
         print(f"X diff = {x_diff} Y diff = {y_diff}, hypot = {hypot}, sin = {np.sin(RAMP_ANGLE)}, cos = {np.cos(RAMP_ANGLE)}")
         # calculate new angle
-        self.angle = np.rad2deg(np.arcsin(self.right_wheel["y"] / WHEEL_TO_WHEEL))
+        self.angle = (np.arcsin(self.right_wheel["y"] / WHEEL_TO_WHEEL))
         #assert self.angle <= 31.5
         # move the left wheel forward
         self.left_wheel["x"] = self.right_wheel["x"] - np.sqrt(WHEEL_TO_WHEEL**2 - self.right_wheel["y"]**2)
@@ -219,11 +327,16 @@ class ChargingStationSim:
             self.state = States.ON_MIDDLE_LEFT_1_WHEEL
             # move right wheel down to the floor
             self.right_wheel["y"] = 0.05715 + 0.0254 # found by taking max hieght on the other side and subtracting the max hieght of both
+            self.left_ramp_end_XY = (self.right_wheel["x"], self.right_wheel["y"])
+            self.left_ramp_start_XY = (self.left_ramp_start_XY[0], FUDGE_FACTOR)
+            
+            self.center_line_left_XY = (self.right_wheel["x"], self.right_wheel["y"])
+            # use the angle of the robot to find 
+            self.center_line_right_XY = (FLAT_X_RIGHT, MAX_HEIGHT)
             # update the angle
-            self.angle = np.rad2deg(np.arcsin(self.right_wheel["y"] / WHEEL_TO_WHEEL))
+            self.angle = (np.arcsin(self.right_wheel["y"] / WHEEL_TO_WHEEL))
             self.visualize()
-            time.sleep(111)
-
+            
     def on_left_2_wheel_1_ramp(self, velocity, timestep):
         # we are on flat plane now, # easy peasy
         # move both wheels forward 
@@ -241,11 +354,6 @@ class ChargingStationSim:
         # move the left wheel forward
         self.left_wheel["x"] += rotations * circumference * timestep
 
-    def on_middle_left_1_wheel(self, velocity, timestep):        
-        self.linear_move(velocity, timestep)
-        if self.left_wheel["x"] >= STATION_OFFSET and self.state == States.ON_MIDDLE_LEFT_1_WHEEL:
-            self.state = States.ON_LEFT_2_WHEEL_1_RAMP
-
     def step(self, velocity, timestep):
         self.time += timestep
         if self.state == States.OFF_LEFT:
@@ -255,7 +363,9 @@ class ChargingStationSim:
         elif self.state == States.ON_MIDDLE_LEFT_1_WHEEL:
             self.on_middle_left_1_wheel(velocity, timestep)
         elif self.state == States.ON_LEFT_2_WHEEL_1_RAMP:
-            self.on_left_2_wheel_1_ramp(velocity, timestep)
+            self.on_ramp_left_2_wheels(velocity, timestep)
+        elif self.state == States.ON_MIDDLE_2_WHEEL:
+            self.on_middle_2_wheels(velocity, timestep)
 
 if __name__ == "__main__":
     charging_station = ChargingStationSim()
@@ -264,7 +374,7 @@ if __name__ == "__main__":
     while True:
         i += 1
         #print(i)
-        charging_station.step(0.5, 0.01)
+        charging_station.step(0.5, 0.05)
         #print(charging_station.left_wheel)
         #print(charging_station.right_wheel)
         print(charging_station.state)
