@@ -124,4 +124,6 @@
 		</node>
 	</group>
 
+	<node name="sim_apriltag_publisher" pkg="fake_sensors" type="publish_apriltags_from_sim"/>
+
 </launch>

@@ -1,7 +1,6 @@
 #include "ros/ros.h"
 #include "behavior_actions/GamePiecePickup.h"
 #include <nav_msgs/Path.h>
-#include <cstdlib>
 #include <actionlib/client/simple_action_client.h>
 #include <actionlib/client/terminal_state.h>
 #include <path_follower_msgs/PathAction.h>
@@ -12,6 +11,8 @@
 #include "geometry_msgs/PoseWithCovarianceStamped.h"
 #include <optional>
 #include "behavior_actions/PathToAprilTag.h"
+#include <sensor_msgs/Imu.h>
+#include <tf2/LinearMath/Quaternion.h>
 
 /*
 "object_id: '1'
@@ -29,6 +30,7 @@ endpoint:
 
 tf2_ros::Buffer tf_buffer_;
 std::shared_ptr<tf2_ros::TransformListener> tf_listener_;
+double latestImuZ;
 
 trajectory_msgs::JointTrajectoryPoint generateTrajectoryPoint(double x, double y, double rotation)
 {
@@ -57,6 +59,16 @@ void callback(const apriltag_ros::AprilTagDetectionArrayConstPtr& msg) {
     latest = *msg;
 }
 
+void imuCallback(const sensor_msgs::ImuConstPtr& msg) {
+    tf2::Quaternion q;
+    sensor_msgs::Imu msgNonPtr = *msg;
+    tf2::fromMsg(msgNonPtr.orientation, q);
+    tf2::Matrix3x3 m(q);
+    double r, p, y;
+    m.getRPY(r, p, y);
+    latestImuZ = y;
+}
+
 struct Point2D {
     double x;
     double y;
@@ -72,7 +84,7 @@ std::optional<Point2D> getTransformedTag(uint32_t id) {
                 geometry_msgs::PoseWithCovarianceStamped pose = detection.pose;
                 geometry_msgs::PoseWithCovarianceStamped pose_out;
                 tf_buffer_.transform(pose, pose_out, "base_link");
-                Point2D point{pose.pose.pose.position.x, pose.pose.pose.position.y};
+                Point2D point{pose_out.pose.pose.position.x, pose_out.pose.pose.position.y};
                 return std::optional<Point2D>{point};
             }
         }
@@ -100,10 +112,13 @@ bool pathToTag(behavior_actions::PathToAprilTag::Request &req, behavior_actions:
     spline_gen_srv.request.header = latest.header; // timestamp
     spline_gen_srv.request.header.frame_id = "base_link"; // correct frame id
 
+    // if there is an offset, get atan2(y, x), add angle between robot and apriltag
+
     spline_gen_srv.request.points.resize(2);
 	spline_gen_srv.request.point_frame_id.resize(2);
     spline_gen_srv.request.points[0] = generateTrajectoryPoint(0, 0, 0);
-    spline_gen_srv.request.points[1] = generateTrajectoryPoint(position.x, position.y, zRot);
+    ROS_INFO_STREAM(position.x << "," << position.y << " " << zRot << " " << latestImuZ << " " << zRot - latestImuZ);
+    spline_gen_srv.request.points[1] = generateTrajectoryPoint(position.x, position.y, (zRot - latestImuZ));
     spline_gen_srv.request.point_frame_id[0] = "base_link";
     spline_gen_srv.request.point_frame_id[1] = "base_link";
     base_trajectory_msgs::PathOffsetLimit path_offset_limit;
@@ -161,6 +176,7 @@ int main(int argc, char **argv)
     // need service server too to do this when called
 
     ros::Subscriber sub_ = nh.subscribe<apriltag_ros::AprilTagDetectionArray>("/cuda_tag_detections", 1, &callback);
+    ros::Subscriber subImu_ = nh.subscribe<sensor_msgs::Imu>("/imu/zeroed_imu", 1, &imuCallback);
     
     ros::spin();
 
