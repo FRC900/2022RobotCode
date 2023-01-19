@@ -57,6 +57,12 @@ FLAT_X_LEFT = STATION_OFFSET + RAMP_LEN_X
 FLAT_X_RIGHT = STATION_OFFSET + RAMP_LEN_X + MIDDLE_LENGHT
 FLAT_X_LEFT_PIXEL = int(FLAT_X_LEFT * METER_TO_PIXEL)
 FLAT_X_RIGHT_PIXEL = int(FLAT_X_RIGHT * METER_TO_PIXEL)
+TIME_STEP = 0.01 
+ROBOT_MASS = 45.35 # kg
+LEVER_2_LEVER = 0.2794 # distance between the two points that the charging station can rotate in M
+END_2_LEVER = 0.8027 # distance between the end of the station to one of the rotating points in M
+LEVER_L_X = STATION_OFFSET + END_2_LEVER
+LEVER_R_X = STATION_OFFSET + END_2_LEVER + LEVER_2_LEVER
 
 class Point:
     def __init__(self, x=0, y=0) -> None:
@@ -84,6 +90,8 @@ class ChargingStationSim:
         self.left_ramp_end_XY = (STATION_OFFSET + RAMP_LEN_X, BALANCED_HEIGHT)
         self.right_ramp_start_XY = (STATION_OFFSET + RAMP_LEN_X*2+MIDDLE_LENGHT, FUDGE_FACTOR)
         self.right_ramp_end_XY = (STATION_OFFSET+RAMP_LEN_X+MIDDLE_LENGHT, BALANCED_HEIGHT)
+        self.center_line_angle_rad = 0
+        self.center_line_accels = [] # evenly spaced by TIME_STEP accelerations, should be able to integrate to get velocites
         self.center_line_left_XY = (STATION_OFFSET + RAMP_LEN_X, BALANCED_HEIGHT)
         self.center_line_right_XY = (STATION_OFFSET + RAMP_LEN_X+MIDDLE_LENGHT, BALANCED_HEIGHT)
 
@@ -222,19 +230,48 @@ class ChargingStationSim:
 
     def update_ramp(self, timestep):
         '''
+        I want to get angular velocity.
         
-unless the station is level or on it’s stop, it acts as a lever with the fulcrum being the pivot closest to the robot.
+        torque=force*r*sin(θ)
+        let only force be gravity on our robot
+        force should be constant then because the ramp will not snap
+        force = 9.8 * 45.3592kg (100 lbs)
+        theta = whatever the angle of ramp currently is, we keep track of that
+        r is whichever of the two levers we are closer two, find that
 
-that lever has a fixed counter load (assuming you are the only robot on the station), which is because the higher side of the scale is effectively longer than the lower one
+        torque/inertia = angular accel
+        just need to find inertia and then integrate for velocity
+        I=mr^2
+        I=45.3592*r^2 where R is from before... I think?
 
-using the angular acceleration of the scale, it’s inertia, and the robot mass, the force exerted on the scale can be calculated with the formula (robot mass / scale inertia * acceleration)
-
-then, using the lever formula Fe * de = Fl * dl, the distance of the robot from the fulcrum can be calculated with distance = counter force / force exerted by robot (note that counter force is really (counter force * counter force distance) but I don’t see a reason to keep them separate)
+        we now have angular accel and timesteps integrate for velocity and appliy it * dT
         '''
-        # early exit cases: 
-        # the ramp is fully extended one way or the other
+        force = ROBOT_MASS * 9.8
+        c_X = self.get_center_x() 
+        if abs(LEVER_L_X - c_X) > abs(LEVER_R_X - c_X):
+            radius = abs(LEVER_R_X - c_X)
+            center_pt = LEVER_R_X
+        else:
+            radius = abs(LEVER_L_X - c_X)
+            center_pt = LEVER_L_X
+        torque = force * radius * math.sin(self.angle) # ramp angle before update is also just robot angle
+        inertia = ROBOT_MASS * (radius ** 2)
+        angular_accel = torque/inertia
+        self.center_line_accels.append[angular_accel]
+        12
+        #acceleration = [1, 2, 3, 4, 5, 6, 7, 8, 9, -1, -2, -3, -4, -5, -6, -7, -8, -9]
+        velocitylist = [0]
+        for acc in self.center_line_accels:
+            velocitylist.append(velocitylist[-1] + acc * TIME_STEP)
+        final_vel = velocitylist[-1]
+        print(f"Angular accel {angular_accel} final vel {final_vel}")
+        self.update_center_with_angle(final_vel, center_pt, timestep)
 
-        self.center_line_right_XY = (m2["x"], m2["y"])
+
+    def update_center_with_angle(self, angular_vel, center_point, timestep):
+        last_angle = self.center_line_angle_rad
+        self.center_line_angle_rad += timestep * angular_vel
+
 
     def on_middle_2_wheels(self, velocity, timestep):
         self.update_ramp(timestep)
@@ -367,6 +404,7 @@ then, using the lever formula Fe * de = Fl * dl, the distance of the robot from 
         elif self.state == States.ON_MIDDLE_2_WHEEL:
             self.on_middle_2_wheels(velocity, timestep)
 
+
 if __name__ == "__main__":
     charging_station = ChargingStationSim()
     charging_station.visualize()
@@ -374,7 +412,7 @@ if __name__ == "__main__":
     while True:
         i += 1
         #print(i)
-        charging_station.step(0.5, 0.05)
+        charging_station.step(0.5, TIME_STEP)
         #print(charging_station.left_wheel)
         #print(charging_station.right_wheel)
         print(charging_station.state)

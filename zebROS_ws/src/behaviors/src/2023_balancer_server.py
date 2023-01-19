@@ -82,7 +82,6 @@ class Balancer:
             rospy.logerr_throttle(1, f"X_cmd_callback with {x_command}") 
         # send to motors, @TODO
 
-
     def imu_callback(self, imu_msg):
         rospy.logdebug("Imu callback")
         q = imu_msg.orientation
@@ -122,14 +121,11 @@ class Balancer:
             # publish the feedback
             self._as.publish_feedback(self._feedback)
 
-rospy.logerr(f"RIGHT HERE with __name__={__name__}")
 if __name__ == '__main__':
-    rospy.logerr("STARTING BALANCER")
     
     rospy.init_node('balancer')
     name = rospy.get_name()
 
-    rospy.logerr("Balancer start")
     balancer_server = Balancer(name)
     rospy.logerr("Spinning") 
 
