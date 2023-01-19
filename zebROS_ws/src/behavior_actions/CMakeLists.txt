@@ -12,6 +12,7 @@ find_package(catkin REQUIRED COMPONENTS
   message_generation
   roscpp
   nav_msgs
+  geometry_msgs
 )
 
 ## System dependencies are found with CMake's conventions
@@ -91,7 +92,7 @@ add_action_files(
 	#RotatePanel.action
 )
 
-generate_messages(DEPENDENCIES actionlib_msgs nav_msgs std_msgs)
+generate_messages(DEPENDENCIES actionlib_msgs nav_msgs std_msgs geometry_msgs)
 
 ################################################
 ## Declare ROS dynamic reconfigure parameters ##

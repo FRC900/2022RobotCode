@@ -13,6 +13,7 @@
 #include "behavior_actions/PathToAprilTag.h"
 #include <sensor_msgs/Imu.h>
 #include <tf2/LinearMath/Quaternion.h>
+#include <tf2/LinearMath/Vector3.h>
 
 /*
 "object_id: '1'
@@ -59,20 +60,69 @@ void callback(const apriltag_ros::AprilTagDetectionArrayConstPtr& msg) {
     latest = *msg;
 }
 
-void imuCallback(const sensor_msgs::ImuConstPtr& msg) {
+double getYaw(const geometry_msgs::Quaternion &o) {
     tf2::Quaternion q;
-    sensor_msgs::Imu msgNonPtr = *msg;
-    tf2::fromMsg(msgNonPtr.orientation, q);
+    tf2::fromMsg(o, q);
     tf2::Matrix3x3 m(q);
     double r, p, y;
     m.getRPY(r, p, y);
-    latestImuZ = y;
+    return y;
+}
+
+void imuCallback(const sensor_msgs::ImuConstPtr& msg) {
+    sensor_msgs::Imu msgNonPtr = *msg;
+    latestImuZ = getYaw(msgNonPtr.orientation);
 }
 
 struct Point2D {
     double x;
     double y;
 };
+
+std::optional<tf2::Transform> getTransformToTag(uint32_t id, double rotation) {
+    if (latest.detections.size() == 0) {
+        return std::nullopt;
+    }
+    else {
+        for (auto detection : latest.detections) {
+            if (detection.id[0] == id) {
+                geometry_msgs::PoseWithCovarianceStamped pose = detection.pose;
+                geometry_msgs::PoseWithCovarianceStamped pose_out;
+                tf_buffer_.transform(pose, pose_out, "base_link");
+                tf2::Transform tf;
+                tf.setOrigin(tf2::Vector3(pose_out.pose.pose.position.x, pose_out.pose.pose.position.y, pose_out.pose.pose.position.z));
+                tf2::Quaternion q;
+                q.setRPY(0, 0, (rotation - latestImuZ));
+                tf.setRotation(q);
+                return std::optional<tf2::Transform>{tf};
+            }
+        }
+        return std::nullopt;
+    }
+}
+
+std::optional<trajectory_msgs::JointTrajectoryPoint> applyOffset(uint32_t id, const geometry_msgs::Pose &offset, double tagRotation) {
+    std::optional<tf2::Transform> transform_ = getTransformToTag(id, tagRotation);
+
+    if (!transform_.has_value()) {
+        ROS_INFO_STREAM("transform no value");
+        return std::nullopt;
+    }
+
+    tf2::Transform transform = transform_.value();
+
+    geometry_msgs::Transform gmt = tf2::toMsg(transform); // now tag -> base_link
+    geometry_msgs::TransformStamped gmts;
+    gmts.header.frame_id = "tag";
+    gmts.child_frame_id = "base_link";
+    gmts.transform = gmt;
+
+    // get offset, transform by inverse transform
+    geometry_msgs::Pose p;
+    tf2::doTransform(offset, p, gmts);
+    trajectory_msgs::JointTrajectoryPoint pt = generateTrajectoryPoint(p.position.x, p.position.y, getYaw(p.orientation));
+    return std::optional<trajectory_msgs::JointTrajectoryPoint>{pt};
+}
 
 std::optional<Point2D> getTransformedTag(uint32_t id) {
     if (latest.detections.size() == 0) {
@@ -96,16 +146,20 @@ std::optional<Point2D> getTransformedTag(uint32_t id) {
 std::shared_ptr<actionlib::SimpleActionClient<path_follower_msgs::PathAction>> ac;
 ros::ServiceClient client;
 
+double angleBetween(Point2D one, Point2D two) {
+    return atan2(two.y - one.y, two.x - one.x);
+}
+
 bool pathToTag(behavior_actions::PathToAprilTag::Request &req, behavior_actions::PathToAprilTag::Response &res)
 {
     uint32_t id = req.id;
-    double zRot = req.zRotation;
-    std::optional<Point2D> position_ = getTransformedTag(id);
+    double tagRot = req.tagRotation;
+    auto pt_ = applyOffset(id, req.offset, tagRot);
 
-    if (!position_.has_value()) {
+    if (!pt_.has_value()) {
         return false;
     }
-    Point2D position = position_.value();
+    auto pt = pt_.value();
 
     base_trajectory_msgs::GenerateSpline spline_gen_srv;
 
@@ -117,8 +171,9 @@ bool pathToTag(behavior_actions::PathToAprilTag::Request &req, behavior_actions:
     spline_gen_srv.request.points.resize(2);
 	spline_gen_srv.request.point_frame_id.resize(2);
     spline_gen_srv.request.points[0] = generateTrajectoryPoint(0, 0, 0);
-    ROS_INFO_STREAM(position.x << "," << position.y << " " << zRot << " " << latestImuZ << " " << zRot - latestImuZ);
-    spline_gen_srv.request.points[1] = generateTrajectoryPoint(position.x, position.y, (zRot - latestImuZ));
+    //ROS_INFO_STREAM(position.x << "," << position.y << " " << zRot << " " << latestImuZ << " " << zRot - latestImuZ);
+    // angle now relative to apriltag
+    spline_gen_srv.request.points[1] = pt;
     spline_gen_srv.request.point_frame_id[0] = "base_link";
     spline_gen_srv.request.point_frame_id[1] = "base_link";
     base_trajectory_msgs::PathOffsetLimit path_offset_limit;
