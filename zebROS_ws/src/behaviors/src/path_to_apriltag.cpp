@@ -199,6 +199,7 @@ bool pathToTag(behavior_actions::PathToAprilTag::Request &req, behavior_actions:
     // send a goal to the action
     path_follower_msgs::PathGoal goal;
     goal.path = path;
+    goal.waypointsIdx = spline_gen_srv.response.waypointsIdx;
     ac->sendGoal(goal);
 
     //wait for the action to return
