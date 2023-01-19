@@ -1,3 +1,4 @@
 uint32 id
-float64 zRotation # RADIANS
+float64 tagRotation # RADIANS
+geometry_msgs/Pose offset
 ---
