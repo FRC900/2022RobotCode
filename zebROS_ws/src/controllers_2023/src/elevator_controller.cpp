@@ -139,7 +139,7 @@ class ElevatorController_2023 : public controller_interface::MultiInterfaceContr
 				[this](int_t b) { param_var_name_.store(b);},
 				 "S Curve Strength");
 
-
+			ddr_.publishServicesTopics();
 
 
 
