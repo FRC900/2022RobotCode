@@ -10,7 +10,6 @@ find_package(catkin REQUIRED COMPONENTS
   cmake_modules
   actionlib
   actionlib_msgs
-  apriltag_ros
   base_trajectory_msgs
   behavior_actions
   #color_spin

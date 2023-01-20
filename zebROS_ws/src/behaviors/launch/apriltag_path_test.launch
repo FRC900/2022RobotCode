@@ -6,6 +6,6 @@
 	</include>
 
     <node name="path_to_apriltag" pkg="behaviors" type="path_to_apriltag" output="screen">
-        <remap from="/cuda_tag_detections" to="/tag_detections"/>
+
     </node>
 </launch>

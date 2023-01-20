@@ -18,7 +18,6 @@ catkin config --profile cross -x _isolated --install --skiplist \
 	apriltag_launch \
     apriltag_ros \
 	base_trajectory \
-    behaviors \
 	color_spin \
 	controllers_2020 \
 	controllers_2020_msgs \

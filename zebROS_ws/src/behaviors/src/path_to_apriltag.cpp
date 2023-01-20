@@ -5,7 +5,7 @@
 #include <actionlib/client/terminal_state.h>
 #include <path_follower_msgs/PathAction.h>
 #include "base_trajectory_msgs/GenerateSpline.h"
-#include <apriltag_ros/AprilTagDetectionArray.h>
+#include <field_obj/Detection.h>
 #include "tf2_ros/transform_listener.h"
 #include "tf2_geometry_msgs/tf2_geometry_msgs.h"
 #include "geometry_msgs/PoseWithCovarianceStamped.h"
@@ -52,9 +52,9 @@ base_trajectory_msgs::GenerateSpline makePath(double x, double y, double rotatio
     return srv;
 }
 
-apriltag_ros::AprilTagDetectionArray latest;
+field_obj::Detection latest;
 
-void callback(const apriltag_ros::AprilTagDetectionArrayConstPtr& msg) {
+void callback(const field_obj::DetectionConstPtr& msg) {
     // need to use transforms...
     // oh wait no we don't! we can tell spline srv what frame id it is relevant to
     latest = *msg;
@@ -80,17 +80,19 @@ struct Point2D {
 };
 
 std::optional<tf2::Transform> getTransformToTag(uint32_t id, double rotation) {
-    if (latest.detections.size() == 0) {
+    if (latest.objects.size() == 0) {
         return std::nullopt;
     }
     else {
-        for (auto detection : latest.detections) {
-            if (detection.id[0] == id) {
-                geometry_msgs::PoseWithCovarianceStamped pose = detection.pose;
-                geometry_msgs::PoseWithCovarianceStamped pose_out;
-                tf_buffer_.transform(pose, pose_out, "base_link");
+        for (auto object : latest.objects) {
+            if (std::stoi(object.id) == id) {
+                geometry_msgs::PointStamped point;
+                point.point = object.location;
+                point.header = latest.header;
+                geometry_msgs::PointStamped point_out;
+                tf_buffer_.transform(point, point_out, "base_link");
                 tf2::Transform tf;
-                tf.setOrigin(tf2::Vector3(pose_out.pose.pose.position.x, pose_out.pose.pose.position.y, pose_out.pose.pose.position.z));
+                tf.setOrigin(tf2::Vector3(point_out.point.x, point_out.point.y, point_out.point.z));
                 tf2::Quaternion q;
                 q.setRPY(0, 0, (rotation - latestImuZ));
                 tf.setRotation(q);
@@ -122,25 +124,6 @@ std::optional<trajectory_msgs::JointTrajectoryPoint> applyOffset(uint32_t id, co
     tf2::doTransform(offset, p, gmts);
     trajectory_msgs::JointTrajectoryPoint pt = generateTrajectoryPoint(p.position.x, p.position.y, getYaw(p.orientation));
     return std::optional<trajectory_msgs::JointTrajectoryPoint>{pt};
-}
-
-std::optional<Point2D> getTransformedTag(uint32_t id) {
-    if (latest.detections.size() == 0) {
-        return std::nullopt;
-    }
-    else {
-        for (auto detection : latest.detections) {
-            if (detection.id[0] == id) {
-                geometry_msgs::PoseWithCovarianceStamped pose = detection.pose;
-                geometry_msgs::PoseWithCovarianceStamped pose_out;
-                tf_buffer_.transform(pose, pose_out, "base_link");
-                Point2D point{pose_out.pose.pose.position.x, pose_out.pose.pose.position.y};
-                return std::optional<Point2D>{point};
-            }
-        }
-        return std::nullopt;
-    }
-    // currently ignores orientation
 }
 
 std::shared_ptr<actionlib::SimpleActionClient<path_follower_msgs::PathAction>> ac;
@@ -219,7 +202,7 @@ bool pathToTag(behavior_actions::PathToAprilTag::Request &req, behavior_actions:
 
 int main(int argc, char **argv)
 {
-    ros::init(argc, argv, "apriltag_path_client");
+    ros::init(argc, argv, "path_to_apriltag");
 
     ros::NodeHandle nh;
 
@@ -231,7 +214,7 @@ int main(int argc, char **argv)
 
     // need service server too to do this when called
 
-    ros::Subscriber sub_ = nh.subscribe<apriltag_ros::AprilTagDetectionArray>("/cuda_tag_detections", 1, &callback);
+    ros::Subscriber sub_ = nh.subscribe<field_obj::Detection>("/tf_object_detection/tag_detection_world", 1, &callback);
     ros::Subscriber subImu_ = nh.subscribe<sensor_msgs::Imu>("/imu/zeroed_imu", 1, &imuCallback);
     
     ros::spin();
