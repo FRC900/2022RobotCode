@@ -12,9 +12,10 @@
 #include <tf2_ros/transform_listener.h>
 #include <apriltag_ros/AprilTagDetectionArray.h>
 #include <apriltag_ros/AprilTagDetection.h>
+#include <field_obj/Detection.h>
 #include <std_msgs/Header.h>
 
-// topic: cuda_tag_detections
+// topic: tag_detections
 /*
 apriltag_ros/AprilTagDetection[] detections
   int32[] id
@@ -37,6 +38,17 @@ apriltag_ros/AprilTagDetection[] detections
           float64 w
       float64[36] covariance
 */
+
+field_obj::Object apriltagDetectionObject(uint32_t id, double x, double y, double z) {
+	field_obj::Object obj;
+	obj.location.x = x;
+	obj.location.y = y;
+	obj.location.z = z;
+	obj.angle = atan2(y, x);
+	obj.id = std::to_string(id);
+	obj.confidence = 1.0;
+	return obj;
+}
 
 apriltag_ros::AprilTagDetection createAprilTag(uint32_t id, double x, double y, double z, const std_msgs::Header &header) {
 	apriltag_ros::AprilTagDetection msg;
@@ -76,18 +88,11 @@ class SimAprilTagPub
 	public:
 		SimAprilTagPub(ros::NodeHandle &n)
 			: sub_(n.subscribe("/base_marker_detection", 2, &SimAprilTagPub::msgCallback, this)),
-			  pub_(n.advertise<apriltag_ros::AprilTagDetectionArray>("/cuda_tag_detections", 1000))
+			  pub_(n.advertise<apriltag_ros::AprilTagDetectionArray>("/tag_detections", 1000)),
+			  tfPub_(n.advertise<field_obj::Detection>("/tf_object_detection/tag_detection_world", 1000))
 
 		{
-			ROS_INFO_STREAM("Hi");
-			XmlRpc::XmlRpcValue xmlTags;
-			n.getParam("tags", xmlTags);
-			ROS_INFO_STREAM(xmlTags << std::endl);
-			for (auto pair : xmlTags) {
-				ROS_INFO_STREAM(pair.first << std::endl);
-				ROS_INFO_STREAM(pair.second);
-				tags_[std::stoi(pair.first)] = Tag(static_cast<double>(pair.second[0]), static_cast<double>(pair.second[1]), static_cast<double>(pair.second[2]), static_cast<bool>(pair.second[3]));
-			}
+			ROS_INFO_STREAM("stripes and horns, zebracorns!");
 		}
 
 		// Translate stage base_marker_detection into our custom goal detection message
@@ -97,6 +102,7 @@ class SimAprilTagPub
 			static tf2_ros::Buffer tfBuffer;
   			static tf2_ros::TransformListener tfListener(tfBuffer);
 			std::vector<apriltag_ros::AprilTagDetection> detections;
+			std::vector<field_obj::Object> objects;
 			for(size_t i = 0; i < msgIn->markers.size(); i++)
 			{
 				if (msgIn->markers[i].ids[0] == -1) // stage publishes odom as marker -1
@@ -114,7 +120,7 @@ class SimAprilTagPub
 
 				transformStamped.transform.translation.x = p.x;
 				transformStamped.transform.translation.y = p.y;
-				transformStamped.transform.translation.z = tags_[msgIn->markers[i].ids[0]-100].z;
+				transformStamped.transform.translation.z = p.z;
 
 				// Can't detect rotation yet, so publish 0 instead
 				tf2::Quaternion q;
@@ -127,7 +133,8 @@ class SimAprilTagPub
 
 				br.sendTransform(transformStamped);
 
-				detections.push_back(createAprilTag(msgIn->markers[i].ids[0]-100, p.x, p.y, tags_[msgIn->markers[i].ids[0]-100].z, msgIn->header));
+				detections.push_back(createAprilTag(msgIn->markers[i].ids[0]-100, p.x, p.y, p.z, msgIn->header));
+				objects.push_back(apriltagDetectionObject(msgIn->markers[i].ids[0]-100, p.x, p.y, p.z));
 
 			}
 
@@ -135,15 +142,20 @@ class SimAprilTagPub
 			msg.detections = detections;
 			msg.header = msgIn->header;
 
+			field_obj::Detection detMsg;
+			detMsg.header = msgIn->header;
+			detMsg.objects = objects;
+
 			pub_.publish(msg);
+			tfPub_.publish(detMsg);
 			// pub_.publish(msgOut);
 			// pubd_.publish(msgOut);
 		}
 
 	private:
 		ros::Subscriber            sub_;
-		std::map<int, Tag>         tags_; // tag id to tag info
 		ros::Publisher             pub_;
+		ros::Publisher             tfPub_;
 };
 
 int main(int argc, char** argv)

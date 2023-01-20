@@ -27,8 +27,8 @@ def depth_check_cb(msg):
 def main():
     global pub 
     sub_topic = "/cuda_tag_detections"
-    pub_topic = "obj_detection_msg"
-    rospy.init_node('check_depth', anonymous=True)
+    pub_topic = "tag_detection_msg"
+    rospy.init_node('tag_depth', anonymous=True)
 
     sub = rospy.Subscriber(sub_topic, AprilTagDetectionArray, depth_check_cb)
     pub = rospy.Publisher(pub_topic, TFDetection, queue_size=3)
