@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <package format="2">
-  <name>controllers_2019</name>
+  <name>controllers_2023</name>
   <version>0.0.0</version>
-  <description>The controllers_2019 package</description>
+  <description>The controllers_2023 package</description>
 
   <!-- One maintainer tag required, multiple allowed, one person per tag -->
   <!-- Example:  -->
@@ -50,7 +50,7 @@
   <!--   <doc_depend>doxygen</doc_depend> -->
   <buildtool_depend>catkin</buildtool_depend>
   <build_depend>controller_interface</build_depend>
-  <build_depend>controllers_2019_msgs</build_depend>
+  <build_depend>controllers_2023_msgs</build_depend>
   <build_depend>dynamic_reconfigure_wrapper</build_depend>
   <build_depend>hardware_interface</build_depend>
   <build_depend>pluginlib</build_depend>
@@ -60,7 +60,7 @@
   <build_depend>talon_controllers</build_depend>
   <build_depend>talon_interface</build_depend>
   <build_export_depend>controller_interface</build_export_depend>
-  <build_export_depend>controllers_2019_msgs</build_export_depend>
+  <build_export_depend>controllers_2023_msgs</build_export_depend>
   <build_export_depend>dynamic_reconfigure_wrapper</build_export_depend>
   <build_export_depend>hardware_interface</build_export_depend>
   <build_export_depend>pluginlib</build_export_depend>
@@ -70,7 +70,7 @@
   <build_export_depend>talon_controllers</build_export_depend>
   <build_export_depend>talon_interface</build_export_depend>
   <exec_depend>controller_interface</exec_depend>
-  <exec_depend>controllers_2019_msgs</exec_depend>
+  <exec_depend>controllers_2023_msgs</exec_depend>
   <exec_depend>dynamic_reconfigure_wrapper</exec_depend>
   <exec_depend>hardware_interface</exec_depend>
   <exec_depend>pluginlib</exec_depend>
@@ -83,7 +83,7 @@
  <export>
     <!-- Other tools can request additional information be placed here -->
     <!-- PUT PLUGIN THINGS HERE -->
-    <controller_interface plugin = "${prefix}/controllers_2019_plugins.xml"/>
+    <controller_interface plugin = "${prefix}/controllers_2023_plugins.xml"/>
   </export>
 
 </package>

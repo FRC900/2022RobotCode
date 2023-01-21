@@ -2,7 +2,7 @@ elevator_controller_2023:
     type:   elevator_controller_2023/ElevatorController_2023
 
     elevator_joint: [ 'elevator_master', 'elevator_follower1', 'elevator_follower2', 'elevator_follower3' ]
-
+    MAX_HEIGT_VAL: 1.7
     arb_feed_forward_high: 0.052
     arb_feed_forward_low: 0.032
     
