@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <launch>
 		<!-- allow us to hook up sim odom topics for stage sim testing -->
-		<arg name="use_sim" default="false"/>
+		<arg name="hw_or_sim" default="false"/>
 
         <!-- <param name="/use_sim_time" value="true"/> -->
         
@@ -44,7 +44,9 @@
                 <remap from="pid_debug" to="x_position_balance_pid/pid_debug" />
                 <remap from="pid_enable" to="x_position_balance_pid/pid_enable" />
             </node>
-            <node name="balancer_sim" pkg="behaviors" type="2023_sim_balance.py" output="screen"/>
+
+
+            <node name="balancer_sim" pkg="behaviors" type="2023_sim_balance.py" output="screen" if="$(eval arg('hw_or_sim')=='sim')"/>
         </group>
 
 </launch>

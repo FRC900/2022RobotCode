@@ -59,10 +59,7 @@ class Balancer:
         res = handle_param_load("~imu_sub_topic")
         imu_sub_topic = res if res else "/imu/zeroed_imu"
 
-        rospy.logerr(f"Loaded params {setpoint_pub_topic}, {pitch_state_pub_topic}, {x_command_sub_topic}")
-        rospy.logerr(F"angle threshold = {self.angle_threshold}")
         self.PID_enabled = False
-    
         self.current_pitch = -999
         self.current_pitch_time = -1000
         
@@ -79,8 +76,9 @@ class Balancer:
 
     def x_cmd_cb(self, x_command: std_msgs.msg.Float64):
         if self.debug:
-            rospy.logerr_throttle(1, f"X_cmd_callback with {x_command}") 
+            rospy.loginfo_throttle(1, f"X_cmd_callback with {x_command}") 
         # send to motors, @TODO
+        
 
     def imu_callback(self, imu_msg):
         rospy.logdebug("Imu callback")
@@ -101,7 +99,7 @@ class Balancer:
         self.pub_PID_enable.publish(msg)
 
     def balancer_callback(self, goal):
-        rospy.logdebug(f"Balancer Actionlib called with goal {goal}")
+        rospy.loginfo(f"Balancer Actionlib called with goal {goal}")
         msg = std_msgs.msg.Bool()
         msg.data = True
         self.pub_PID_enable.publish(msg)
@@ -126,6 +124,5 @@ if __name__ == '__main__':
     rospy.init_node('balancer')
     name = rospy.get_name()
     balancer_server = Balancer(name)
-    rospy.logerr("Spinning") 
     rospy.spin()
 
