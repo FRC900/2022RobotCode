@@ -117,17 +117,15 @@ class Balancer:
                 self.preempt() # stop pid
                 self._as.set_preempted()
                 break
-            rospy.logerr()
+            
             # publish the feedback
             self._as.publish_feedback(self._feedback)
 
 if __name__ == '__main__':
-    
+
     rospy.init_node('balancer')
     name = rospy.get_name()
-
     balancer_server = Balancer(name)
     rospy.logerr("Spinning") 
-
     rospy.spin()
 

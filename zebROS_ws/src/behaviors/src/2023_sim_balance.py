@@ -1,3 +1,5 @@
+#! /usr/bin/env python3
+
 # try to simulate the odometry and position of the robot on the charging station
 # was going to do pyhisics sim but as it almost always is, its not worth it. 
 
@@ -7,6 +9,10 @@ import cv2 # for visualizing
 import numpy as np
 import time
 import math
+import pandas as pd
+import rospy
+import std_msgs.msg
+import rosgraph_msgs.msg
 
 class States(Enum):
     OFF_LEFT = 1
@@ -48,7 +54,7 @@ BALANCED_HEIGHT = 0.231775 # meters
 BALANCED_ANGLE = 0.59777527 # rad
 # lowest angle the charging station gets to when a robot is driven on it
 LOWEST_ANGLE = 0.191986 # radians, 11 degrees
-LOWEST_MIDDLE_ANGLE = 0.261799
+LOWEST_MIDDLE = BALANCED_HEIGHT * 2 - 0.4064
 # how high the highest point of the station is when a robot is driven on it
 # occurs at same time as LOWEST_ANGLE
 MAX_HEIGHT = 0.4064 # meters 
@@ -57,13 +63,12 @@ FLAT_X_LEFT = STATION_OFFSET + RAMP_LEN_X
 FLAT_X_RIGHT = STATION_OFFSET + RAMP_LEN_X + MIDDLE_LENGHT
 FLAT_X_LEFT_PIXEL = int(FLAT_X_LEFT * METER_TO_PIXEL)
 FLAT_X_RIGHT_PIXEL = int(FLAT_X_RIGHT * METER_TO_PIXEL)
-TIME_STEP = 0.01 
+TIME_STEP = 0.01
 ROBOT_MASS = 45.35 # kg
 LEVER_2_LEVER = 0.2794 # distance between the two points that the charging station can rotate in M
 END_2_LEVER = 0.8027 # distance between the end of the station to one of the rotating points in M
 LEVER_L_X = STATION_OFFSET + END_2_LEVER
 LEVER_R_X = STATION_OFFSET + END_2_LEVER + LEVER_2_LEVER
-
 class Point:
     def __init__(self, x=0, y=0) -> None:
         self.x = x
@@ -72,9 +77,42 @@ class Point:
     def __repr__(self) -> str:
         return f"Point({self.x}, {self.y})"
 
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import six
+
+
+
+def render_mpl_table(data, col_width=3.0, row_height=0.625, font_size=14,
+                     header_color='#40466e', row_colors=['#f1f1f2', 'w'], edge_color='w',
+                     bbox=[0, 0, 1, 1], header_columns=0,
+                     ax=None, **kwargs):
+    if ax is None:
+        size = (np.array(data.shape[::-1]) + np.array([0, 1])) * np.array([col_width, row_height])
+        fig, ax = plt.subplots(figsize=size)
+        ax.axis('off')
+
+    mpl_table = ax.table(cellText=data.values, bbox=bbox, colLabels=data.columns, **kwargs)
+
+    mpl_table.auto_set_font_size(False)
+    mpl_table.set_fontsize(font_size)
+
+    for k, cell in  six.iteritems(mpl_table._cells):
+        cell.set_edgecolor(edge_color)
+        if k[0] == 0 or k[1] < header_columns:
+            cell.set_text_props(weight='bold', color='w')
+            cell.set_facecolor(header_color)
+        else:
+            cell.set_facecolor(row_colors[k[0]%len(row_colors) ])
+    return fig, ax
+
 
 class ChargingStationSim:
     def __init__(self) -> None:
+        self.previous_vel = 0
+        self.center_X = None
+        self.center_Y = None
         self.left_wheel = {}
         self.left_wheel["x"] = 0.7
         self.left_wheel["y"] = 0
@@ -90,10 +128,11 @@ class ChargingStationSim:
         self.left_ramp_end_XY = (STATION_OFFSET + RAMP_LEN_X, BALANCED_HEIGHT)
         self.right_ramp_start_XY = (STATION_OFFSET + RAMP_LEN_X*2+MIDDLE_LENGHT, FUDGE_FACTOR)
         self.right_ramp_end_XY = (STATION_OFFSET+RAMP_LEN_X+MIDDLE_LENGHT, BALANCED_HEIGHT)
-        self.center_line_angle_rad = 0
+        self.center_line_angle_rad = -999
         self.center_line_accels = [] # evenly spaced by TIME_STEP accelerations, should be able to integrate to get velocites
         self.center_line_left_XY = (STATION_OFFSET + RAMP_LEN_X, BALANCED_HEIGHT)
         self.center_line_right_XY = (STATION_OFFSET + RAMP_LEN_X+MIDDLE_LENGHT, BALANCED_HEIGHT)
+        self.df = pd.DataFrame(columns=["force", "torque", "inertia", "angular_accel", "velocity", "radius", "angle"])
 
     def round_dict(self, d):
         new_d = {}
@@ -114,7 +153,7 @@ class ChargingStationSim:
         # make a blank image
         img = np.zeros((IMAGE_Y,IMAGE_X,3), dtype=np.uint8)
         img.fill(255)
-        #print(img)
+        ###print(img)
         # draw the floor as a line
         img = cv2.line(img, (0, IMAGE_Y-FLOOR_OFFSET), (IMAGE_X, IMAGE_Y-FLOOR_OFFSET), (0,255,0), 3)
         img = cv2.rectangle(img, (0, IMAGE_Y-FLOOR_OFFSET), (IMAGE_X, IMAGE_Y), (0,255,0), -1)
@@ -134,9 +173,9 @@ class ChargingStationSim:
         # draw the left wheel
         left_wheel_x = int(self.left_wheel["x"] * METER_TO_PIXEL)
         left_wheel_y = int(self.left_wheel["y"] * METER_TO_PIXEL)
-        print(left_wheel_x, left_wheel_y)
+        ##print(left_wheel_x, left_wheel_y)
         WHEEL_RADIUS_PIXEL = int(WHEEL_RADIUS * METER_TO_PIXEL)
-        print(f"Drawing circle at {left_wheel_x}, {IMAGE_Y - left_wheel_y - FLOOR_OFFSET}")
+        ##print(f"Drawing circle at {left_wheel_x}, {IMAGE_Y - left_wheel_y - FLOOR_OFFSET}")
         img = cv2.circle(img, (left_wheel_x, IMAGE_Y - left_wheel_y - FLOOR_OFFSET - WHEEL_RADIUS_PIXEL), WHEEL_RADIUS_PIXEL, (255,0,0), -1)
 
         # draw the right wheel
@@ -147,11 +186,18 @@ class ChargingStationSim:
         # draw the line between the wheels as the robot
         img = cv2.line(img, (left_wheel_x, IMAGE_Y - left_wheel_y - FLOOR_OFFSET - WHEEL_RADIUS_PIXEL), (right_wheel_x, IMAGE_Y - right_wheel_y - FLOOR_OFFSET - WHEEL_RADIUS_PIXEL), (255,0,0), 3)
         
+        # draw line at X of LEFT_MIDDLE
+        #img = cv2.line(img, (0, IMAGE_Y - FLOOR_OFFSET - int(LOWEST_MIDDLE*METER_TO_PIXEL)), (IMAGE_X, IMAGE_Y - FLOOR_OFFSET-int(LOWEST_MIDDLE*METER_TO_PIXEL)), (0,0,255), 3)
         # draw the charging station
         # draw the base as a line
         #img = self.draw_rotated_ramp_left(img)
         img = self.visualize_lines(img)
-
+        # draw a point at center_X and center_Y
+        if self.center_X is not None and self.center_Y is not None:
+            middle_X = (self.center_line_right_XY[0] + self.center_line_left_XY[0]) / 2
+            middle_Y = (self.center_line_right_XY[1] + self.center_line_left_XY[1]) / 2
+            #img = cv2.line(img, (int(middle_X*METER_TO_PIXEL), 0), (int(middle_X*METER_TO_PIXEL), IMAGE_Y), (0,0,255), 3)
+            #img = cv2.line(img, (0, IMAGE_Y -FLOOR_OFFSET - int(middle_Y*METER_TO_PIXEL)), (IMAGE_X, IMAGE_Y - FLOOR_OFFSET- int(middle_Y*METER_TO_PIXEL)), (0,0,255), 3)
         cv2.imshow("Test", img)
         cv2.waitKey(10)
         #_ = input("Press [enter] to continue.")
@@ -166,14 +212,14 @@ class ChargingStationSim:
         x1_new = rotations/second * dT * circumference
         y1_new = 0
         '''
-        print("off left")
+        ##print("off left")
 
         self.linear_move(velocity, timestep)
         x_diff = self.left_ramp_start_XY[0] - self.right_wheel["x"]
          
         height = WHEEL_RADIUS
         hypot = np.sqrt(x_diff**2 + height**2)
-        print(f"hypot: {hypot} height: {height}, x_diff: {x_diff}, wheel radius: {WHEEL_RADIUS}")
+        ##print(f"hypot: {hypot} height: {height}, x_diff: {x_diff}, wheel radius: {WHEEL_RADIUS}")
         if self.right_wheel["x"] >= STATION_OFFSET - FUDGE_FACTOR * 3 and self.state == States.OFF_LEFT:
             self.state = States.ON_RAMP_LEFT_1_WHEEL
     
@@ -189,8 +235,10 @@ class ChargingStationSim:
         self.right_wheel["y"] += y_diff
         self.left_wheel["x"] += x_diff
         self.right_wheel["x"] += x_diff
-        if self.left_wheel["x"] >= FLAT_X_LEFT:
+        if self.left_wheel["x"] >= FLAT_X_LEFT and self.state == States.ON_LEFT_2_WHEEL_1_RAMP:
+            ##print("UPDATED STATE TO ON_LEFT_2_WHEEL_1_RAMP---------------")
             self.state = States.ON_MIDDLE_2_WHEEL
+            
 
     def calc_ramp_angle(self):
         RAMP_LEN_Y = self.left_ramp_end_XY[1]
@@ -207,24 +255,24 @@ class ChargingStationSim:
 
     def slip(self, velocity, timestep):
         RAMP_ANGLE = self.calc_center_angle()
-        print(f"RAMP Angle {RAMP_ANGLE}")
+        ##print(f"RAMP Angle {RAMP_ANGLE}")
         # move the robot back depending on the angle of it
         y_diff = -0.1 * velocity * timestep * math.sin(RAMP_ANGLE) 
         x_diff = -0.1 * velocity * timestep * math.cos(RAMP_ANGLE)
-        print(f"x_diff {x_diff}, y_diff {y_diff}")
+        ##print(f"x_diff {x_diff}, y_diff {y_diff}")
         # apply slip 
         self.right_wheel["x"] += x_diff
         self.right_wheel["y"] += y_diff
         self.left_wheel["x"] += x_diff
         self.left_wheel["y"] += y_diff
 
+    # get center of robot
     def get_center_x(self):
-        # get center of robot
         center_x = (self.left_wheel["x"] + self.right_wheel["x"]) / 2
         return center_x
-
+    
+    # get center of ramp
     def get_center_ramp_x(self):
-        # get center of robot
         center_x = (self.left_ramp_start_XY[0] + self.right_ramp_start_XY[0]) / 2
         return center_x
 
@@ -246,40 +294,139 @@ class ChargingStationSim:
 
         we now have angular accel and timesteps integrate for velocity and appliy it * dT
         '''
+        if self.center_line_angle_rad == -999:
+            self.center_line_angle_rad = self.angle
+            ##print(f"center line angle {self.center_line_angle_rad} just set")
+            #time.sleep(1)
         force = ROBOT_MASS * 9.8
-        c_X = self.get_center_x() 
-        if abs(LEVER_L_X - c_X) > abs(LEVER_R_X - c_X):
-            radius = abs(LEVER_R_X - c_X)
-            center_pt = LEVER_R_X
-        else:
-            radius = abs(LEVER_L_X - c_X)
-            center_pt = LEVER_L_X
-        torque = force * radius * math.sin(self.angle) # ramp angle before update is also just robot angle
+        c_X = self.get_center_x()
+        radius = -(c_X - self.get_center_ramp_x())
+
+        #radius = abs(c_X - self.get_center_ramp_x())
+        ##print(f"Radius {radius}, self.right_wheel['x'] {self.right_wheel['x']}, c_X {c_X}")
+        #_ = input()
+        torque = force * radius * abs(math.sin(self.angle)) # ramp angle before update is also just robot angle
+        # basically multiplying by angle because sin of small x = x 
         inertia = ROBOT_MASS * (radius ** 2)
+        #inertia = 1
         angular_accel = torque/inertia
-        self.center_line_accels.append[angular_accel]
-        12
+    
+        #print(f"Desired AA {angular_accel}\nTorque {torque}\nRadius {radius}\nsin {math.sin(self.angle)}\nAngle {self.angle}")
+        #angular_accel = self.clamp(-1, 1, angular_accel)
+        if -0.05 <= radius <= 0.05:
+            #print("Applying 'to center' force")
+            #print(f"Previous final vel = {self.previous_vel + angular_accel * timestep }")
+            ##print(f"Adding {2 * self.angle * radius}")
+            
+            final_vel = -100 * self.angle * abs(radius)
+            #self.previous_vel = final_vel
+
+            #print(f"New final vel = {final_vel}")
+        else:
+            # apply angular accel to previous velocity
+            final_vel = self.previous_vel + angular_accel * timestep
+            #print(f"Final Vel {final_vel} ")
+            self.previous_vel = final_vel
+        '''
+        self.center_line_accels.append(angular_accel)
+        # make dataFrame with force, torque, inertia, angular accel, and velocity, radius and angle
+        #self.df = pd.DataFrame(columns=["force", "torque", "inertia", "angular_accel", "velocity", "radius", "angle"])
         #acceleration = [1, 2, 3, 4, 5, 6, 7, 8, 9, -1, -2, -3, -4, -5, -6, -7, -8, -9]
+        # TODO, when the ramp is fully extended, one way or the other, it does not accelerate anymore, so clear the list
         velocitylist = [0]
         for acc in self.center_line_accels:
             velocitylist.append(velocitylist[-1] + acc * TIME_STEP)
         final_vel = velocitylist[-1]
-        print(f"Angular accel {angular_accel} final vel {final_vel}")
+        '''
+        #print(f"Time {self.time}")
+        self.df.loc[len(self.df)] = [force, torque, inertia, angular_accel, final_vel, radius, self.angle]
+        #self.fig, ax = render_mpl_table(self.df)
+        #self.fig.savefig("table.png")
+        ###print(f"Velocity list {velocitylist}")
+        ##print(f"Angular accel {angular_accel} final vel {final_vel * timestep}")
+        #time.sleep(1)
+        center_pt = self.get_center_ramp_x()
         self.update_center_with_angle(final_vel, center_pt, timestep)
 
 
+    def clamp(self, low, high, n):
+        if n < low: 
+            #self.center_line_accels = []
+            return low
+        if n > high: 
+            #self.center_line_accels = []
+            return high
+        return n
+    
     def update_center_with_angle(self, angular_vel, center_point, timestep):
-        last_angle = self.center_line_angle_rad
+        if (self.center_line_left_XY[1] <= LOWEST_MIDDLE) and angular_vel > 0:
+            ##print("Ramp is too low with angular vel ", angular_vel)
+            self.center_line_accels = []
+            #time.sleep(1)
+            return
+        
+        if (self.center_line_right_XY[1] <= LOWEST_MIDDLE) and angular_vel < 0:
+            ##print("Ramp is too low with angular vel ", angular_vel)
+            self.center_line_accels = []
+            #time.sleep(1)
+            return
+        
+        ###print("Starting left = ", self.center_line_left_XY)
+        ###print("Starting right = ", self.center_line_right_XY)
+        ###print(f"Center point {center_point}")
         self.center_line_angle_rad += timestep * angular_vel
+        if self.center_line_angle_rad < -LOWEST_ANGLE: 
+            self.center_line_angle_rad = -LOWEST_ANGLE
+            self.previous_vel = 0
+        if self.center_line_angle_rad > LOWEST_ANGLE: 
+            self.center_line_angle_rad = LOWEST_ANGLE
+            self.previous_vel = 0
+        
+        self.angle = self.center_line_angle_rad
+        # find x and y from angle and hypot which is half the length of the ramp
+        self.center_line_left_XY = [center_point - (MIDDLE_LENGHT / 2) * math.cos(self.center_line_angle_rad), (MIDDLE_LENGHT / 2) * -math.sin(self.center_line_angle_rad) + BALANCED_HEIGHT]
+        self.center_line_right_XY = [center_point + (MIDDLE_LENGHT / 2) * math.cos(self.center_line_angle_rad), (MIDDLE_LENGHT / 2) * math.sin(self.center_line_angle_rad) + BALANCED_HEIGHT]
+        # move the wheels to be on the ramp use same math as before
+        # find new radius for the wheels, use pythagorean theorem
+        ###print(f"self.center_line_left_XY {self.center_line_left_XY} self.center_line_right_XY {self.center_line_right_XY}")
+        self.center_X = abs(self.center_line_left_XY[0] + self.center_line_right_XY[0]) / 2
+        self.center_Y = abs(self.center_line_left_XY[1] + self.center_line_right_XY[1]) / 2
+        r_left_wheel = math.sqrt((self.center_X - self.left_wheel["x"]) ** 2 + (self.center_Y - self.left_wheel['y']) ** 2)
+        r_right_wheel = math.sqrt((self.center_X - self.right_wheel['x']) ** 2 + (self.center_Y - self.right_wheel['y']) ** 2)
+        # find new position for the wheels
+        self.center_line_left_XY = [center_point - (MIDDLE_LENGHT / 2) * math.cos(self.center_line_angle_rad), (MIDDLE_LENGHT / 2) * -math.sin(self.center_line_angle_rad) + BALANCED_HEIGHT]
+        self.center_line_right_XY = [center_point + (MIDDLE_LENGHT / 2) * math.cos(self.center_line_angle_rad), (MIDDLE_LENGHT / 2) * math.sin(self.center_line_angle_rad) + BALANCED_HEIGHT]
+        if self.left_wheel["x"] < self.get_center_ramp_x():
+            self.left_wheel['x'] = center_point - r_left_wheel * math.cos(self.center_line_angle_rad)
+        else:
+            self.left_wheel['x'] = center_point + r_left_wheel * math.cos(self.center_line_angle_rad)
 
+        if self.right_wheel["x"] < self.get_center_ramp_x():
+            self.right_wheel['x'] = center_point - r_right_wheel * math.cos(self.center_line_angle_rad)
+        else:
+            self.right_wheel['x'] = center_point + r_right_wheel * math.cos(self.center_line_angle_rad)
+            
+        self.left_wheel['y'] = r_left_wheel * -math.sin(self.center_line_angle_rad) + BALANCED_HEIGHT
+        self.right_wheel['y'] = r_right_wheel * math.sin(self.center_line_angle_rad) + BALANCED_HEIGHT
+        ##print(f"r_left_wheel {r_left_wheel} r_right_wheel {r_right_wheel}")
+        ##print(f"Center X {self.center_X} Center Y {self.center_Y}")
+        ##print("Angle in deg", self.center_line_angle_rad * 180 / np.pi)
+
+       # _ = input("Press enter to continue")
+        
+        # assert if the hypot is not the same as the length of the ramp
+
+
+        #time.sleep(2)
 
     def on_middle_2_wheels(self, velocity, timestep):
-        self.update_ramp(timestep)
         self.slip(velocity, timestep)
+        self.update_ramp(timestep)
+        self.on_ramp_left_2_wheels(velocity, timestep)
         
 
     def on_middle_left_1_wheel(self, velocity, timestep):
-        print("on ramp left 1 wheel")
+        ##print("on ramp left 1 wheel")
         # move the right wheel forward
         rotations = velocity / (WHEEL_RADIUS * 2 * np.pi) # i am still not sure about this 2 * pi, because it simplifies to velocity*timestep * sin/cos(RAMP_ANGLE)
         circumference = 2 * np.pi * WHEEL_RADIUS          # it looks fine though, and for a flat ramp it is correct as it simplifies to velocity * timestep
@@ -290,13 +437,13 @@ class ChargingStationSim:
         # calculate ramp angle based on the two points of the ramp
         RAMP_ANGLE = (np.arctan((RAMP_LEN_Y) / (RAMP_LEN_X)))
         #RAMP_ANGLE = np.deg2rad(34.5)
-        print(f"RAMP_ANGLE DEG = {np.rad2deg(RAMP_ANGLE)}")
+        ##print(f"RAMP_ANGLE DEG = {np.rad2deg(RAMP_ANGLE)}")
         #RAMP_ANGLE =
         y_diff = hypot * np.sin(RAMP_ANGLE)
         x_diff = hypot * np.cos(RAMP_ANGLE)
         self.right_wheel["x"] += x_diff
         self.right_wheel["y"] += y_diff
-        print(f"X diff = {x_diff} Y diff = {y_diff}, hypot = {hypot}, sin = {np.sin(RAMP_ANGLE)}, cos = {np.cos(RAMP_ANGLE)}")
+        ##print(f"X diff = {x_diff} Y diff = {y_diff}, hypot = {hypot}, sin = {np.sin(RAMP_ANGLE)}, cos = {np.cos(RAMP_ANGLE)}")
         # calculate new angle
         self.angle = (np.arcsin(self.right_wheel["y"] / WHEEL_TO_WHEEL))
         #assert self.angle <= 31.5
@@ -333,7 +480,7 @@ class ChargingStationSim:
             x1_new = x_new - sqrt(w^2 - y_new^2)
             y1_new = 0
         '''
-        print("on ramp left 1 wheel")
+        ##print("on ramp left 1 wheel")
         # move the right wheel forward
         rotations = velocity / (WHEEL_RADIUS * 2 * np.pi) # i am still not sure about this 2 * pi, because it simplifies to velocity*timestep * sin/cos(RAMP_ANGLE)
         circumference = 2 * np.pi * WHEEL_RADIUS          # it looks fine though, and for a flat ramp it is correct as it simplifies to velocity * timestep
@@ -344,13 +491,13 @@ class ChargingStationSim:
         # calculate ramp angle based on the two points of the ramp
         RAMP_ANGLE = (np.arctan((RAMP_LEN_Y) / (RAMP_LEN_X)))
         #RAMP_ANGLE = np.deg2rad(34.5)
-        print(f"RAMP_ANGLE DEG = {np.rad2deg(RAMP_ANGLE)}")
+        ##print(f"RAMP_ANGLE DEG = {np.rad2deg(RAMP_ANGLE)}")
         #RAMP_ANGLE =
         y_diff = hypot * np.sin(RAMP_ANGLE)
         x_diff = hypot * np.cos(RAMP_ANGLE)
         self.right_wheel["x"] += x_diff
         self.right_wheel["y"] += y_diff
-        print(f"X diff = {x_diff} Y diff = {y_diff}, hypot = {hypot}, sin = {np.sin(RAMP_ANGLE)}, cos = {np.cos(RAMP_ANGLE)}")
+        ##print(f"X diff = {x_diff} Y diff = {y_diff}, hypot = {hypot}, sin = {np.sin(RAMP_ANGLE)}, cos = {np.cos(RAMP_ANGLE)}")
         # calculate new angle
         self.angle = (np.arcsin(self.right_wheel["y"] / WHEEL_TO_WHEEL))
         #assert self.angle <= 31.5
@@ -358,7 +505,7 @@ class ChargingStationSim:
         self.left_wheel["x"] = self.right_wheel["x"] - np.sqrt(WHEEL_TO_WHEEL**2 - self.right_wheel["y"]**2)
         self.left_wheel["y"] = 0
         if self.right_wheel["x"] >= STATION_OFFSET + RAMP_LEN_X - WHEEL_RADIUS:
-            print("on middle left 1 wheel")
+            ##print("on middle left 1 wheel")
 
             #exit()
             self.state = States.ON_MIDDLE_LEFT_1_WHEEL
@@ -372,7 +519,7 @@ class ChargingStationSim:
             self.center_line_right_XY = (FLAT_X_RIGHT, MAX_HEIGHT)
             # update the angle
             self.angle = (np.arcsin(self.right_wheel["y"] / WHEEL_TO_WHEEL))
-            self.visualize()
+            #self.visualize()
             
     def on_left_2_wheel_1_ramp(self, velocity, timestep):
         # we are on flat plane now, # easy peasy
@@ -386,13 +533,16 @@ class ChargingStationSim:
     def linear_move(self, velocity, timestep):
         rotations = velocity / (WHEEL_RADIUS * 2 * np.pi)
         circumference = 2 * np.pi * WHEEL_RADIUS
-        print(f"Rotations {rotations * circumference * timestep}, Circumference {circumference}")
+        ##print(f"Rotations {rotations * circumference * timestep}, Circumference {circumference}")
         self.right_wheel["x"] += rotations * circumference * timestep # simplifies to velocity * timestep but it is what will be used for the ramp
         # move the left wheel forward
         self.left_wheel["x"] += rotations * circumference * timestep
 
     def step(self, velocity, timestep):
         self.time += timestep
+        #clock_pub.publish(rospy.Time.from_sec(charging_station.time))
+        ##print(f"Time: {charging_station.time}")
+        #time.sleep(TIME_STEP)
         if self.state == States.OFF_LEFT:
             self.off_left(velocity, timestep)
         elif self.state == States.ON_RAMP_LEFT_1_WHEEL:
@@ -404,21 +554,63 @@ class ChargingStationSim:
         elif self.state == States.ON_MIDDLE_2_WHEEL:
             self.on_middle_2_wheels(velocity, timestep)
 
+global n
+n=0
+def step(msg):
+    global n
+    global charging_station #sim_clock, clock_pub
+    rospy.loginfo_throttle(1, f"step {charging_station.time}, angle {charging_station.angle*180/np.pi}, msg {msg.data}")
+    print(f"Callback {n}")
+    n +=1
+    ##print(f"angle {charging_station.angle*180/np.pi}")
+    charging_station.step(msg.data, TIME_STEP)
+    #sim_clock.clock = rospy.Time.from_sec(charging_station.time)
+    #clock_pub.publish(sim_clock)
+    #pub.publish(charging_station.angle)
+    #charging_station.visualize()
+
 
 if __name__ == "__main__":
+    global charging_station, pub, sub
+    rospy.init_node("charging_station_sim")
+    #sim_clock = rosgraph_msgs.msg.Clock()
+    zero_time = rospy.get_time()
+
+    sub = rospy.Subscriber("/balance_position/position_balance_pid/x_command", std_msgs.msg.Float64, step, queue_size=1)
+    #clock_pub = rospy.Publisher("/clock", rosgraph_msgs.msg.Clock, queue_size=0)
+    pub = rospy.Publisher("/balance_position/position_balance_pid/pitch_state_pub", std_msgs.msg.Float64, queue_size=100)
     charging_station = ChargingStationSim()
-    charging_station.visualize()
+    while charging_station.state != States.ON_MIDDLE_2_WHEEL:
+        charging_station.step(0.5, TIME_STEP)
+
+    #print(f"Charging station is ready, angle {charging_station.angle*180/np.pi}")
+    #charging_station.visualize()
+    #print("Starting ROS")
+    #print("Published clock")
+    while not rospy.is_shutdown():
+        pub.publish(charging_station.angle)
+        charging_station.visualize()
+
+    ''' 
     i = 0
+    vel = 0.5
     while True:
         i += 1
-        #print(i)
-        charging_station.step(0.5, TIME_STEP)
-        #print(charging_station.left_wheel)
-        #print(charging_station.right_wheel)
-        print(charging_station.state)
+        ###print(i)
+        inp = input("Enter a command: ")
+        if inp.upper() == "I":
+            ##print("-----------Increasing velocity-------------")
+            vel *= -0.5
+        elif inp.upper() == "S":
+            charging_station.df.to_csv("charging_station.csv")
+        charging_station.step(vel, TIME_STEP)
+        ###print(charging_station.left_wheel)
+        ###print(charging_station.right_wheel)
+        ##print(charging_station.state)
         charging_station.visualize()
         time.sleep(0.01)
         if charging_station.state == States.ON_RAMP_LEFT_1_WHEEL:
             #_ = input()
             i += 0
-            print("on ramp left 1 wheel")
+            ##print("on ramp left 1 wheel")
+    '''
