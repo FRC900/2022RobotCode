@@ -6,11 +6,10 @@
         <!-- <param name="/use_sim_time" value="true"/> -->
         
 		<group ns="balance_position">
-            <!-- <node name="balancer_sim" pkg="behaviors" type="2023_balancer_sim.py" output="screen"/>-->
+            <node name="balancing_server" pkg="behaviors" type="2023_balancing_server.py" output="screen">
 
-            <!-- <rosparam file="$(find path_follower)/config/hold_position_config.yaml" command="load"/>-->
+            </node>
 
-            <!-- Radians -->
 
             <!-- Less complicated verson of hold position, because we can only move X and we use pitch-->
             <node name="balancer_server" pkg="behaviors" type="2023_balancer_server.py" output="screen">

@@ -26,20 +26,17 @@ class Balancer:
     _result = behavior_actions.msg.Balancer2023Result()
 
     def __init__(self, name):
-        print("Called init")
-        rospy.logerr("Started starting actionlib server")
-        print("here?")
         self.debug = True
         self._action_name = name
-        rospy.logdebug("Started starting actionlib server")
 
         self._as = actionlib.SimpleActionServer(self._action_name, behavior_actions.msg.Balancer2023Action,
                                                 execute_cb=self.balancer_callback, auto_start=False)
-        rospy.logdebug("Started actionlib server")
         self._as.start()
         res = handle_param_load("~angle_threshold")
         self.angle_threshold = res if res else math.radians(2) 
 
+        res = handle_param_load("~cmd_vel_topic")
+        cmd_vel_topic = res if res else "cmd_vel"
         # load params, don't care about topics after we have the subs/pubs
         res = handle_param_load("~setpoint_topic") 
         setpoint_pub_topic = res if res else "position_balance_pid/pitch_cmd_pub"
@@ -60,6 +57,9 @@ class Balancer:
         imu_sub_topic = res if res else "/imu/zeroed_imu"
 
         self.PID_enabled = False
+        self.desired_pitch = 0.0 # just in case we want to change it later, add offset or something
+        self.time_to_balamced = 2 # how many seconds of being within the angle threshold to be considered balanced 
+        self.first_balance_time = None
         self.current_pitch = -999
         self.current_pitch_time = -1000
         
@@ -72,7 +72,7 @@ class Balancer:
         self.sub_x_command = rospy.Subscriber(x_command_sub_topic, std_msgs.msg.Float64, self.x_cmd_cb)
         self.pub_PID_enable = rospy.Publisher(enable_topic, std_msgs.msg.Bool, queue_size=30) 
         self.sub_imu = rospy.Subscriber(imu_sub_topic, sensor_msgs.msg.Imu, self.imu_callback)
-        rospy.logerr("Finished initalizing")
+        rospy.logerr("Finished initalizing 2023_balancer_server")
 
     def x_cmd_cb(self, x_command: std_msgs.msg.Float64):
         if self.debug:
@@ -105,7 +105,7 @@ class Balancer:
         self.pub_PID_enable.publish(msg)
         
         msgF = std_msgs.msg.Float64()
-        msgF.data = 0.0
+        msgF.data = self.desired_pitch
         self.pub_setpoint.publish(msgF) # say we want pitch to be 0
         while True:
             # I think subscribers should update without spinOnce... it doesn't exist in python
@@ -116,11 +116,23 @@ class Balancer:
                 self._as.set_preempted()
                 break
             
+            error = abs(self.current_pitch - self.desired_pitch)
+            self._feedback.error = error
+            stable_and_balanced = False
+            if error <= self.angle_threshold:
+                now = rospy.Time.now()
+                if self.first_balance_time is None:
+                    self.first_balance_time = now
+                elif now - self.first_balance_time >= self.time_to_balamced:
+                    stable_and_balanced = True
+            else:
+                self.first_balance_time = None
+            
+            self._feedback.stable_and_balanced = stable_and_balanced
             # publish the feedback
             self._as.publish_feedback(self._feedback)
 
 if __name__ == '__main__':
-
     rospy.init_node('balancer')
     name = rospy.get_name()
     balancer_server = Balancer(name)
