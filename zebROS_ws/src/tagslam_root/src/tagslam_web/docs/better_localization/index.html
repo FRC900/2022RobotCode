@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en-us">
+<head><meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>B. Hints for Better Localization - TagSLAM</title>
+<meta name="generator" content="Hugo 0.68.3" />
+<link href="https://berndpfrommer.github.io/tagslam_web//index.xml" rel="alternate" type="application/rss+xml">
+<link rel="canonical" href="https://berndpfrommer.github.io/tagslam_web/better_localization/">
+<link rel="stylesheet" href="https://berndpfrommer.github.io/tagslam_web/css/theme.min.css">
+<script src="https://use.fontawesome.com/releases/v5.0.6/js/all.js"></script>
+<link rel="stylesheet" href="https://berndpfrommer.github.io/tagslam_web/css/chroma.min.css">
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.4.1/dist/jquery.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jquery.easing@1.4.1/jquery.easing.min.js"></script>
+<script src="https://berndpfrommer.github.io/tagslam_web/js/bundle.js"></script><style>
+:root {}
+</style>
+<meta property="og:title" content="B. Hints for Better Localization" />
+<meta property="og:description" content="" />
+<meta property="og:type" content="website" />
+<meta property="og:url" content="https://berndpfrommer.github.io/tagslam_web/better_localization/" />
+<meta property="og:updated_time" content="2015-07-18T14:08:35+02:00" />
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="B. Hints for Better Localization"/>
+<meta name="twitter:description" content=""/>
+<meta itemprop="name" content="B. Hints for Better Localization">
+<meta itemprop="description" content=""><script type="text/javascript" async
+  src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
+  MathJax.Hub.Config({
+  tex2jax: {
+  inlineMath: [['$','$'], ['\\(','\\)']],
+  displayMath: [['$$','$$']],
+  processEscapes: true,
+  processEnvironments: true,
+  skipTags: ['script', 'noscript', 'style', 'textarea', 'pre'],
+  TeX: { equationNumbers: { autoNumber: "AMS" },
+  extensions: ["AMSmath.js", "AMSsymbols.js"]
+  }
+  }
+  });
+  MathJax.Hub.Queue(function() {
+    
+    
+    
+    var all = MathJax.Hub.getAllJax(), i;
+    for(i = 0; i < all.length; i += 1) {
+        all[i].SourceElement().parentNode.className += ' has-jax';
+    }
+  });
+
+  MathJax.Hub.Config({
+  
+  TeX: { equationNumbers: { autoNumber: "AMS" } }
+  });
+</script>
+$
+\newcommand{\cc}[1]{\color{black}{#1}}
+\newcommand{\mvec}[1]{\mathbf{#1}}
+\newcommand{\cvec}[2]{^\mathrm{#2}\mathbf{#1}}
+\newcommand{\ctrans}[3]{^\mathrm{#3}\mathbf{#1}_\mathrm{#2}}
+$
+</head>
+<body><div class="container"><header>
+<h1>TagSLAM</h1>
+<a href="https://github.com/berndpfrommer/tagslam_root" class="github"><i class="fab fa-github"></i></a>
+</header>
+
+<div class="content-container">
+<main><h1>B. Hints for Better Localization</h1><p>Paying attention to the details when using tags for localization can
+make a big difference for the quality of the results!</p>
+<h1 id="camera-and-lighting">Camera and Lighting</h1>
+<p>Some important points when selecting a camera:</p>
+<ul>
+<li>Lighting: illuminate the tags as brightly as possible.
+The more light, the shorter the shutter times, the less motion blur. Avoid
+backlight when possible.</li>
+<li>Check that your camera is focused correctly for the distance you
+need. When in doubt, set focus to a distances a little longer than
+you expect (focus is most important for far away tags)</li>
+<li>Use a camera with global shutter, not rolling shutter. Most consumer
+cameras (webcams, GoPros etc) have rolling shutters that
+can <a href="https://www.youtube.com/watch?v=LVwmtwZLG88">distort objects</a>
+that are in motion.</li>
+<li>Short shutter times are crucial for avoiding motion blur. To this end, you want:
+<ul>
+<li>a large sensor with high quantum efficiency. The FLIR machine
+vision website (formerly PointGrey) has excellent sensor
+comparisons.</li>
+<li>a large aperture lens (but beware of focus!)</li>
+</ul>
+</li>
+<li>Auto focus cameras are to be avoided because their calibration could
+change while recording.</li>
+<li>If using multiple cameras, they must be synchronized (use hardware
+sync!), because TagSLAM cannot handle unsynchronized camera streams!</li>
+<li>Higher resolution is better. If the resolution is too low, you may
+not be able to detect any tags.</li>
+<li>Generally wide-angle lenses (up to 120deg) are preferred, but they
+must be used in combination with a high resolution sensor.</li>
+</ul>
+<h1 id="tag-placement">Tag placement</h1>
+<p>Here some tips on tag placement:</p>
+<ul>
+<li>always have multiple tags in view. Localizing from a single tag is very fragile.</li>
+<li>make sure tags are visible (unoccluded) from all points on the camera path.</li>
+<li>avoid placing tags where there is a lot of backlight</li>
+<li>space tags as far from each other as possible, but in such a way
+that always multiple tags are still visible.</li>
+<li>resist the temptation to arrange your tags in a linear fashion, for example leaning them against the wall on the floor. TagSLAM uses a triangulation based approach, which works best with &hellip; triangles. The following video shows that better results can be obtained with 3 tags in a triangular arrangement than from 5 tags that are collinear.</li>
+</ul>
+<div style="position: relative; padding-bottom: 56.25%; height: 0;">
+<iframe src="//www.youtube.com/embed/ti4PFfSBZyk?autoplay=0" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border:0;" allowfullscreen title="TagSLAM on linear vs triangular tags"></iframe>
+</div>
+<div class="edit-meta"><br></div><nav class="pagination"><a class="nav nav-prev" href="https://berndpfrommer.github.io/tagslam_web/help/" title="A. Asking for Help"><i class="fas fa-arrow-left" aria-hidden="true"></i> Prev - A. Asking for Help</a>
+<a class="nav nav-next" href="https://berndpfrommer.github.io/tagslam_web/making_tags/" title="C. Making and Using AprilTags">Next - C. Making and Using AprilTags <i class="fas fa-arrow-right" aria-hidden="true"></i></a>
+</nav><footer>
+</footer>
+</main><div class="sidebar">
+
+<nav class="open-menu">
+<ul>
+<li class=""><a href="https://berndpfrommer.github.io/tagslam_web/">Home</a></li>
+
+<li class=""><a href="https://berndpfrommer.github.io/tagslam_web/getting_started/">Getting Started</a>
+  
+</li>
+
+<li class=""><a href="https://berndpfrommer.github.io/tagslam_web/concepts/">Concepts</a>
+  
+</li>
+
+<li class=""><a href="https://berndpfrommer.github.io/tagslam_web/caveats/">Caveats and Limitations</a>
+  
+</li>
+
+<li class=""><a href="https://berndpfrommer.github.io/tagslam_web/intrinsic_calibration/">Intrinsic Calibration</a>
+  
+</li>
+
+<li class=""><a href="https://berndpfrommer.github.io/tagslam_web/input_files/">Input Files and Parameters</a>
+  
+</li>
+
+<li class=""><a href="https://berndpfrommer.github.io/tagslam_web/measurements/">Measurements</a>
+  
+</li>
+
+<li class=""><a href="https://berndpfrommer.github.io/tagslam_web/output/">Output</a>
+  
+</li>
+
+<li class=""><a href="https://berndpfrommer.github.io/tagslam_web/examples/">Examples</a>
+  
+</li>
+
+<li class=""><a href="https://berndpfrommer.github.io/tagslam_web/visualization/">Visualization</a>
+  
+</li>
+
+<li class=""><a href="https://berndpfrommer.github.io/tagslam_web/trouble_shooting/">Troubleshooting</a>
+  
+</li>
+
+<li class=""><a href="https://berndpfrommer.github.io/tagslam_web/help/">A. Asking for Help</a>
+  
+</li>
+
+<li class="parent active"><a href="https://berndpfrommer.github.io/tagslam_web/better_localization/">B. Hints for Better Localization</a>
+  
+</li>
+
+<li class=""><a href="https://berndpfrommer.github.io/tagslam_web/making_tags/">C. Making and Using AprilTags</a>
+  
+</li>
+</ul>
+</nav>
+
+
+
+<div class="sidebar-footer"></div>
+</div>
+</div><a href="#" id="backtothetop-fixed" class="backtothetop"
+ data-backtothetop-duration="600"
+ data-backtothetop-easing="easeOutQuart"
+ data-backtothetop-fixed-fadeIn="1000"
+ data-backtothetop-fixed-fadeOut="1000"
+ data-backtothetop-fixed-bottom="10"
+ data-backtothetop-fixed-right="20">
+<span class="fa-layers fa-fw">
+<i class="fas fa-circle"></i>
+<i class="fas fa-arrow-circle-up"></i>
+</span></a>
+</div>
+</body>
+</html>

@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en-us">
+<head><meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Concepts - TagSLAM</title>
+<meta name="generator" content="Hugo 0.68.3" />
+<link href="https://berndpfrommer.github.io/tagslam_web//index.xml" rel="alternate" type="application/rss+xml">
+<link rel="canonical" href="https://berndpfrommer.github.io/tagslam_web/concepts/">
+<link rel="stylesheet" href="https://berndpfrommer.github.io/tagslam_web/css/theme.min.css">
+<script src="https://use.fontawesome.com/releases/v5.0.6/js/all.js"></script>
+<link rel="stylesheet" href="https://berndpfrommer.github.io/tagslam_web/css/chroma.min.css">
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.4.1/dist/jquery.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jquery.easing@1.4.1/jquery.easing.min.js"></script>
+<script src="https://berndpfrommer.github.io/tagslam_web/js/bundle.js"></script><style>
+:root {}
+</style>
+<meta property="og:title" content="Concepts" />
+<meta property="og:description" content="" />
+<meta property="og:type" content="website" />
+<meta property="og:url" content="https://berndpfrommer.github.io/tagslam_web/concepts/" />
+<meta property="og:updated_time" content="2015-07-18T14:08:35+02:00" />
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="Concepts"/>
+<meta name="twitter:description" content=""/>
+<meta itemprop="name" content="Concepts">
+<meta itemprop="description" content=""><script type="text/javascript" async
+  src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
+  MathJax.Hub.Config({
+  tex2jax: {
+  inlineMath: [['$','$'], ['\\(','\\)']],
+  displayMath: [['$$','$$']],
+  processEscapes: true,
+  processEnvironments: true,
+  skipTags: ['script', 'noscript', 'style', 'textarea', 'pre'],
+  TeX: { equationNumbers: { autoNumber: "AMS" },
+  extensions: ["AMSmath.js", "AMSsymbols.js"]
+  }
+  }
+  });
+  MathJax.Hub.Queue(function() {
+    
+    
+    
+    var all = MathJax.Hub.getAllJax(), i;
+    for(i = 0; i < all.length; i += 1) {
+        all[i].SourceElement().parentNode.className += ' has-jax';
+    }
+  });
+
+  MathJax.Hub.Config({
+  
+  TeX: { equationNumbers: { autoNumber: "AMS" } }
+  });
+</script>
+$
+\newcommand{\cc}[1]{\color{black}{#1}}
+\newcommand{\mvec}[1]{\mathbf{#1}}
+\newcommand{\cvec}[2]{^\mathrm{#2}\mathbf{#1}}
+\newcommand{\ctrans}[3]{^\mathrm{#3}\mathbf{#1}_\mathrm{#2}}
+$
+</head>
+<body><div class="container"><header>
+<h1>TagSLAM</h1>
+<a href="https://github.com/berndpfrommer/tagslam_root" class="github"><i class="fab fa-github"></i></a>
+</header>
+
+<div class="content-container">
+<main><h1>Concepts</h1><h1 id="notation-for-transforms">Notation for transforms</h1>
+<p>In the following, transforms written as:
+$$
+\ctrans{T}{A}{B}
+$$</p>
+<html>
+</html>
+take coordinates $\cvec{X}{A}$ in  frame $\mathrm{A}$ and express them in frame $\mathrm{B}$:
+$$
+\cvec{X}{B} = \ctrans{T}{A}{B}\ \cvec{X}{A}
+$$
+<h1 id="bodies">Bodies</h1>
+<p>In TagSLAM, every tag is associated with a body, and tag poses are
+given relative to that body. Likewise, every camera must be associated with
+a body, and camera poses are expressed with respect to that
+body.</p>
+<p>Consider the following scene:</p>
+<img src="../media/block_scene.png" alt="block scene" width="800"/>
+<p>In the example above, for the camera to localize itself, the &ldquo;lab&rdquo; body&rsquo;s world pose $\ctrans{T}{lab}{map}$ must be specified, as well as
+the pose $\ctrans{T}{tag\_2}{lab}$ of the tag with respect to the lab.
+Also needed is the pose $\ctrans{T}{cam0}{cam\_rig}$ of the camera with respect to the body it is attached to (&ldquo;cam_rig&rdquo;).</p>
+<p>For the block to be localized by TagSLAM, we only need to provide $\ctrans{T}{tag\_105}{block}$. When the camera sees tags 2 and tag 105 at the same time, it will be able to infer the missing transform $\ctrans{T}{block}{map}$.</p>
+<h1 id="poses">Poses</h1>
+<p>Poses can be classfied according to their time dependence:</p>
+<ul>
+<li>
+<p>Static poses: such poses do not change over time, i.e. TagSLAM will
+maintain a single variable throughout the entire data set. An
+example would be the pose of the lab $\ctrans{T}{lab}{map}$.</p>
+</li>
+<li>
+<p>Non-static poses: they can potentially change with every
+frame. An example would be the pose $\ctrans{T}{cam\_rig}{map}$ of
+the camera rig or the pose $\ctrans{T}{block}{map}$ of the block.</p>
+</li>
+</ul>
+<p>Note that <em>tag and camera poses are always static</em>! That means they do
+not change with time, i.e. TagSLAM assumes one constant pose over
+time. However, the <em>body</em> to which the tags or cameras are attached
+can have a time dependent pose!</p>
+<p>Further, static poses are distinguished by prior knowledge:</p>
+<ul>
+<li>Known poses: the pose is already known at the start, for instance
+from a previous run of TagSLAM.</li>
+<li>Unknown poses: the pose, although static, is unknown at the
+beginning, and must be discovered on the fly.</li>
+</ul>
+<h1 id="specifying-poses">Specifying poses</h1>
+<p>Poses in TagSLAM are given as position and rotation components (SE(3)). The
+rotations are specified as a rotation vector, i.e. the log of the
+rotation matrix. The direction of the rotation vector specifies the
+rotation axis, the length of it the rotation angle in radians. Use
+Andre Gaschler&rsquo;s handy <a href="https://www.andre-gaschler.com/rotationconverter/">rotation
+converter</a> to
+convert to and from &ldquo;axis with angle magnitude (radians)&quot;.</p>
+<h1 id="convention-for-tag-poses">Convention for tag poses</h1>
+<p>Here is how the coordinate axes are oriented when facing an upright
+AprilTag. Also note the corner numbering in purple.</p>
+<p><img src="../media/tag_corners.png" alt="tag corners"></p>
+<div class="edit-meta"><br></div><nav class="pagination"><a class="nav nav-prev" href="https://berndpfrommer.github.io/tagslam_web/getting_started/" title="Getting Started"><i class="fas fa-arrow-left" aria-hidden="true"></i> Prev - Getting Started</a>
+<a class="nav nav-next" href="https://berndpfrommer.github.io/tagslam_web/caveats/" title="Caveats and Limitations">Next - Caveats and Limitations <i class="fas fa-arrow-right" aria-hidden="true"></i></a>
+</nav><footer>
+</footer>
+</main><div class="sidebar">
+
+<nav class="open-menu">
+<ul>
+<li class=""><a href="https://berndpfrommer.github.io/tagslam_web/">Home</a></li>
+
+<li class=""><a href="https://berndpfrommer.github.io/tagslam_web/getting_started/">Getting Started</a>
+  
+</li>
+
+<li class="parent active"><a href="https://berndpfrommer.github.io/tagslam_web/concepts/">Concepts</a>
+  
+</li>
+
+<li class=""><a href="https://berndpfrommer.github.io/tagslam_web/caveats/">Caveats and Limitations</a>
+  
+</li>
+
+<li class=""><a href="https://berndpfrommer.github.io/tagslam_web/intrinsic_calibration/">Intrinsic Calibration</a>
+  
+</li>
+
+<li class=""><a href="https://berndpfrommer.github.io/tagslam_web/input_files/">Input Files and Parameters</a>
+  
+</li>
+
+<li class=""><a href="https://berndpfrommer.github.io/tagslam_web/measurements/">Measurements</a>
+  
+</li>
+
+<li class=""><a href="https://berndpfrommer.github.io/tagslam_web/output/">Output</a>
+  
+</li>
+
+<li class=""><a href="https://berndpfrommer.github.io/tagslam_web/examples/">Examples</a>
+  
+</li>
+
+<li class=""><a href="https://berndpfrommer.github.io/tagslam_web/visualization/">Visualization</a>
+  
+</li>
+
+<li class=""><a href="https://berndpfrommer.github.io/tagslam_web/trouble_shooting/">Troubleshooting</a>
+  
+</li>
+
+<li class=""><a href="https://berndpfrommer.github.io/tagslam_web/help/">A. Asking for Help</a>
+  
+</li>
+
+<li class=""><a href="https://berndpfrommer.github.io/tagslam_web/better_localization/">B. Hints for Better Localization</a>
+  
+</li>
+
+<li class=""><a href="https://berndpfrommer.github.io/tagslam_web/making_tags/">C. Making and Using AprilTags</a>
+  
+</li>
+</ul>
+</nav>
+
+
+
+<div class="sidebar-footer"></div>
+</div>
+</div><a href="#" id="backtothetop-fixed" class="backtothetop"
+ data-backtothetop-duration="600"
+ data-backtothetop-easing="easeOutQuart"
+ data-backtothetop-fixed-fadeIn="1000"
+ data-backtothetop-fixed-fadeOut="1000"
+ data-backtothetop-fixed-bottom="10"
+ data-backtothetop-fixed-right="20">
+<span class="fa-layers fa-fw">
+<i class="fas fa-circle"></i>
+<i class="fas fa-arrow-circle-up"></i>
+</span></a>
+</div>
+</body>
+</html>

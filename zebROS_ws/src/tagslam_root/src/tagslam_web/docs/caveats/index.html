@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en-us">
+<head><meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Caveats and Limitations - TagSLAM</title>
+<meta name="generator" content="Hugo 0.68.3" />
+<link href="https://berndpfrommer.github.io/tagslam_web//index.xml" rel="alternate" type="application/rss+xml">
+<link rel="canonical" href="https://berndpfrommer.github.io/tagslam_web/caveats/">
+<link rel="stylesheet" href="https://berndpfrommer.github.io/tagslam_web/css/theme.min.css">
+<script src="https://use.fontawesome.com/releases/v5.0.6/js/all.js"></script>
+<link rel="stylesheet" href="https://berndpfrommer.github.io/tagslam_web/css/chroma.min.css">
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.4.1/dist/jquery.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jquery.easing@1.4.1/jquery.easing.min.js"></script>
+<script src="https://berndpfrommer.github.io/tagslam_web/js/bundle.js"></script><style>
+:root {}
+</style>
+<meta property="og:title" content="Caveats and Limitations" />
+<meta property="og:description" content="" />
+<meta property="og:type" content="website" />
+<meta property="og:url" content="https://berndpfrommer.github.io/tagslam_web/caveats/" />
+<meta property="og:updated_time" content="2015-07-18T14:08:35+02:00" />
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="Caveats and Limitations"/>
+<meta name="twitter:description" content=""/>
+<meta itemprop="name" content="Caveats and Limitations">
+<meta itemprop="description" content=""><script type="text/javascript" async
+  src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
+  MathJax.Hub.Config({
+  tex2jax: {
+  inlineMath: [['$','$'], ['\\(','\\)']],
+  displayMath: [['$$','$$']],
+  processEscapes: true,
+  processEnvironments: true,
+  skipTags: ['script', 'noscript', 'style', 'textarea', 'pre'],
+  TeX: { equationNumbers: { autoNumber: "AMS" },
+  extensions: ["AMSmath.js", "AMSsymbols.js"]
+  }
+  }
+  });
+  MathJax.Hub.Queue(function() {
+    
+    
+    
+    var all = MathJax.Hub.getAllJax(), i;
+    for(i = 0; i < all.length; i += 1) {
+        all[i].SourceElement().parentNode.className += ' has-jax';
+    }
+  });
+
+  MathJax.Hub.Config({
+  
+  TeX: { equationNumbers: { autoNumber: "AMS" } }
+  });
+</script>
+$
+\newcommand{\cc}[1]{\color{black}{#1}}
+\newcommand{\mvec}[1]{\mathbf{#1}}
+\newcommand{\cvec}[2]{^\mathrm{#2}\mathbf{#1}}
+\newcommand{\ctrans}[3]{^\mathrm{#3}\mathbf{#1}_\mathrm{#2}}
+$
+</head>
+<body><div class="container"><header>
+<h1>TagSLAM</h1>
+<a href="https://github.com/berndpfrommer/tagslam_root" class="github"><i class="fab fa-github"></i></a>
+</header>
+
+<div class="content-container">
+<main><h1>Caveats and Limitations</h1><h1 id="limitations">Limitations</h1>
+<p><a name="limitations"></a>
+The following limitations apply when using TagSLAM:</p>
+<ol>
+<li>No duplicate tag ids are allowed! A tag can only exist in the
+world once. You must make sure that there are no duplicate tags
+anywhere.</li>
+</ol>
+<ul>
+<li>To use odometry with TagSLAM, the odometry updates should preferably
+be synchronized with the tag detections, for example the odometry
+should be computed from the same camera that does the camera
+recording. Starting release 2.1 TagSLAM accepts <em>approximately</em>
+synced data as well. This means that TagSLAM first filters the data
+approximately by running a filter identical to the <a href="http://wiki.ros.org/message_filters/ApproximateTime">ROS
+ApproximateTime
+synchronizer</a>. The
+frequency of the slowest sensor will determine the frequency of
+TagSLAM pose updates, and higher-frequency data inbetween will be
+dropped. If you want to have higher frequency data, you need to insert
+for instance <em>empty</em> tag detection messages. Note that by default the
+<code>use_approximate_sync</code> feature is disabled, so if you feed in
+unsynchronized data <em>all</em> of it will be dropped.</li>
+<li>No mixing of AprilTag families! For a single data set, all tags must
+be of the same family</li>
+<li>All tags must have the same number of border bits.</li>
+<li>Real-time usage is limited to situations where either the graph is
+so small that it can be solved quickly (maybe a thousand frames
+maximum!), or the pose of the tags can be determined beforehand,
+offline, with a &ldquo;mapping run&rdquo; that builds the full graph, and then
+stores the optimized tag poses for a subsequent real-time run. To
+get real-time performance, use the &ldquo;amnesia&rdquo; feature such that old
+information gets thrown away and the graph stays small.</li>
+</ul>
+<p>Note: restrictions 3. and 4. are due to the tag
+detector, and if fixed there, TagSLAM should be able to handle it.</p>
+<div class="edit-meta"><br></div><nav class="pagination"><a class="nav nav-prev" href="https://berndpfrommer.github.io/tagslam_web/concepts/" title="Concepts"><i class="fas fa-arrow-left" aria-hidden="true"></i> Prev - Concepts</a>
+<a class="nav nav-next" href="https://berndpfrommer.github.io/tagslam_web/intrinsic_calibration/" title="Intrinsic Calibration">Next - Intrinsic Calibration <i class="fas fa-arrow-right" aria-hidden="true"></i></a>
+</nav><footer>
+</footer>
+</main><div class="sidebar">
+
+<nav class="open-menu">
+<ul>
+<li class=""><a href="https://berndpfrommer.github.io/tagslam_web/">Home</a></li>
+
+<li class=""><a href="https://berndpfrommer.github.io/tagslam_web/getting_started/">Getting Started</a>
+  
+</li>
+
+<li class=""><a href="https://berndpfrommer.github.io/tagslam_web/concepts/">Concepts</a>
+  
+</li>
+
+<li class="parent active"><a href="https://berndpfrommer.github.io/tagslam_web/caveats/">Caveats and Limitations</a>
+  
+</li>
+
+<li class=""><a href="https://berndpfrommer.github.io/tagslam_web/intrinsic_calibration/">Intrinsic Calibration</a>
+  
+</li>
+
+<li class=""><a href="https://berndpfrommer.github.io/tagslam_web/input_files/">Input Files and Parameters</a>
+  
+</li>
+
+<li class=""><a href="https://berndpfrommer.github.io/tagslam_web/measurements/">Measurements</a>
+  
+</li>
+
+<li class=""><a href="https://berndpfrommer.github.io/tagslam_web/output/">Output</a>
+  
+</li>
+
+<li class=""><a href="https://berndpfrommer.github.io/tagslam_web/examples/">Examples</a>
+  
+</li>
+
+<li class=""><a href="https://berndpfrommer.github.io/tagslam_web/visualization/">Visualization</a>
+  
+</li>
+
+<li class=""><a href="https://berndpfrommer.github.io/tagslam_web/trouble_shooting/">Troubleshooting</a>
+  
+</li>
+
+<li class=""><a href="https://berndpfrommer.github.io/tagslam_web/help/">A. Asking for Help</a>
+  
+</li>
+
+<li class=""><a href="https://berndpfrommer.github.io/tagslam_web/better_localization/">B. Hints for Better Localization</a>
+  
+</li>
+
+<li class=""><a href="https://berndpfrommer.github.io/tagslam_web/making_tags/">C. Making and Using AprilTags</a>
+  
+</li>
+</ul>
+</nav>
+
+
+
+<div class="sidebar-footer"></div>
+</div>
+</div><a href="#" id="backtothetop-fixed" class="backtothetop"
+ data-backtothetop-duration="600"
+ data-backtothetop-easing="easeOutQuart"
+ data-backtothetop-fixed-fadeIn="1000"
+ data-backtothetop-fixed-fadeOut="1000"
+ data-backtothetop-fixed-bottom="10"
+ data-backtothetop-fixed-right="20">
+<span class="fa-layers fa-fw">
+<i class="fas fa-circle"></i>
+<i class="fas fa-arrow-circle-up"></i>
+</span></a>
+</div>
+</body>
+</html>
