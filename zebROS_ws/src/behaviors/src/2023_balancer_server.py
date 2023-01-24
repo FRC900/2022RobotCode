@@ -11,6 +11,7 @@ import std_msgs.msg
 import math
 import geometry_msgs.msg._Quaternion
 from tf.transformations import euler_from_quaternion # may look like tf1 but is actually tf2
+import geometry_msgs.msg
 
 def handle_param_load(name):
     try:
@@ -32,11 +33,11 @@ class Balancer:
         self._as = actionlib.SimpleActionServer(self._action_name, behavior_actions.msg.Balancer2023Action,
                                                 execute_cb=self.balancer_callback, auto_start=False)
         self._as.start()
+        rospy.logerr("Finished started actionlib server ")
         res = handle_param_load("~angle_threshold")
         self.angle_threshold = res if res else math.radians(2) 
 
-        res = handle_param_load("~cmd_vel_topic")
-        cmd_vel_topic = res if res else "cmd_vel"
+
         # load params, don't care about topics after we have the subs/pubs
         res = handle_param_load("~setpoint_topic") 
         setpoint_pub_topic = res if res else "position_balance_pid/pitch_cmd_pub"
@@ -51,7 +52,7 @@ class Balancer:
         self.command_timeout = res if res else 0.5 # sec
         
         res = handle_param_load("~enable_topic")
-        enable_topic = res if res else "balance_server_pid/pid_enable"
+        enable_topic = res if res else "x_position_balance_pid/pid_enable"
 
         res = handle_param_load("~imu_sub_topic")
         imu_sub_topic = res if res else "/imu/zeroed_imu"
@@ -65,20 +66,36 @@ class Balancer:
         
         # should just be publishing 0.0 because thats the angle we want    
         # feeling like python has strict types with all these types I have to type out
-        self.pub_setpoint = rospy.Publisher(setpoint_pub_topic, std_msgs.msg.Float64, queue_size=30)
+        self.pub_setpoint = rospy.Publisher(setpoint_pub_topic, std_msgs.msg.Float64, queue_size=1)
         # publishes our current pitch from imu
-        self.pub_pitch_state = rospy.Publisher(pitch_state_pub_topic, std_msgs.msg.Float64, queue_size=30)
+        self.pub_pitch_state = rospy.Publisher(pitch_state_pub_topic, std_msgs.msg.Float64, queue_size=1)
         # result of pid node, tells us what X command to give to motors
         self.sub_x_command = rospy.Subscriber(x_command_sub_topic, std_msgs.msg.Float64, self.x_cmd_cb)
-        self.pub_PID_enable = rospy.Publisher(enable_topic, std_msgs.msg.Bool, queue_size=30) 
+        self.pub_PID_enable = rospy.Publisher(enable_topic, std_msgs.msg.Bool, queue_size=1)
+        
+        self.cmd_vel_topic = "/balance_position/balancer_server/swerve_drive_controller/cmd_vel"
+        self.pub_cmd_vel = rospy.Publisher(self.cmd_vel_topic, geometry_msgs.msg.Twist, queue_size=1)
         self.sub_imu = rospy.Subscriber(imu_sub_topic, sensor_msgs.msg.Imu, self.imu_callback)
         rospy.logerr("Finished initalizing 2023_balancer_server")
+
+    # painful to fill out all of the fields with 0, saves some code repetition
+    def make_zero_twist(self):
+        msg = geometry_msgs.msg.Twist()
+        msg.linear.x = 0
+        msg.linear.y = 0
+        msg.linear.z = 0
+        msg.angular.x = 0
+        msg.angular.y = 0
+        msg.angular.z = 0 
+        return msg
 
     def x_cmd_cb(self, x_command: std_msgs.msg.Float64):
         if self.debug:
             rospy.loginfo_throttle(1, f"X_cmd_callback with {x_command}") 
         # send to motors, @TODO
-        
+        msg = self.make_zero_twist()
+        msg.linear.x = float(x_command.data)
+        self.pub_cmd_vel.publish(msg)
 
     def imu_callback(self, imu_msg):
         rospy.logdebug("Imu callback")
@@ -90,13 +107,16 @@ class Balancer:
         self.current_pitch = pitch
         self.current_pitch_time = imu_msg.header.stamp.secs
         if self.debug:
-            rospy.loginfo_throttle(1, f"Pitch in degrees {pitch*(180/math.pi)}")
+            rospy.loginfo_throttle(0.1, f"Pitch in degrees {pitch*(180/math.pi)}")
         self.pub_pitch_state.publish(pitch)
 
     def preempt(self):
         msg = std_msgs.msg.Bool()
         msg.data = False
         self.pub_PID_enable.publish(msg)
+        # publish last zero just in case
+        twist_msg = self.make_zero_twist()
+        self.pub_cmd_vel.publish(twist_msg)
 
     def balancer_callback(self, goal):
         rospy.loginfo(f"Balancer Actionlib called with goal {goal}")
@@ -107,6 +127,7 @@ class Balancer:
         msgF = std_msgs.msg.Float64()
         msgF.data = self.desired_pitch
         self.pub_setpoint.publish(msgF) # say we want pitch to be 0
+        r = rospy.Rate(100)
         while True:
             # I think subscribers should update without spinOnce... it doesn't exist in python
             # check that preempt has not been requested by the client
@@ -131,6 +152,7 @@ class Balancer:
             self._feedback.stable_and_balanced = stable_and_balanced
             # publish the feedback
             self._as.publish_feedback(self._feedback)
+            r.sleep()
 
 if __name__ == '__main__':
     rospy.init_node('balancer')
