@@ -15,7 +15,6 @@ import rosgraph_msgs.msg
 
 from sim_balance_base import *
 
-
 def step(msg):
     global charging_station #sim_clock, clock_pub
     rospy.loginfo_throttle(1, f"step {charging_station.time}, angle {charging_station.angle*180/np.pi}, msg {msg.data}")
