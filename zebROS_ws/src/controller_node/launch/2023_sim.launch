@@ -66,7 +66,7 @@
 	</node>
 	
 	<group ns="pf_localization">
-	<rosparam file="$(find pf_localization)/config/2022Rumble_params.yaml" command="load"/>
+	<rosparam file="$(find pf_localization)/config/2023_params.yaml" command="load"/>
 	<node pkg="pf_localization" type="pf_localization_node" name="pf_localization" output="screen" >
 	</node>
 	</group>
