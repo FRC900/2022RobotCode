@@ -134,8 +134,8 @@ include_directories(
 catkin_package(
    #INCLUDE_DIRS include
    #LIBRARIES behaviors
-   CATKIN_DEPENDS actionlib_msgs actionlib behavior_actions path_follower_msgs nav_msgs roscpp rospy std_msgs tf2_ros geometry_msgs frc_msgs
-   DEPENDS
+   CATKIN_DEPENDS actionlib_msgs actionlib behavior_actions path_follower_msgs nav_msgs roscpp rospy std_msgs tf2_ros geometry_msgs frc_msgs std_srvs
+   DEPENDS 
 )
 
 # Generic actionlib code

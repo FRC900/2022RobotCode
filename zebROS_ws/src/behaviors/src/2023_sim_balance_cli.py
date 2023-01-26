@@ -30,8 +30,8 @@ if __name__ == "__main__":
     global charging_station, pub, sub
 
     charging_station = ChargingStationSim()
-    while charging_station.state != States.ON_MIDDLE_2_WHEEL:
-        charging_station.step(0.5, TIME_STEP)
+    #while charging_station.state != States.ON_MIDDLE_2_WHEEL:
+    #    charging_station.step(0.5, TIME_STEP)
     
     i = 0
     vel = 0.5

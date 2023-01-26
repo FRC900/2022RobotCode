@@ -17,6 +17,7 @@ from enum import Enum
 from tf.transformations import euler_from_quaternion # may look like tf1 but is actually tf2
 
 class States(Enum):
+    # we only actually care about two states, the one with no wheels and all the rest as one state
     NO_WEELS_ON = 0 # starting state, nothing touching charging station
     ONE_WHEEL_ON_RAMP = 1 # when first wheel gets on to the ramp
     ONE_WHEEL_ON_CENTER = 2 # when that same wheel gets to the middle, should be able to call PID node from here
@@ -40,22 +41,25 @@ class AutoBalancing:
         self.debug = False
         self._action_name = name
 
-        self._as = actionlib.SimpleActionServer(self._action_name, behavior_actions.msg.Balancer2023Action,
-                                                execute_cb=self.balancer_callback, auto_start=False)
+        self._as = actionlib.SimpleActionServer(self._action_name, behavior_actions.msg.Balancing2023Action,
+                                                execute_cb=self.balancing_callback, auto_start=False)
         self._as.start()
 
-
+        res = handle_param_load("imu_sub_topic")
+        imu_sub_topic = res if res else "/imu/zeroed_imu"
+        rospy.loginfo(f"Using imu topic {imu_sub_topic}")
+        
+        self.balancer_client = actionlib.SimpleActionClient("balancer_server", behavior_actions.msg.Balancer2023Action)
+        self.balancer_client.wait_for_server(rospy.Duration(5)) # 5 sec timeout
+        
+        self.angle_to_add = math.radians(20)
         self.PID_enabled = False
         self.current_pitch = -999
         self.current_pitch_time = -1000
-        
-        rospy.logdebug("Finished initalizing")
+        self.state = States.NO_WEELS_ON 
+        self.sub_imu = rospy.Subscriber(imu_sub_topic, sensor_msgs.msg.Imu, self.imu_callback)
 
-    def x_cmd_cb(self, x_command: std_msgs.msg.Float64):
-        if self.debug:
-            rospy.loginfo_throttle(1, f"X_cmd_callback with {x_command}") 
-        # send to motors, @TODO
-        
+        rospy.loginfo("Finished initalizing balancing server")
 
     def imu_callback(self, imu_msg):
         rospy.logdebug("Imu callback")
@@ -68,23 +72,27 @@ class AutoBalancing:
         self.current_pitch_time = imu_msg.header.stamp.secs
         if self.debug:
             rospy.loginfo_throttle(1, f"Pitch in degrees {pitch*(180/math.pi)}")
-        self.pub_pitch_state.publish(pitch)
 
     def preempt(self):
-        msg = std_msgs.msg.Bool()
-        msg.data = False
-        self.pub_PID_enable.publish(msg)
-
-    def balancer_callback(self, goal):
-        rospy.loginfo(f"Balancer Actionlib called with goal {goal}")
-        msg = std_msgs.msg.Bool()
-        msg.data = True
-        self.pub_PID_enable.publish(msg)
+        rospy.logwarn(f"Called preempt for balancING server")
+        #self.balancer_client.cancel_all_goals()
         
-        msgF = std_msgs.msg.Float64()
-        msgF.data = 0.0
-        self.pub_setpoint.publish(msgF) # say we want pitch to be 0
-        while True:
+        self.balancer_client.cancel_goal()
+        #self.balancer_client.cancel_goals_at_and_before_time(rospy.Time.now())
+
+    def balancing_callback(self, goal):
+        rospy.loginfo(f"Auto Balancing Actionlib called with goal {goal}")
+        # TODO, make sure we are aligned with 0 degrees (or 180 depending on how it works out)d
+        
+        goal_to_send = behavior_actions.msg.Balancer2023Goal()
+        goal_to_send.angle_offset = self.angle_to_add
+    
+        self.balancer_client.send_goal(goal_to_send)
+        
+        # angle when we are on the ramp where balancer can take over = 0.259rad ~ 15 degrees
+        # going to try and run pid to get to that and then run balancer? 
+        r = rospy.Rate(100)
+        while True:                
             # I think subscribers should update without spinOnce... it doesn't exist in python
             # check that preempt has not been requested by the client
             if self._as.is_preempt_requested():
@@ -92,14 +100,24 @@ class AutoBalancing:
                 self.preempt() # stop pid
                 self._as.set_preempted()
                 break
-            
+
+            if self.current_pitch >= math.radians(10) and self.state == States.NO_WEELS_ON:
+                rospy.logwarn("Recalled balancer with 0 offset=======================")
+                self.balancer_client.cancel_all_goals()
+                r.sleep()
+                goal_to_send = behavior_actions.msg.Balancer2023Goal()
+                goal_to_send.angle_offset = 0
+                self.balancer_client.send_goal(goal_to_send)
+                self.state = States.ONE_WHEEL_ON_RAMP
+
             # publish the feedback
             self._as.publish_feedback(self._feedback)
+            r.sleep()
 
 if __name__ == '__main__':
-
+    rospy.logwarn("Initalizing balancing server")
     rospy.init_node('balancer')
     name = rospy.get_name()
-    balancer_server = Balancer(name)
+    balancer_server = AutoBalancing(name)
     rospy.spin()
 

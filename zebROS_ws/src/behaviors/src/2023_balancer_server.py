@@ -39,23 +39,24 @@ class Balancer:
 
 
         # load params, don't care about topics after we have the subs/pubs
-        res = handle_param_load("~setpoint_topic") 
+        res = handle_param_load("setpoint_topic") 
         setpoint_pub_topic = res if res else "position_balance_pid/pitch_cmd_pub"
 
-        res = handle_param_load("~topic_from_plant")
+        res = handle_param_load("topic_from_plant")
         pitch_state_pub_topic = res if res else "position_balance_pid/pitch_state_pub"
 
-        res = handle_param_load("~topic_from_controller")
+        res = handle_param_load("topic_from_controller")
         x_command_sub_topic = res if res else "position_balance_pid/x_command"
 
-        res = handle_param_load("~command_timeout")
+        res = handle_param_load("command_timeout") # not used right now, not sure what it should be used for? Maybe delay 
         self.command_timeout = res if res else 0.5 # sec
         
-        res = handle_param_load("~enable_topic")
+        res = handle_param_load("enable_topic")
         enable_topic = res if res else "x_position_balance_pid/pid_enable"
 
-        res = handle_param_load("~imu_sub_topic")
+        res = handle_param_load("imu_sub_topic")
         imu_sub_topic = res if res else "/imu/zeroed_imu"
+        rospy.loginfo(f"Using imu topic {imu_sub_topic}")
 
         self.PID_enabled = False
         self.desired_pitch = 0.0 # just in case we want to change it later, add offset or something
@@ -63,7 +64,7 @@ class Balancer:
         self.first_balance_time = None
         self.current_pitch = -999
         self.current_pitch_time = -1000
-        
+        self.pitch_offset = 0
         # should just be publishing 0.0 because thats the angle we want    
         # feeling like python has strict types with all these types I have to type out
         self.pub_setpoint = rospy.Publisher(setpoint_pub_topic, std_msgs.msg.Float64, queue_size=1)
@@ -98,7 +99,6 @@ class Balancer:
         self.pub_cmd_vel.publish(msg)
 
     def imu_callback(self, imu_msg):
-        rospy.logdebug("Imu callback")
         q = imu_msg.orientation
         euler = euler_from_quaternion([q.x, q.y, q.z, q.w]) 
         #roll = euler[0]
@@ -107,10 +107,13 @@ class Balancer:
         self.current_pitch = pitch
         self.current_pitch_time = imu_msg.header.stamp.secs
         if self.debug:
-            rospy.loginfo_throttle(0.1, f"Pitch in degrees {pitch*(180/math.pi)}")
-        self.pub_pitch_state.publish(pitch)
+            rospy.loginfo_throttle(0.7, f"Pitch in degrees {pitch*(180/math.pi)} offset {self.pitch_offset}")
+        
+        self.pub_pitch_state.publish(pitch - self.pitch_offset)
 
     def preempt(self):
+        rospy.logwarn(f"Balancer server preempt called!")
+        self.pitch_offset = 0
         msg = std_msgs.msg.Bool()
         msg.data = False
         self.pub_PID_enable.publish(msg)
@@ -120,6 +123,8 @@ class Balancer:
 
     def balancer_callback(self, goal):
         rospy.loginfo(f"Balancer Actionlib called with goal {goal}")
+        self.pitch_offset = goal.angle_offset
+        rospy.loginfo(f"Pitch offset={self.pitch_offset}")
         msg = std_msgs.msg.Bool()
         msg.data = True
         self.pub_PID_enable.publish(msg)
@@ -132,7 +137,7 @@ class Balancer:
             # I think subscribers should update without spinOnce... it doesn't exist in python
             # check that preempt has not been requested by the client
             if self._as.is_preempt_requested():
-                rospy.loginfo('%s: Preempted' % self._action_name)
+                rospy.logwarn('%s: Preempted' % self._action_name)
                 self.preempt() # stop pid
                 self._as.set_preempted()
                 break
@@ -144,7 +149,7 @@ class Balancer:
                 now = rospy.Time.now()
                 if self.first_balance_time is None:
                     self.first_balance_time = now
-                elif now - self.first_balance_time >= self.time_to_balamced:
+                elif now - self.first_balance_time >= rospy.Duration.from_sec(self.time_to_balamced):
                     stable_and_balanced = True
             else:
                 self.first_balance_time = None

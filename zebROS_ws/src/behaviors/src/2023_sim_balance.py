@@ -12,8 +12,10 @@ import math
 import rospy
 import std_msgs.msg
 import rosgraph_msgs.msg
-
+import sensor_msgs.msg
+from tf.transformations import quaternion_from_euler
 from sim_balance_base import *
+import std_srvs.srv
 
 global n
 n=0
@@ -21,7 +23,7 @@ def step(msg):
     global n
     global charging_station #sim_clock, clock_pub
     rospy.loginfo_throttle(1, f"step {charging_station.time}, angle {charging_station.angle*180/np.pi}, msg {msg.data}")
-    print(f"Callback {n}")
+    #print(f"Callback {n}")
     n +=1
     ##print(f"angle {charging_station.angle*180/np.pi}")
     charging_station.step(msg.data, TIME_STEP)
@@ -34,6 +36,11 @@ def step(msg):
 def add_noise(angle):
     return angle + np.random.normal(0, 0.01)
 
+def reset_charging(msg):
+    global charging_station
+    charging_station = 0
+    charging_station = ChargingStationSim()
+
 if __name__ == "__main__":
     global charging_station, pub, sub
     rospy.init_node("charging_station_sim")
@@ -42,17 +49,31 @@ if __name__ == "__main__":
 
     sub = rospy.Subscriber("/balance_position/position_balance_pid/x_command", std_msgs.msg.Float64, step, queue_size=1)
     #clock_pub = rospy.Publisher("/clock", rosgraph_msgs.msg.Clock, queue_size=0)
-    pub = rospy.Publisher("/balance_position/position_balance_pid/pitch_state_pub", std_msgs.msg.Float64, queue_size=1)
+    pub = rospy.Publisher("/imu/zeroed_imu", sensor_msgs.msg.Imu, queue_size=1)
+    reset_service = rospy.Service("reset", std_srvs.srv.Empty, reset_charging)
     charging_station = ChargingStationSim()
-    while charging_station.state != States.ON_MIDDLE_2_WHEEL:
-        charging_station.step(0.5, TIME_STEP)
+    print(f"Stepping {1/TIME_STEP}")
+    #for _ in range(int(1/TIME_STEP)):
+    #    charging_station.step(0.5, TIME_STEP)
+
+    #while charging_station.state != States.ON_MIDDLE_2_WHEEL:
+    #    charging_station.step(0.5, TIME_STEP)
 
     #print(f"Charging station is ready, angle {charging_station.angle*180/np.pi}")
     #charging_station.visualize()
     #print("Starting ROS")
     #print("Published clock")
     while not rospy.is_shutdown():
-        angle_to_pub = add_noise(charging_station.angle) 
-        pub.publish(angle_to_pub)
+        angle_to_pub = add_noise(charging_station.angle) * -1
+        
+        roll, pitch, yaw = 0, angle_to_pub, 0
+        q = quaternion_from_euler(roll, pitch, yaw)
+        msg = sensor_msgs.msg.Imu()
+        msg.orientation.x = q[0]
+        msg.orientation.y = q[1]
+        msg.orientation.z = q[2]
+        msg.orientation.w = q[3]
+        pub.publish(msg)
+
         charging_station.noise_angle = angle_to_pub
         charging_station.visualize()
