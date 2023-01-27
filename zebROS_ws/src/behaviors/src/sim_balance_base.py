@@ -199,9 +199,9 @@ class ChargingStationSim:
         RAMP_LEN_Y = self.left_ramp_end_XY[1]
         # calculate ramp angle based on the two points of the ramp
         RAMP_ANGLE = (np.arctan((RAMP_LEN_Y) / (RAMP_LEN_X)))
-        print(f"Wanted velocity {velocity}")
+        #print(f"Wanted velocity {velocity}")
         velocity = self.clamp(self.prev_robot_vel-MAX_ACCEL*timestep, self.prev_robot_vel+MAX_ACCEL*timestep, velocity)
-        print(f"Actual velocity {velocity}")
+        #print(f"Actual velocity {velocity}")
         self.prev_robot_vel = velocity
         y_diff = velocity * timestep * math.sin(RAMP_ANGLE) 
         x_diff = velocity * timestep * math.cos(RAMP_ANGLE)

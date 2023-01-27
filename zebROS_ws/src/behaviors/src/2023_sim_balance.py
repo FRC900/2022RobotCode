@@ -64,7 +64,7 @@ if __name__ == "__main__":
     #print("Starting ROS")
     #print("Published clock")
     while not rospy.is_shutdown():
-        angle_to_pub = add_noise(charging_station.angle) * -1
+        angle_to_pub = add_noise(charging_station.angle)
         
         roll, pitch, yaw = 0, angle_to_pub, 0
         q = quaternion_from_euler(roll, pitch, yaw)
