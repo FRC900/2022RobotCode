@@ -10,7 +10,8 @@
 #include <ros/ros.h>
 #include <actionlib/server/simple_action_server.h>
 #include "behavior_actions/AlignToGrid2023Action.h"
-#include "behavior_actions/PathToAprilTag.h"
+#include "behavior_actions/PathToAprilTagAction.h"
+#include <actionlib/client/simple_action_client.h>
 #include <tf2/LinearMath/Quaternion.h>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 
@@ -77,7 +78,7 @@ protected:
   ros::Subscriber sub_;
   std::map<int, Tag> tags_;
   std::map<int, GridLocation> gridLocations_; // should probably be uint8_t
-  ros::ServiceClient client_;
+  actionlib::SimpleActionClient<behavior_actions::PathToAprilTagAction> client_;
 
 public:
 
@@ -85,7 +86,7 @@ public:
     as_(nh_, name, boost::bind(&AlignToGridAction::executeCB, this, _1), false),
     action_name_(name),
     sub_(nh_.subscribe<field_obj::Detection>("/tf_object_detection/tag_detection_world", 1000, boost::bind(&AlignToGridAction::callback, this, _1))),
-    client_(nh_.serviceClient<behavior_actions::PathToAprilTag>("/path_to_apriltag"))
+    client_("/path_to_apriltag", true)
   {
     XmlRpc::XmlRpcValue tagList;
     nh_.getParam("tags", tagList);
@@ -194,20 +195,22 @@ public:
     pose.orientation = qMsg;
     // set orientation to quaternion with yaw = tagRotation, use setRPY
 
-    behavior_actions::PathToAprilTag srv;
-    srv.request.id = closestId;
-    srv.request.tagRotation = tag.rotation;
-    srv.request.offset = pose;
+    behavior_actions::PathToAprilTagGoal aprilGoal;
+    aprilGoal.id = closestId;
+    aprilGoal.tagRotation = tag.rotation;
+    aprilGoal.offset = pose;
 
-    if (client_.call(srv))
-    {
-      ROS_INFO("Driving");
-    }
-    else
-    {
-      ROS_ERROR("Failed to call service /path_to_apriltag");
-      as_.setAborted(result_);
-      return;
+    client_.sendGoal(aprilGoal);
+
+    ros::Rate r(100);
+    while (!client_.getState().isDone()) {
+        if (as_.isPreemptRequested() || !ros::ok())
+        {
+            client_.cancelGoalsAtAndBeforeTime(ros::Time::now());
+            as_.setPreempted();
+            return;
+        }
+        r.sleep();
     }
 
     as_.setSucceeded(result_);

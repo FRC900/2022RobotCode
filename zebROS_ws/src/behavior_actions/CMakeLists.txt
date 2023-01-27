@@ -62,7 +62,6 @@ add_service_files(
   #resetBallSrv.srv
   DynamicPath.srv
   GamePiecePickup.srv
-  PathToAprilTag.srv
 )
 
 ## Generate actions in the 'action' folder
@@ -89,6 +88,7 @@ add_action_files(
 	Indexer.action
   Index2022.action
 	Eject.action
+  PathToAprilTag.action
 	#GoToColor.action
 	#RotatePanel.action
 )

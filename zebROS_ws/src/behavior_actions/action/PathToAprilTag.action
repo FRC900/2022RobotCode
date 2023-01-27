@@ -1,4 +1,8 @@
+# goal
 uint32 id
 float64 tagRotation # RADIANS
 geometry_msgs/Pose offset # facing tag: +x = forward, +y = left. relative to base_link (center of robot)
 ---
+# result
+---
+# feedback
