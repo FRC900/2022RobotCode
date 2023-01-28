@@ -3,60 +3,79 @@
 #include <behavior_actions/Elevater2023Action.h>
 #include <ddynamic_reconfigure/ddynamic_reconfigure.h>
 #include <std_msgs/Float64.h>
+#include <controllers_2023_msgs/ElevatorSrv.h>
 
+struct GamePiece { 
+  double intake;
+  double low_node;
+  double middle_node;
+  double high_node;
+};
+struct Cube : GamePiece {}; 
+struct VerticalCone : GamePiece {};
+struct BaseTowardsUsCone : GamePiece {};
+struct BaseAwayUsCone : GamePiece {};
+
+#define ElevaterINFO(x) ROS_INFO_STREAM("2022_shooter_server : " << x)
 
 class ElevaterAction2023
 {
 protected:
 
-  ros::NodeHandle nh_;
-  ros::NodeHandle nh_params_;
-  actionlib::SimpleActionServer<behavior_actions::Elevater2023Action> as_;
-  std::string action_name_;
+  ros::NodeHandle _nh;
+  ros::NodeHandle _nh_params;
+  actionlib::SimpleActionServer<behavior_actions::Elevater2023Action> _as;
+  ros::ServiceClient _elevator_srv;
+  std::string _action_name;
   // create message that is used to publish feedback
-  behavior_actions::Elevater2023Feedback feedback_;
+  behavior_actions::Elevater2023Feedback _feedback;
 
-  ddynamic_reconfigure::DDynamicReconfigure ddr_;
-  //_ = nh_.serviceClient<std_srvs::Empty>;
+  // structs for holding the config values
+  Cube _cube;
+  VerticalCone _vertical_cone;
+  BaseTowardsUsCone _base_towards_us_cone;
+  BaseAwayUsCone _base_away_us_cone;
 
-
+  ddynamic_reconfigure::DDynamicReconfigure _ddr;
   ros::Subscriber _elevator_offset_sub;
   double _position_offset = 0;
 
 public:
 
   ElevaterAction2023(std::string name) :
-    as_(nh_, name, boost::bind(&ElevaterAction2023::executeCB, this, _1), false),
-    nh_params_(nh_, "elevater_server_2023"),
-    action_name_(name),
-    ddr_(nh_params_)
+    _as(_nh, name, boost::bind(&ElevaterAction2023::executeCB, this, _1), false),
+    _nh_params(_nh, "elevater_server_2023"),
+    _action_name(name),
+    _ddr(_nh_params)
   {
-    /*
-    if (!nh_params_.getParam("absolute_wheel_speed", absolute_wheel_speed_))
-    {
-      absolute_wheel_speed_ = 0; // was 325 at start of UNCA, 343 at UNCP
-      ROS_ERROR_STREAM("2022_shooter_server : could not find absolute_wheel_speed, defaulting to " << absolute_wheel_speed_);
-      return;
-    }
-    ddr_.registerVariable<double>("absolute_wheel_speed", &absolute_wheel_speed_, "Speed of lower wheel (formerly high_goal_speed)", 0, 500);
+    
+    const std::map<std::string, std::string> service_connection_header{{"tcp_nodelay", "1"}};
+    // TODO check topic
+		_elevator_srv = _nh.serviceClient<controllers_2023_msgs::ElevatorSrv>("/frcrobot_jetson/elevator_service", false, service_connection_header);
+    _elevator_offset_sub = _nh.subscribe("/frcrobot_jetson/talon_states", 1, &ElevaterAction2023::heightOffsetCallback, this);
+    
+    _ddr.registerVariable<double>("cube_high_node", &_cube.high_node, "Speed of lower wheel (formerly high_goal_speed)", 0, 4);
+    _ddr.registerVariable<double>("cube_middle_node", &_cube.middle_node, "Speed of lower wheel (formerly high_goal_speed)", 0, 4);
+    _ddr.registerVariable<double>("cube_low_node", &_cube.low_node, "Speed of lower wheel (formerly high_goal_speed)", 0, 4);
+    _ddr.registerVariable<double>("cube_node", &_cube.intake, "Speed of lower wheel (formerly high_goal_speed)", 0, 4);
 
-    if (!nh_params_.getParam("absolute_hood_wheel_speed", absolute_hood_wheel_speed_))
-    {
-      absolute_hood_wheel_speed_ = 0;
-      ROS_ERROR_STREAM("2022_shooter_server : could not find absolute_hood_wheel_speed_, defaulting to " << absolute_hood_wheel_speed_);
-      return;
-    } // 180 or 200
+    _ddr.registerVariable<double>("cube_high_node", &_vertical_cone.high_node, "Speed of lower wheel (formerly high_goal_speed)", 0, 4);
+    _ddr.registerVariable<double>("cube_middle_node", &_vertical_cone.middle_node, "Speed of lower wheel (formerly high_goal_speed)", 0, 4);
+    _ddr.registerVariable<double>("cube_low_node", &_vertical_cone.low_node, "Speed of lower wheel (formerly high_goal_speed)", 0, 4);
+    _ddr.registerVariable<double>("cube_node", &_vertical_cone.intake, "Speed of lower wheel (formerly high_goal_speed)", 0, 4);
+ 
+    _ddr.registerVariable<double>("cube_high_node", &_cube.high_node, "Speed of lower wheel (formerly high_goal_speed)", 0, 4);
+    _ddr.registerVariable<double>("cube_middle_node", &_cube.middle_node, "Speed of lower wheel (formerly high_goal_speed)", 0, 4);
+    _ddr.registerVariable<double>("cube_low_node", &_cube.low_node, "Speed of lower wheel (formerly high_goal_speed)", 0, 4);
+    _ddr.registerVariable<double>("cube_node", &_cube.intake, "Speed of lower wheel (formerly high_goal_speed)", 0, 4);
 
-    ddr_.registerVariable<bool>("hood_state_override_", &hood_state_override_, "Hood state, must set absolute shooter speeds for this to be used", 0, 1);
-    // change close_enough to operate with multiple samples
-    // error_margin_ = 5;
-    // ddr_.registerVariable<double>("samples_for_close_enough", &error_margin_, "Shooter margin of error", 0, 50);
+    _ddr.registerVariable<double>("cube_high_node", &_cube.high_node, "Speed of lower wheel (formerly high_goal_speed)", 0, 4);
+    _ddr.registerVariable<double>("cube_middle_node", &_cube.middle_node, "Speed of lower wheel (formerly high_goal_speed)", 0, 4);
+    _ddr.registerVariable<double>("cube_low_node", &_cube.low_node, "Speed of lower wheel (formerly high_goal_speed)", 0, 4);
+    _ddr.registerVariable<double>("cube_node", &_cube.intake, "Speed of lower wheel (formerly high_goal_speed)", 0, 4);
 
-    ddr_.publishServicesTopics();
-
-    _elevator_offset_sub = nh_.subscribe("/elevator_offset", 1, &ElevaterAction2023::speedOffsetCallback, this);
-     */
-    as_.start();
+    _ddr.publishServicesTopics();
+    _as.start();
   }
 
   ~ElevaterAction2023(void)
@@ -66,45 +85,64 @@ public:
   void executeCB(const behavior_actions::Elevater2023GoalConstPtr &goal)
   {
     ROS_WARN_STREAM("Callback for updown elevater!");
+    // select piece
+    
+    GamePiece current_piece;
+    if (goal->piece == goal->CUBE) {
+      current_piece = _cube;
+    }
+    else if (goal->piece == goal->VERTICAL_CONE) {
+      current_piece = _vertical_cone;
+    }
+    else if (goal->piece == goal->BASE_TOWARDS_US_CONE) {
+      current_piece = _base_towards_us_cone;
+    }
+    else if (goal->piece == goal->BASE_AWAY_US_CONE) {
+      current_piece = _base_away_us_cone;
+    }
+
+    // select mode for piece
+    double height = -1;
+    if (goal->mode == goal->INTAKE) {
+      height = current_piece.intake;
+    }
+    else if (goal->mode == goal->LOW_NODE) {
+      height = current_piece.low_node;
+    }
+    else if (goal->mode == goal->MIDDLE_NODE) {
+      height = current_piece.middle_node;
+    }
+    else if (goal->mode == goal->HIGH_NODE) {
+      height = current_piece.high_node;
+    }
+
+    ROS_WARN_STREAM("Height is " << height);
+    
+    controllers_2023_msgs::ElevatorSrvRequest req;
+    // req.position 
+    //_elevator_srv.call();
     /* 
     ros::Rate r(100);
     while (ros::ok()) {
       ros::spinOnce();
-      if (as_.isPreemptRequested() || !ros::ok())
+      if (_as.isPreemptRequested() || !ros::ok())
       {
-        msg.data = 0;
-        hood_msg.data = 0;
-        hood_shooter_command_pub_.publish(hood_msg);
-        shooter_command_pub_.publish(msg);
-        downtown_msg.data = DOWNTOWN_INACTIVE;
-        downtown_command_pub_.publish(downtown_msg);
-        feedback_.close_enough = false;
-        as_.publishFeedback(feedback_);
-        SHOOTER_INFO(" : Preempted");
+        _as.publishFeedback(_feedback);
+        ElevaterINFO(" : Preempted");
         // set the action state to preempted
-        as_.setPreempted();
+        _as.setPreempted();
         break;
       }
-      if (absolute_wheel_speed_ && absolute_hood_wheel_speed_) {
-        msg.data = absolute_wheel_speed_;
-        hood_msg.data = absolute_hood_wheel_speed_;
-        ROS_ERROR_STREAM_THROTTLE(1, "Using absolute shooter speeds, THIS SHOULD ONLY BE USED DURING TESTING");
-      }
-      else {
-        msg.data = shooter_speed;
-        hood_msg.data = hood_shooter_speed;
-      }
-      shooter_command_pub_.publish(msg);
-      hood_shooter_command_pub_.publish(hood_msg);
 
-      feedback_.close_enough = good_samples > shooter_wheel_checks_;
-      as_.publishFeedback(feedback_);
+      _feedback.close_enough = good_samples > shooter_wheel_checks_;
+      _as.publishFeedback(_feedback);
       r.sleep();
-      */
-  
+    
+    _as.setSucceeded();
+    */
   }
-
-  void heightOffsetCallback(const std_msgs::Float64 speed_offset_msg){
+  
+  void heightOffsetCallback(const std_msgs::Float64 speed_offset_msg) { 
     _position_offset = speed_offset_msg.data;
   }
 

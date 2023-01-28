@@ -68,6 +68,10 @@ hardware_interface:
 
        - {name: babys_first_orchestra, type: orchestra, id: 1}
 
+       - {name: elevator_master, type: can_talon_fx, can_id: 01, local: true}
+       - {name: elevator_follower1, type: can_talon_fx, can_id: 02, local: true}
+       - {name: elevator_follower2, type: can_talon_fx, can_id: 03, local: true}
+       - {name: elevator_follower3, type: can_talon_fx, can_id: 04, local: true}
 # Create controllers for each joint
 #
 # Entry is the name of the controller. It can be anything.

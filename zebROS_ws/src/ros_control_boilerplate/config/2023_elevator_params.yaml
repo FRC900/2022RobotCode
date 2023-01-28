@@ -1,5 +1,5 @@
 elevator_controller_2023:
-    type:   elevator_controller_2023/ElevatorController_2023
+    type: elevator_controller_2023/ElevatorController_2023
 
     elevator_joint: [ 'elevator_master', 'elevator_follower1', 'elevator_follower2', 'elevator_follower3' ]
     MAX_HEIGT_VAL: 1.7
@@ -20,7 +20,7 @@ elevator_controller_2023:
     # trying to drive down to prevent killing the motor
     elevator_zeroing_timeout:  2.0
     stage_2_height: 0.8
-    elevator_master: 
+    elevator_master:
         type: talon_controllers/TalonControllerInterface 
         joint: elevator_master
         close_loop_values:
