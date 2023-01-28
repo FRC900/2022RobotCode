@@ -132,7 +132,7 @@ class ChargingStationSim:
         font = cv2.FONT_HERSHEY_SIMPLEX
         cv2.putText(img, f"State: {self.state}", (10, 50), font, 1, BLACK, 2, cv2.LINE_AA)
         cv2.putText(img, f"Time (s): {round(self.time, 4)}", (800, 50), font, 1, BLACK, 2, cv2.LINE_AA)
-        cv2.putText(img, f"Angle: {round(np.rad2deg(self.angle), 3)} Fake angle {round(np.rad2deg(self.noise_angle), 3)}", (10, 100), font, 1, BLACK, 2, cv2.LINE_AA)
+        cv2.putText(img, f"Angle: {round(np.rad2deg(self.angle), 3) * -1} Fake angle {round(np.rad2deg(self.noise_angle), 3)}", (10, 100), font, 1, BLACK, 2, cv2.LINE_AA)
         cv2.putText(img, f"Left Wheel: {self.round_dict(self.left_wheel)}, Right Wheel: {self.round_dict(self.right_wheel)}", (10, 150), font, 1, BLACK, 2, cv2.LINE_AA)
         cv2.putText(img, f"Given x_cmd_vel {round(self.x_cmd_vel, 3)}", (10, 200), font, 1, BLACK, 2, cv2.LINE_AA)
         # draw vertical lines every meter for reference

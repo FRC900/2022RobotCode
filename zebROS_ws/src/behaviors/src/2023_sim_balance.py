@@ -22,7 +22,8 @@ n=0
 def step(msg):
     global n
     global charging_station #sim_clock, clock_pub
-    rospy.loginfo_throttle(1, f"step {charging_station.time}, angle {charging_station.angle*180/np.pi}, msg {msg.data}")
+    #rospy.loginfo_throttle(1, f"step {charging_station.time}, angle {charging_station.angle*180/np.pi}, msg {msg.data}")
+    
     #print(f"Callback {n}")
     n +=1
     ##print(f"angle {charging_station.angle*180/np.pi}")
@@ -64,7 +65,7 @@ if __name__ == "__main__":
     #print("Starting ROS")
     #print("Published clock")
     while not rospy.is_shutdown():
-        angle_to_pub = add_noise(charging_station.angle)
+        angle_to_pub = add_noise(charging_station.angle) * -1
         
         roll, pitch, yaw = 0, angle_to_pub, 0
         q = quaternion_from_euler(roll, pitch, yaw)

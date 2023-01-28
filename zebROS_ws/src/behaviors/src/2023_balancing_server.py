@@ -1,9 +1,10 @@
 #! /usr/bin/env python3
 
 # balancing server, controls the entire balancing process and keeps track of the state and eventually leads to robot being balanced
-# assumes that the robot is already aligned with the charging station #! /usr/bin/env python3
+# assumes that the robot is already aligned with the charging station
+# ALSO assumes that negative is up 
 
-# 2023 balancing server, runs PID on the pitch angle from the IMU (ZED) and 0s it
+
 
 # imports for actionlib server and messages
 import rospy
@@ -71,7 +72,7 @@ class AutoBalancing:
         self.current_pitch = pitch
         self.current_pitch_time = imu_msg.header.stamp.secs
         if self.debug:
-            rospy.loginfo_throttle(1, f"Pitch in degrees {pitch*(180/math.pi)}")
+            rospy.loginfo_throttle(1, f"Balancing server - Pitch in degrees {round(pitch*(180/math.pi), 4)}")
 
     def preempt(self):
         rospy.logwarn(f"Called preempt for balancING server")
@@ -101,7 +102,7 @@ class AutoBalancing:
                 self._as.set_preempted()
                 break
 
-            if self.current_pitch >= math.radians(10) and self.state == States.NO_WEELS_ON:
+            if (self.current_pitch >= math.radians(10) or self.current_pitch <= math.radians(10)) and self.state == States.NO_WEELS_ON:
                 rospy.logwarn("Recalled balancer with 0 offset=======================")
                 self.balancer_client.cancel_all_goals()
                 r.sleep()
