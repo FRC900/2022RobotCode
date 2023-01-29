@@ -5,21 +5,29 @@
 #include <std_msgs/Float64.h>
 #include <controllers_2023_msgs/ElevatorSrv.h>
 
+#define ElevaterINFO(x) ROS_INFO_STREAM("2023_elevater_server : " << x)
+#define ElevaterERR(x) ROS_ERROR_STREAM("2023_elevater_server : " << x)
+
+typedef behavior_actions::Elevater2023Goal elevater_ns;
+
 struct GamePiece { 
   double intake;
   double low_node;
   double middle_node;
   double high_node;
 };
-struct Cube : GamePiece {}; 
-struct VerticalCone : GamePiece {};
-struct BaseTowardsUsCone : GamePiece {};
-struct BaseAwayUsCone : GamePiece {};
 
-#define ElevaterINFO(x) ROS_INFO_STREAM("2022_shooter_server : " << x)
+template <class T>
+void load_param_helper(const ros::NodeHandle &nh, std::string name, T &result, T default_val) {
+    if (!nh.getParam(name, result))
+    {
+      ElevaterERR("Could not find" << name << ", defaulting to " << default_val);
+      result = default_val;
+    }
+}
 
-class ElevaterAction2023
-{
+class ElevaterAction2023 {
+
 protected:
 
   ros::NodeHandle _nh;
@@ -29,12 +37,10 @@ protected:
   std::string _action_name;
   // create message that is used to publish feedback
   behavior_actions::Elevater2023Feedback _feedback;
+  behavior_actions::Elevater2023Result _result;
 
-  // structs for holding the config values
-  Cube _cube;
-  VerticalCone _vertical_cone;
-  BaseTowardsUsCone _base_towards_us_cone;
-  BaseAwayUsCone _base_away_us_cone;
+  // lookup is [enum for piece][enum for level]
+  std::map<int, std::map<int, double>> _game_piece_lookup;
 
   ddynamic_reconfigure::DDynamicReconfigure _ddr;
   ros::Subscriber _elevator_offset_sub;
@@ -48,13 +54,72 @@ public:
     _action_name(name),
     _ddr(_nh_params)
   {
-    
+    // time to load all 16 params!
+    // the idea here is that the customization is good, and if values are the same than thats great
+    // current mech designs do have us going to diffrent heights based on what we have, and this is essentially the lookup so that every node doesn't have to do this
+    // we will never (hopefully) need more posibilites than this, so we are prepared for everything mech could come up with
+    // also if we for certain pieces/heights we can change height if we notice something off
+
+    // default values are guesses
+    double res = -1;
+    // cube
+    load_param_helper(_nh, "cube/intake", res, 0.0);
+    _game_piece_lookup[elevater_ns::CUBE][elevater_ns::INTAKE] = res;
+    load_param_helper(_nh, "cube/low_node", res, 0.5);
+    _game_piece_lookup[elevater_ns::CUBE][elevater_ns::LOW_NODE] = res;
+    load_param_helper(_nh, "cube/middle_node", res, 0.7);
+    _game_piece_lookup[elevater_ns::CUBE][elevater_ns::MIDDLE_NODE] = res;
+    load_param_helper(_nh, "cube/high_node", res, 1.0);
+    _game_piece_lookup[elevater_ns::CUBE][elevater_ns::HIGH_NODE] = res;
+    // vertical cone
+    load_param_helper(_nh, "vertical_cone/intake", res, 0.0);
+    _game_piece_lookup[elevater_ns::VERTICAL_CONE][elevater_ns::INTAKE] = res;
+    load_param_helper(_nh, "vertical_cone/low_node", res, 0.5);
+    _game_piece_lookup[elevater_ns::VERTICAL_CONE][elevater_ns::LOW_NODE] = res;
+    load_param_helper(_nh, "vertical_cone/middle_node", res, 0.7);
+    _game_piece_lookup[elevater_ns::VERTICAL_CONE][elevater_ns::MIDDLE_NODE] = res;
+    load_param_helper(_nh, "vertical_cone/high_node", res, 0.5);
+    _game_piece_lookup[elevater_ns::VERTICAL_CONE][elevater_ns::HIGH_NODE] = res;
+    // cone with base toward us
+    load_param_helper(_nh, "base_towards_us_cone/intake", res, 0.0);
+    _game_piece_lookup[elevater_ns::BASE_TOWARDS_US_CONE][elevater_ns::INTAKE] = res;
+    load_param_helper(_nh, "base_towards_us_cone/low_node", res, 0.5);
+    _game_piece_lookup[elevater_ns::BASE_TOWARDS_US_CONE][elevater_ns::LOW_NODE] = res;
+    load_param_helper(_nh, "base_towards_us_cone/middle_node", res, 0.7);
+    _game_piece_lookup[elevater_ns::BASE_TOWARDS_US_CONE][elevater_ns::MIDDLE_NODE] = res;
+    load_param_helper(_nh, "base_towards_us_cone/high_node", res, 1.0);
+    _game_piece_lookup[elevater_ns::BASE_TOWARDS_US_CONE][elevater_ns::HIGH_NODE] = res;
+    // cone with base away from us
+    load_param_helper(_nh, "base_away_us_cone/intake", res, 0.0);
+    _game_piece_lookup[elevater_ns::BASE_AWAY_US_CONE][elevater_ns::INTAKE] = res;
+    load_param_helper(_nh, "base_away_us_cone/low_node", res, 0.5);
+    _game_piece_lookup[elevater_ns::BASE_AWAY_US_CONE][elevater_ns::LOW_NODE] = res;
+    load_param_helper(_nh, "base_away_us_cone/middle_node", res, 0.7);
+    _game_piece_lookup[elevater_ns::BASE_AWAY_US_CONE][elevater_ns::MIDDLE_NODE] = res;
+    load_param_helper(_nh, "base_away_us_cone/high_node", res, 1.0);
+    _game_piece_lookup[elevater_ns::BASE_AWAY_US_CONE][elevater_ns::HIGH_NODE] = res;
+
+    ElevaterINFO("Game Piece params");
+    for(const auto& elem : _game_piece_lookup)
+    {
+      std::cout << elem.first << "\n";
+      for (const auto& sub_elem : elem.second) {
+        std::cout << sub_elem.first << " " << sub_elem.second << "\n";
+      }
+      std::cout << "\n\n";
+    }
+
     const std::map<std::string, std::string> service_connection_header{{"tcp_nodelay", "1"}};
     // TODO check topic
 		_elevator_srv = _nh.serviceClient<controllers_2023_msgs::ElevatorSrv>("/frcrobot_jetson/elevator_service", false, service_connection_header);
-    _elevator_offset_sub = _nh.subscribe("/frcrobot_jetson/talon_states", 1, &ElevaterAction2023::heightOffsetCallback, this);
+    if (!_elevator_srv.waitForExistence(ros::Duration(5))) {
+        ElevaterERR("=======Could not find elevator service========");
+    }
+    _elevator_offset_sub = _nh.subscribe("/elevator_position_offset", 1, &ElevaterAction2023::heightOffsetCallback, this);
     
-    _ddr.registerVariable<double>("cube_high_node", &_cube.high_node, "Speed of lower wheel (formerly high_goal_speed)", 0, 4);
+    _ddr.registerVariable<double>("cube_high_node", &_game_piece_lookup[elevater_ns::CUBE][elevater_ns::INTAKE], "Speed of lower wheel (formerly high_goal_speed)", 0, 4);
+    // TODO, type this out
+    /* 
     _ddr.registerVariable<double>("cube_middle_node", &_cube.middle_node, "Speed of lower wheel (formerly high_goal_speed)", 0, 4);
     _ddr.registerVariable<double>("cube_low_node", &_cube.low_node, "Speed of lower wheel (formerly high_goal_speed)", 0, 4);
     _ddr.registerVariable<double>("cube_node", &_cube.intake, "Speed of lower wheel (formerly high_goal_speed)", 0, 4);
@@ -73,7 +138,7 @@ public:
     _ddr.registerVariable<double>("cube_middle_node", &_cube.middle_node, "Speed of lower wheel (formerly high_goal_speed)", 0, 4);
     _ddr.registerVariable<double>("cube_low_node", &_cube.low_node, "Speed of lower wheel (formerly high_goal_speed)", 0, 4);
     _ddr.registerVariable<double>("cube_node", &_cube.intake, "Speed of lower wheel (formerly high_goal_speed)", 0, 4);
-
+    */
     _ddr.publishServicesTopics();
     _as.start();
   }
@@ -84,75 +149,45 @@ public:
 
   void executeCB(const behavior_actions::Elevater2023GoalConstPtr &goal)
   {
-    ROS_WARN_STREAM("Callback for updown elevater!");
-    // select piece
+    ros::spinOnce();
+    ElevaterINFO("Callback for up/down elevater!");
+    // select piece, nice synatax makes loading params worth it
+    double position = _game_piece_lookup[goal->piece][goal->mode];
+
+    // apply offset
+    position += _position_offset;
+    assert(position >= 0); // probably done in elevator server also 
+
+    ElevaterINFO("Position is " << position);
     
-    GamePiece current_piece;
-    if (goal->piece == goal->CUBE) {
-      current_piece = _cube;
-    }
-    else if (goal->piece == goal->VERTICAL_CONE) {
-      current_piece = _vertical_cone;
-    }
-    else if (goal->piece == goal->BASE_TOWARDS_US_CONE) {
-      current_piece = _base_towards_us_cone;
-    }
-    else if (goal->piece == goal->BASE_AWAY_US_CONE) {
-      current_piece = _base_away_us_cone;
-    }
+    controllers_2023_msgs::ElevatorSrv req;
+    req.request.position = position;
 
-    // select mode for piece
-    double height = -1;
-    if (goal->mode == goal->INTAKE) {
-      height = current_piece.intake;
-    }
-    else if (goal->mode == goal->LOW_NODE) {
-      height = current_piece.low_node;
-    }
-    else if (goal->mode == goal->MIDDLE_NODE) {
-      height = current_piece.middle_node;
-    }
-    else if (goal->mode == goal->HIGH_NODE) {
-      height = current_piece.high_node;
-    }
-
-    ROS_WARN_STREAM("Height is " << height);
-    
-    controllers_2023_msgs::ElevatorSrvRequest req;
-    // req.position 
-    //_elevator_srv.call();
-    /* 
-    ros::Rate r(100);
-    while (ros::ok()) {
-      ros::spinOnce();
-      if (_as.isPreemptRequested() || !ros::ok())
-      {
-        _as.publishFeedback(_feedback);
-        ElevaterINFO(" : Preempted");
-        // set the action state to preempted
-        _as.setPreempted();
-        break;
-      }
-
-      _feedback.close_enough = good_samples > shooter_wheel_checks_;
+    if (_elevator_srv.call(req)) {
+      _feedback.success = true;
+      _result.success = true;
       _as.publishFeedback(_feedback);
-      r.sleep();
-    
-    _as.setSucceeded();
-    */
+      _as.setSucceeded(_result); // not sure if code higher up wants feedback or success, so supply both
+    }
+    else { // somehow elevator has failed, set status and abort to pass error up
+      _feedback.success = false;
+      _result.success = false;
+      _as.publishFeedback(_feedback);
+      _as.setAborted(_result);
+    }
+    ros::spinOnce();
   }
   
   void heightOffsetCallback(const std_msgs::Float64 speed_offset_msg) { 
     _position_offset = speed_offset_msg.data;
   }
 
-};
+}; // ElevaterAction2023
 
 int main(int argc, char** argv)
 {
   ros::init(argc, argv, "elevater_server_2023");
   ElevaterAction2023 elevater("elevater_server_2023");
   ros::spin();
-
   return 0;
 }
