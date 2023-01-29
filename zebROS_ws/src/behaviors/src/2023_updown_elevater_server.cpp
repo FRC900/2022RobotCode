@@ -120,7 +120,7 @@ public:
 
     const std::map<std::string, std::string> service_connection_header{{"tcp_nodelay", "1"}};
     // TODO check topic
-		_elevator_srv = _nh.serviceClient<controllers_2023_msgs::ElevatorSrv>("/frcrobot_jetson/elevator_service", false, service_connection_header);
+		_elevator_srv = _nh.serviceClient<controllers_2023_msgs::ElevatorSrv>("/frcrobot_jetson/elevator_controller_2023/elevator_service", false, service_connection_header);
     if (!_elevator_srv.waitForExistence(ros::Duration(5))) {
         ElevaterERR("=======Could not find elevator service========");
     }
@@ -174,7 +174,7 @@ public:
 
     // apply offset
     position += _position_offset;
-    ElevaterINFO("Moving a " << piece_to_string[goal->piece] << " to the position " << mode_to_string[goal->mode] << " and the ELEVATOR to the position=" << position);
+    ElevaterINFO("Moving a " << piece_to_string[goal->piece] << " to the position " << mode_to_string[goal->mode] << " and the ELEVATOR to the position=" << position << " meters");
 
     assert(position >= 0); // probably done in elevator server also 
     
