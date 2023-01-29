@@ -212,7 +212,7 @@ int main (int argc, char **argv)
 		// TODO - try this with an exact synchronizer?
 		obj_depth_sync = std::make_unique<message_filters::Synchronizer<ObjDepthSyncPolicy>>(ObjDepthSyncPolicy(10), *obsub, *depth_sub);
 
-		obj_depth_sync->setMaxIntervalDuration(ros::Duration(0.2));
+		obj_depth_sync->setMaxIntervalDuration(ros::Duration(timeout));
 		obj_depth_sync->registerCallback(boost::bind(callback, _1, _2));
 	}
 	else
