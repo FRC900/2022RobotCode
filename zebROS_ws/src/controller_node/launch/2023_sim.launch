@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <!--
-  Simulate a omni (swerve) robot in 2022 field stage
+  Simulate a omni (swerve) robot in 2023 field stage
  -->
 <launch>
 	<!-- useful for running sim stuff on a laptop and path follower on a jetson -->

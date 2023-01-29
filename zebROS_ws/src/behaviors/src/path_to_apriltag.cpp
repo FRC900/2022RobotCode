@@ -40,15 +40,6 @@ trajectory_msgs::JointTrajectoryPoint generateTrajectoryPoint(double x, double y
 	return point;
 }
 
-base_trajectory_msgs::GenerateSpline makePath(double x, double y, double rotation, std::string frame_id) {
-    base_trajectory_msgs::GenerateSpline srv;
-    srv.request.header.stamp = ros::Time::now();
-    srv.request.header.frame_id = "base_link";
-    srv.request.points = {generateTrajectoryPoint(0, 0, 0), generateTrajectoryPoint(x, y, 0)};
-    srv.request.point_frame_id = {"base_link", frame_id};
-    return srv;
-}
-
 double getYaw(const geometry_msgs::Quaternion &o) {
     tf2::Quaternion q;
     tf2::fromMsg(o, q);
@@ -125,7 +116,7 @@ public:
                     tf2::Quaternion q;
                     q.setRPY(0, 0, (rotation - latestImuZ_));
                     tf.setRotation(q);
-                    return std::optional<tf2::Transform>{tf};
+                    return tf;
                 }
             }
             return std::nullopt;
@@ -163,8 +154,7 @@ public:
     }
 
     void imuCallback(const sensor_msgs::ImuConstPtr& msg) {
-        sensor_msgs::Imu msgNonPtr = *msg;
-        latestImuZ_ = getYaw(msgNonPtr.orientation);
+        latestImuZ_ = getYaw(msg->orientation);
     }
 
     void executeCB(const behavior_actions::PathToAprilTagGoalConstPtr &goal)
@@ -221,7 +211,7 @@ public:
         pathGoal.waypoints = spline_gen_srv.response.waypoints;
         ac_.sendGoal(pathGoal);
 
-        ros::Rate r(100);
+        ros::Rate r(30);
         while (!ac_.getState().isDone()) {
             if (as_.isPreemptRequested() || !ros::ok())
             {
