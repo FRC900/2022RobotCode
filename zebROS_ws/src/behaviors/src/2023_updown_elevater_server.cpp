@@ -4,18 +4,27 @@
 #include <ddynamic_reconfigure/ddynamic_reconfigure.h>
 #include <std_msgs/Float64.h>
 #include <controllers_2023_msgs/ElevatorSrv.h>
+#include <iostream>
 
 #define ElevaterINFO(x) ROS_INFO_STREAM("2023_elevater_server : " << x)
 #define ElevaterERR(x) ROS_ERROR_STREAM("2023_elevater_server : " << x)
 
 typedef behavior_actions::Elevater2023Goal elevater_ns;
+/*
+uint8 INTAKE=0
+uint8 LOW_NODE=1
+uint8 MIDDLE_NODE=2
+uint8 HIGH_NODE=3
+uint8 mode
 
-struct GamePiece { 
-  double intake;
-  double low_node;
-  double middle_node;
-  double high_node;
-};
+uint8 CUBE=0
+uint8 VERTICAL_CONE=1
+uint8 BASE_TOWARDS_US_CONE=2 
+uint8 BASE_AWAY_US_CONE=3
+uint8 piece
+*/
+constexpr std::array mode_to_string = {"INTAKE", "LOW_NODE", "MIDDLE_NODE", "HIGH_NODE"};
+constexpr std::array piece_to_string = {"CUBE", "VERTICAL_CONE", "BASE_TOWARDS_US_CONE", "BASE_AWAY_US_CONE"};
 
 template <class T>
 void load_param_helper(const ros::NodeHandle &nh, std::string name, T &result, T default_val) {
@@ -117,64 +126,76 @@ public:
     }
     _elevator_offset_sub = _nh.subscribe("/elevator_position_offset", 1, &ElevaterAction2023::heightOffsetCallback, this);
     
-    _ddr.registerVariable<double>("cube_high_node", &_game_piece_lookup[elevater_ns::CUBE][elevater_ns::INTAKE], "Speed of lower wheel (formerly high_goal_speed)", 0, 4);
-    // TODO, type this out
-    /* 
-    _ddr.registerVariable<double>("cube_middle_node", &_cube.middle_node, "Speed of lower wheel (formerly high_goal_speed)", 0, 4);
-    _ddr.registerVariable<double>("cube_low_node", &_cube.low_node, "Speed of lower wheel (formerly high_goal_speed)", 0, 4);
-    _ddr.registerVariable<double>("cube_node", &_cube.intake, "Speed of lower wheel (formerly high_goal_speed)", 0, 4);
+    _ddr.registerVariable<double>("CUBE_intake", &_game_piece_lookup[elevater_ns::CUBE][elevater_ns::INTAKE], "", 0, 4);
+    _ddr.registerVariable<double>("CUBE_low_node", &_game_piece_lookup[elevater_ns::CUBE][elevater_ns::LOW_NODE], "", 0, 4);
+    _ddr.registerVariable<double>("CUBE_middle_node", &_game_piece_lookup[elevater_ns::CUBE][elevater_ns::MIDDLE_NODE], "", 0, 4);
+    _ddr.registerVariable<double>("CUBE_high_node", &_game_piece_lookup[elevater_ns::CUBE][elevater_ns::HIGH_NODE], "", 0, 4);
 
-    _ddr.registerVariable<double>("cube_high_node", &_vertical_cone.high_node, "Speed of lower wheel (formerly high_goal_speed)", 0, 4);
-    _ddr.registerVariable<double>("cube_middle_node", &_vertical_cone.middle_node, "Speed of lower wheel (formerly high_goal_speed)", 0, 4);
-    _ddr.registerVariable<double>("cube_low_node", &_vertical_cone.low_node, "Speed of lower wheel (formerly high_goal_speed)", 0, 4);
-    _ddr.registerVariable<double>("cube_node", &_vertical_cone.intake, "Speed of lower wheel (formerly high_goal_speed)", 0, 4);
- 
-    _ddr.registerVariable<double>("cube_high_node", &_cube.high_node, "Speed of lower wheel (formerly high_goal_speed)", 0, 4);
-    _ddr.registerVariable<double>("cube_middle_node", &_cube.middle_node, "Speed of lower wheel (formerly high_goal_speed)", 0, 4);
-    _ddr.registerVariable<double>("cube_low_node", &_cube.low_node, "Speed of lower wheel (formerly high_goal_speed)", 0, 4);
-    _ddr.registerVariable<double>("cube_node", &_cube.intake, "Speed of lower wheel (formerly high_goal_speed)", 0, 4);
+    _ddr.registerVariable<double>("VERTICAL_CONE_intake", &_game_piece_lookup[elevater_ns::CUBE][elevater_ns::INTAKE], "", 0, 4);
+    _ddr.registerVariable<double>("VERTICAL_CONE_low_node", &_game_piece_lookup[elevater_ns::VERTICAL_CONE][elevater_ns::LOW_NODE], "", 0, 4);
+    _ddr.registerVariable<double>("VERTICAL_CONE_middle_node", &_game_piece_lookup[elevater_ns::VERTICAL_CONE][elevater_ns::MIDDLE_NODE], "", 0, 4);
+    _ddr.registerVariable<double>("VERTICAL_CONE_high_node", &_game_piece_lookup[elevater_ns::VERTICAL_CONE][elevater_ns::HIGH_NODE], "", 0, 4);
 
-    _ddr.registerVariable<double>("cube_high_node", &_cube.high_node, "Speed of lower wheel (formerly high_goal_speed)", 0, 4);
-    _ddr.registerVariable<double>("cube_middle_node", &_cube.middle_node, "Speed of lower wheel (formerly high_goal_speed)", 0, 4);
-    _ddr.registerVariable<double>("cube_low_node", &_cube.low_node, "Speed of lower wheel (formerly high_goal_speed)", 0, 4);
-    _ddr.registerVariable<double>("cube_node", &_cube.intake, "Speed of lower wheel (formerly high_goal_speed)", 0, 4);
-    */
+    _ddr.registerVariable<double>("BASE_TOWARDS_US_CONE_intake", &_game_piece_lookup[elevater_ns::BASE_TOWARDS_US_CONE][elevater_ns::INTAKE], "", 0, 4);
+    _ddr.registerVariable<double>("BASE_TOWARDS_US_CONE_low_node", &_game_piece_lookup[elevater_ns::BASE_TOWARDS_US_CONE][elevater_ns::LOW_NODE], "", 0, 4);
+    _ddr.registerVariable<double>("BASE_TOWARDS_US_CONE_middle_node", &_game_piece_lookup[elevater_ns::BASE_TOWARDS_US_CONE][elevater_ns::MIDDLE_NODE], "", 0, 4);
+    _ddr.registerVariable<double>("BASE_TOWARDS_US_CONE_high_node", &_game_piece_lookup[elevater_ns::BASE_TOWARDS_US_CONE][elevater_ns::HIGH_NODE], "", 0, 4);
+
+    _ddr.registerVariable<double>("BASE_AWAY_US_CONE_intake", &_game_piece_lookup[elevater_ns::BASE_AWAY_US_CONE][elevater_ns::INTAKE], "", 0, 4);
+    _ddr.registerVariable<double>("BASE_AWAY_US_CONE_low_node", &_game_piece_lookup[elevater_ns::BASE_AWAY_US_CONE][elevater_ns::LOW_NODE], "", 0, 4);
+    _ddr.registerVariable<double>("BASE_AWAY_US_CONE_middle_node", &_game_piece_lookup[elevater_ns::BASE_AWAY_US_CONE][elevater_ns::MIDDLE_NODE], "", 0, 4);
+    _ddr.registerVariable<double>("BASE_AWAY_US_CONE_high_node", &_game_piece_lookup[elevater_ns::BASE_AWAY_US_CONE][elevater_ns::HIGH_NODE], "", 0, 4);
+
     _ddr.publishServicesTopics();
     _as.start();
+    ElevaterINFO("Started Elevater Action server");
   }
 
   ~ElevaterAction2023(void)
   {
   }
 
+  void print_map() {
+    for(const auto& elem : _game_piece_lookup)
+    {
+      std::cout << elem.first << "\n";
+      for (const auto& sub_elem : elem.second) {
+        std::cout << sub_elem.first << " " << sub_elem.second << "\n";
+      }
+      std::cout << "\n\n";
+    }
+  }
+
   void executeCB(const behavior_actions::Elevater2023GoalConstPtr &goal)
   {
     ros::spinOnce();
-    ElevaterINFO("Callback for up/down elevater!");
     // select piece, nice synatax makes loading params worth it
     double position = _game_piece_lookup[goal->piece][goal->mode];
 
     // apply offset
     position += _position_offset;
-    assert(position >= 0); // probably done in elevator server also 
+    ElevaterINFO("Moving a " << piece_to_string[goal->piece] << " to the position " << mode_to_string[goal->mode] << " and the ELEVATOR to the position=" << position);
 
-    ElevaterINFO("Position is " << position);
+    assert(position >= 0); // probably done in elevator server also 
     
     controllers_2023_msgs::ElevatorSrv req;
     req.request.position = position;
 
     if (_elevator_srv.call(req)) {
+      ElevaterINFO("Succeeded moving elevator!");
       _feedback.success = true;
       _result.success = true;
       _as.publishFeedback(_feedback);
       _as.setSucceeded(_result); // not sure if code higher up wants feedback or success, so supply both
     }
     else { // somehow elevator has failed, set status and abort to pass error up
+      ElevaterERR("Failed to moving elevator :(");
       _feedback.success = false;
       _result.success = false;
       _as.publishFeedback(_feedback);
       _as.setAborted(_result);
     }
+    // print_map();
     ros::spinOnce();
   }
   
