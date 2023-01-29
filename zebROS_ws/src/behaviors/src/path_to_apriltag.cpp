@@ -72,6 +72,7 @@ class PathToAprilTagAction
 protected:
 
     ros::NodeHandle nh_;
+    ros::NodeHandle nh_params_;
     actionlib::SimpleActionServer<behavior_actions::PathToAprilTagAction> as_; // NodeHandle instance must be created before this line. Otherwise strange error occurs.
     std::string action_name_;
     // create messages that are used to published feedback/result
@@ -80,6 +81,7 @@ protected:
     tf2_ros::Buffer tf_buffer_;
     tf2_ros::TransformListener tf_listener_;
     double latestImuZ_;
+    double timeout_;
     field_obj::Detection latest_;
     actionlib::SimpleActionClient<path_follower_msgs::PathAction> ac_;
     ros::ServiceClient client_;
@@ -89,13 +91,15 @@ protected:
 public:
 
     PathToAprilTagAction(std::string name) :
+        nh_params_(nh_, "path_to_apriltag"),
         as_(nh_, name, boost::bind(&PathToAprilTagAction::executeCB, this, _1), false),
         action_name_(name),
         tf_listener_(tf_buffer_),
         ac_("/path_follower/path_follower_server", true),
         client_(nh_.serviceClient<base_trajectory_msgs::GenerateSpline>("/path_follower/base_trajectory/spline_gen")),
         sub_(nh_.subscribe<field_obj::Detection>("/tf_object_detection/tag_detection_world", 1, boost::bind(&PathToAprilTagAction::callback, this, _1))),
-        subImu_(nh_.subscribe<sensor_msgs::Imu>("/imu/zeroed_imu", 1, boost::bind(&PathToAprilTagAction::imuCallback, this, _1)))
+        subImu_(nh_.subscribe<sensor_msgs::Imu>("/imu/zeroed_imu", 1, boost::bind(&PathToAprilTagAction::imuCallback, this, _1))),
+        timeout_(nh_params_.param<double>("timeout", timeout_, 0.2)) // roughly equal to apriltag detector fps
     {
         as_.start();
     }
@@ -105,7 +109,7 @@ public:
     }
 
     std::optional<tf2::Transform> getTransformToTag(uint32_t id, double rotation) {
-        if (latest_.objects.size() == 0) {
+        if (latest_.objects.size() == 0 || ros::Time::now() - latest_.header.stamp > ros::Duration(timeout_)) {
             return std::nullopt;
         }
         else {
@@ -171,6 +175,7 @@ public:
 
         if (!pt_.has_value()) {
             as_.setAborted(result_);
+            return;
         }
         auto pt = pt_.value();
 
