@@ -1,14 +1,14 @@
 cube:
   intake: 1.00
-  low_node: 2.00
+  low_node: 2.05
   middle_node: 3.00
   high_node: 4.00
 
 vertical_cone:
-  intake: 1.00
+  intake: 0.20
   low_node: 2.00
   middle_node: 3.00
-  high_node: 4.00
+  high_node: 4.10
 
 base_towards_us_cone:
   intake: 1.00
