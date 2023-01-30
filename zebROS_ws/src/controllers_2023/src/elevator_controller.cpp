@@ -120,7 +120,7 @@ bool ElevatorController_2023::init(hardware_interface::RobotHW *hw,
     hardware_interface::TalonCommandInterface *const talon_command_iface = hw->get<hardware_interface::TalonCommandInterface>();
 
     //hardware_interface::PositionJointInterface *const pos_joint_iface = hw->get<hardware_interface::PositionJointInterface>()
-    if (!readIntoScalar(controller_nh, "arb_feed_forward_low", arb_feed_forward_up_low))
+    if (!readIntoScalar(controller_nh, "arb_feed_forward_low", arb_feed_forward_low))
     {
         ROS_ERROR("Could not find arb_feed_forward_low");
         return false;
@@ -283,73 +283,6 @@ bool ElevatorController_2023::init(hardware_interface::RobotHW *hw,
     
     ddr_.publishServicesTopics();
 
-
-    if (!readIntoScalar(controller_nh, "arb_feed_forward_low", arb_feed_forward_low))
-    {
-        ROS_ERROR("Could not find arb_feed_forward_high");
-        return false;
-    }
-
-    if (!readIntoScalar(controller_nh, "arb_feed_forward_high", arb_feed_forward_high))
-    {
-        ROS_ERROR("Could not find arb_feed_forward_low");
-        return false;
-    }
-
-    if (!readIntoScalar(controller_nh, "elevator_zeroing_percent_output", elevator_zeroing_percent_output))
-    {
-        ROS_ERROR("Could not find elevator_zeroing_percent_output");
-        return false;
-    }
-
-    if (!readIntoScalar(controller_nh, "elevator_zeroing_timeout", elevator_zeroing_timeout))
-    {
-        ROS_ERROR("Could not find elevator_zeroing_timeout");
-        return false;
-    }
-
-    if (!readIntoScalar(controller_nh, "stage_2_height", stage_2_height))
-    {
-        ROS_ERROR("Could not find stage_2_height");
-        return false;
-    }
-
-    if (!readIntoScalar(controller_nh, "motion_magic_velocity", motion_magic_velocity_fast))
-    {
-        ROS_ERROR("Could not find motion_magic_velocity");
-        return false;
-    }
-
-
-    if (!readIntoScalar(controller_nh, "motion_magic_acceleration", motion_magic_acceleration_fast))
-    {
-        ROS_ERROR("Could not find motion_magic_acceleration");
-        return false;
-    }
-
-
-    if (!readIntoScalar(controller_nh, "motion_s_curve_strength", motion_s_curve_strength))
-    {
-    	ROS_ERROR("Could not find motion_s_curve_strength");
-    	return false;
-    }
-
-
-    //get config values for the elevator talon
-    XmlRpc::XmlRpcValue elevator_params;
-    if (!controller_nh.getParam("elevator_joint", elevator_params))
-    {
-        ROS_ERROR("Could not find elevator_joint");
-        return false;
-    }
-
-    if (!controller_nh.getParam("MAX_HEIGHT_VAL", MAX_HEIGHT_VAL))
-    {
-        ROS_ERROR("Could not find MAX_HEIGHT_VAL");
-        return false;
-    
-    }
-
     //initialize the elevator joint
     if (!elevator_joint_.initWithNode(talon_command_iface, nullptr, controller_nh, elevator_params))
     {
@@ -357,8 +290,6 @@ bool ElevatorController_2023::init(hardware_interface::RobotHW *hw,
     }
 
     elevator_service_ = controller_nh.advertiseService("elevator_service", &ElevatorController_2023::cmdService, this);
-
-
 
     return true;
 }
