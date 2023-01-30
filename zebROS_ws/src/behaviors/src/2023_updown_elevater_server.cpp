@@ -39,14 +39,12 @@ class ElevaterAction2023 {
 
 protected:
 
-  ros::NodeHandle _nh;
-  ros::NodeHandle _nh_params;
-  actionlib::SimpleActionServer<behavior_actions::Elevater2023Action> _as;
-  ros::ServiceClient _elevator_srv;
-  std::string _action_name;
-  // create message that is used to publish feedback
-  behavior_actions::Elevater2023Feedback _feedback;
-  behavior_actions::Elevater2023Result _result;
+  ros::NodeHandle nh_;
+  ros::NodeHandle nh_params_;
+  actionlib::SimpleActionServer<behavior_actions::Elevater2023Action> as_;
+  ros::ServiceClient elevator_srv_;
+  std::string action_name_;
+
 
   // lookup is [enum for piece][enum for level]
   std::map<int, std::map<int, double>> _game_piece_lookup;
@@ -58,10 +56,10 @@ protected:
 public:
 
   ElevaterAction2023(std::string name) :
-    _as(_nh, name, boost::bind(&ElevaterAction2023::executeCB, this, _1), false),
-    _nh_params(_nh, "elevater_server_2023"),
-    _action_name(name),
-    _ddr(_nh_params)
+    as_(nh_, name, boost::bind(&ElevaterAction2023::executeCB, this, _1), false),
+    nh_params_(nh_, "elevater_server_2023"),
+    action_name_(name),
+    _ddr(nh_params_)
   {
     // time to load all 16 params!
     // the idea here is that the customization is good, and if values are the same than thats great
@@ -72,40 +70,40 @@ public:
     // default values are guesses
     double res = -1;
     // cube
-    load_param_helper(_nh, "cube/intake", res, 0.0);
+    load_param_helper(nh_, "cube/intake", res, 0.0);
     _game_piece_lookup[elevater_ns::CUBE][elevater_ns::INTAKE] = res;
-    load_param_helper(_nh, "cube/low_node", res, 0.5);
+    load_param_helper(nh_, "cube/low_node", res, 0.5);
     _game_piece_lookup[elevater_ns::CUBE][elevater_ns::LOW_NODE] = res;
-    load_param_helper(_nh, "cube/middle_node", res, 0.7);
+    load_param_helper(nh_, "cube/middle_node", res, 0.7);
     _game_piece_lookup[elevater_ns::CUBE][elevater_ns::MIDDLE_NODE] = res;
-    load_param_helper(_nh, "cube/high_node", res, 1.0);
+    load_param_helper(nh_, "cube/high_node", res, 1.0);
     _game_piece_lookup[elevater_ns::CUBE][elevater_ns::HIGH_NODE] = res;
     // vertical cone
-    load_param_helper(_nh, "vertical_cone/intake", res, 0.0);
+    load_param_helper(nh_, "vertical_cone/intake", res, 0.0);
     _game_piece_lookup[elevater_ns::VERTICAL_CONE][elevater_ns::INTAKE] = res;
-    load_param_helper(_nh, "vertical_cone/low_node", res, 0.5);
+    load_param_helper(nh_, "vertical_cone/low_node", res, 0.5);
     _game_piece_lookup[elevater_ns::VERTICAL_CONE][elevater_ns::LOW_NODE] = res;
-    load_param_helper(_nh, "vertical_cone/middle_node", res, 0.7);
+    load_param_helper(nh_, "vertical_cone/middle_node", res, 0.7);
     _game_piece_lookup[elevater_ns::VERTICAL_CONE][elevater_ns::MIDDLE_NODE] = res;
-    load_param_helper(_nh, "vertical_cone/high_node", res, 0.5);
+    load_param_helper(nh_, "vertical_cone/high_node", res, 0.5);
     _game_piece_lookup[elevater_ns::VERTICAL_CONE][elevater_ns::HIGH_NODE] = res;
     // cone with base toward us
-    load_param_helper(_nh, "base_towards_us_cone/intake", res, 0.0);
+    load_param_helper(nh_, "base_towards_us_cone/intake", res, 0.0);
     _game_piece_lookup[elevater_ns::BASE_TOWARDS_US_CONE][elevater_ns::INTAKE] = res;
-    load_param_helper(_nh, "base_towards_us_cone/low_node", res, 0.5);
+    load_param_helper(nh_, "base_towards_us_cone/low_node", res, 0.5);
     _game_piece_lookup[elevater_ns::BASE_TOWARDS_US_CONE][elevater_ns::LOW_NODE] = res;
-    load_param_helper(_nh, "base_towards_us_cone/middle_node", res, 0.7);
+    load_param_helper(nh_, "base_towards_us_cone/middle_node", res, 0.7);
     _game_piece_lookup[elevater_ns::BASE_TOWARDS_US_CONE][elevater_ns::MIDDLE_NODE] = res;
-    load_param_helper(_nh, "base_towards_us_cone/high_node", res, 1.0);
+    load_param_helper(nh_, "base_towards_us_cone/high_node", res, 1.0);
     _game_piece_lookup[elevater_ns::BASE_TOWARDS_US_CONE][elevater_ns::HIGH_NODE] = res;
     // cone with base away from us
-    load_param_helper(_nh, "base_away_us_cone/intake", res, 0.0);
+    load_param_helper(nh_, "base_away_us_cone/intake", res, 0.0);
     _game_piece_lookup[elevater_ns::BASE_AWAY_US_CONE][elevater_ns::INTAKE] = res;
-    load_param_helper(_nh, "base_away_us_cone/low_node", res, 0.5);
+    load_param_helper(nh_, "base_away_us_cone/low_node", res, 0.5);
     _game_piece_lookup[elevater_ns::BASE_AWAY_US_CONE][elevater_ns::LOW_NODE] = res;
-    load_param_helper(_nh, "base_away_us_cone/middle_node", res, 0.7);
+    load_param_helper(nh_, "base_away_us_cone/middle_node", res, 0.7);
     _game_piece_lookup[elevater_ns::BASE_AWAY_US_CONE][elevater_ns::MIDDLE_NODE] = res;
-    load_param_helper(_nh, "base_away_us_cone/high_node", res, 1.0);
+    load_param_helper(nh_, "base_away_us_cone/high_node", res, 1.0);
     _game_piece_lookup[elevater_ns::BASE_AWAY_US_CONE][elevater_ns::HIGH_NODE] = res;
 
     ElevaterINFO("Game Piece params");
@@ -120,11 +118,11 @@ public:
 
     const std::map<std::string, std::string> service_connection_header{{"tcp_nodelay", "1"}};
     // TODO check topic
-		_elevator_srv = _nh.serviceClient<controllers_2023_msgs::ElevatorSrv>("/frcrobot_jetson/elevator_controller_2023/elevator_service", false, service_connection_header);
-    if (!_elevator_srv.waitForExistence(ros::Duration(5))) {
+		elevator_srv_ = nh_.serviceClient<controllers_2023_msgs::ElevatorSrv>("/frcrobot_jetson/elevator_controller_2023/elevator_service", false, service_connection_header);
+    if (!elevator_srv_.waitForExistence(ros::Duration(5))) {
         ElevaterERR("=======Could not find elevator service========");
     }
-    _elevator_offset_sub = _nh.subscribe("/elevator_position_offset", 1, &ElevaterAction2023::heightOffsetCallback, this);
+    _elevator_offset_sub = nh_.subscribe("/elevator_position_offset", 1, &ElevaterAction2023::heightOffsetCallback, this);
     
     _ddr.registerVariable<double>("CUBE_intake", &_game_piece_lookup[elevater_ns::CUBE][elevater_ns::INTAKE], "", 0, 4);
     _ddr.registerVariable<double>("CUBE_low_node", &_game_piece_lookup[elevater_ns::CUBE][elevater_ns::LOW_NODE], "", 0, 4);
@@ -147,7 +145,7 @@ public:
     _ddr.registerVariable<double>("BASE_AWAY_US_CONE_high_node", &_game_piece_lookup[elevater_ns::BASE_AWAY_US_CONE][elevater_ns::HIGH_NODE], "", 0, 4);
 
     _ddr.publishServicesTopics();
-    _as.start();
+    as_.start();
     ElevaterINFO("Started Elevater Action server");
   }
 
@@ -178,22 +176,25 @@ public:
 
     assert(position >= 0); // probably done in elevator server also 
     
+    behavior_actions::Elevater2023Feedback feedback;
+    behavior_actions::Elevater2023Result result;
+
     controllers_2023_msgs::ElevatorSrv req;
     req.request.position = position;
 
-    if (_elevator_srv.call(req)) {
+    if (elevator_srv_.call(req)) {
       ElevaterINFO("Succeeded moving elevator!");
-      _feedback.success = true;
-      _result.success = true;
-      _as.publishFeedback(_feedback);
-      _as.setSucceeded(_result); // not sure if code higher up wants feedback or success, so supply both
+      feedback.success = true;
+      result.success = true;
+      as_.publishFeedback(feedback);
+      as_.setSucceeded(result); // not sure if code higher up wants feedback or success, so supply both
     }
     else { // somehow elevator has failed, set status and abort to pass error up
       ElevaterERR("Failed to moving elevator :(");
-      _feedback.success = false;
-      _result.success = false;
-      _as.publishFeedback(_feedback);
-      _as.setAborted(_result);
+      feedback.success = false;
+      result.success = false;
+      as_.publishFeedback(feedback);
+      as_.setAborted(result);
     }
     // print_map();
     ros::spinOnce();
