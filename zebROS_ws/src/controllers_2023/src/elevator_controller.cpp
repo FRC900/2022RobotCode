@@ -77,8 +77,8 @@ class ElevatorController_2023 : public controller_interface::MultiInterfaceContr
 
 
 
-        std::atomic<double> arb_feed_forward_up_high;
-        std::atomic<double> arb_feed_forward_up_low;
+        std::atomic<double> arb_feed_forward_high;
+        std::atomic<double> arb_feed_forward_low;
         std::atomic<double> elevator_zeroing_percent_output;
         std::atomic<double> elevator_zeroing_timeout;
         std::atomic<double> stage_2_height;
@@ -193,27 +193,27 @@ bool ElevatorController_2023::init(hardware_interface::RobotHW *hw,
     }
 
     ddr_.registerVariable<double>
-    ("arb_feed_forward_up_high",
+    ("arb_feed_forward_high",
      [this]()
     {
-        return arb_feed_forward_up_high.load();
+        return arb_feed_forward_high.load();
     },
     [this](double b)
     {
-        arb_feed_forward_up_high.store(b);
+        arb_feed_forward_high.store(b);
     },
-    "Arb feedforward up high");
+    "Arb feedforward high");
     ddr_.registerVariable<double>
-    ("arb_feed_forward_up_low",
+    ("arb_feed_forward_low",
      [this]()
     {
-        return arb_feed_forward_up_low.load();
+        return arb_feed_forward_low.load();
     },
     [this](double b)
     {
-        arb_feed_forward_up_low.store(b);
+        arb_feed_forward_low.store(b);
     },
-    "Arb feedforward up low");
+    "Arb feedforward low");
     ddr_.registerVariable<double>
     ("elevator_zeroing_percent_output",
      [this]()
@@ -283,6 +283,79 @@ bool ElevatorController_2023::init(hardware_interface::RobotHW *hw,
     
     ddr_.publishServicesTopics();
 
+
+    if (!readIntoScalar(controller_nh, "arb_feed_forward_low", arb_feed_forward_low))
+    {
+        ROS_ERROR("Could not find arb_feed_forward_high");
+        return false;
+    }
+
+    if (!readIntoScalar(controller_nh, "arb_feed_forward_high", arb_feed_forward_high))
+    {
+        ROS_ERROR("Could not find arb_feed_forward_low");
+        return false;
+    }
+
+    if (!readIntoScalar(controller_nh, "elevator_zeroing_percent_output", elevator_zeroing_percent_output))
+    {
+        ROS_ERROR("Could not find elevator_zeroing_percent_output");
+        return false;
+    }
+
+    if (!readIntoScalar(controller_nh, "elevator_zeroing_timeout", elevator_zeroing_timeout))
+    {
+        ROS_ERROR("Could not find elevator_zeroing_timeout");
+        return false;
+    }
+
+    if (!readIntoScalar(controller_nh, "stage_2_height", stage_2_height))
+    {
+        ROS_ERROR("Could not find stage_2_height");
+        return false;
+    }
+
+    if (!readIntoScalar(controller_nh, "motion_magic_velocity", motion_magic_velocity_fast))
+    {
+        ROS_ERROR("Could not find motion_magic_velocity");
+        return false;
+    }
+
+
+    if (!readIntoScalar(controller_nh, "motion_magic_acceleration", motion_magic_acceleration_fast))
+    {
+        ROS_ERROR("Could not find motion_magic_acceleration");
+        return false;
+    }
+
+
+    if (!readIntoScalar(controller_nh, "motion_s_curve_strength", motion_s_curve_strength))
+    {
+    	ROS_ERROR("Could not find motion_s_curve_strength");
+    	return false;
+    }
+
+
+    //get config values for the elevator talon
+    XmlRpc::XmlRpcValue elevator_params;
+    if (!controller_nh.getParam("elevator_joint", elevator_params))
+    {
+        ROS_ERROR("Could not find elevator_joint");
+        return false;
+    }
+
+    if (!controller_nh.getParam("MAX_HEIGHT_VAL", MAX_HEIGHT_VAL))
+    {
+        ROS_ERROR("Could not find MAX_HEIGHT_VAL");
+        return false;
+    
+    }
+
+    //initialize the elevator joint
+    if (!elevator_joint_.initWithNode(talon_command_iface, nullptr, controller_nh, elevator_params))
+    {
+        ROS_ERROR("Cannot initialize elevator joint!");
+    }
+
     elevator_service_ = controller_nh.advertiseService("elevator_service", &ElevatorController_2023::cmdService, this);
 
 
@@ -311,7 +384,7 @@ void ElevatorController_2023::update(const ros::Time &time, const ros::Duration 
             last_zeroed_ = true;
             elevator_joint_.setSelectedSensorPosition(0);
             elevator_joint_.setDemand1Type(hardware_interface::DemandType_ArbitraryFeedForward);
-            elevator_joint_.setDemand1Value(arb_feed_forward_up_low);
+            elevator_joint_.setDemand1Value(arb_feed_forward_low);
         }
     }
     else
@@ -342,12 +415,12 @@ void ElevatorController_2023::update(const ros::Time &time, const ros::Duration 
         if (elevator_joint_.getPosition() >= stage_2_height && last_position_ <= stage_2_height)
         {
             elevator_joint_.setDemand1Type(hardware_interface::DemandType_ArbitraryFeedForward);
-            elevator_joint_.setDemand1Value(arb_feed_forward_up_high);
+            elevator_joint_.setDemand1Value(arb_feed_forward_high);
         }
         else if (elevator_joint_.getPosition() <= stage_2_height && last_position_ >= stage_2_height)
         {
             elevator_joint_.setDemand1Type(hardware_interface::DemandType_ArbitraryFeedForward);
-            elevator_joint_.setDemand1Value(arb_feed_forward_up_low);
+            elevator_joint_.setDemand1Value(arb_feed_forward_low);
         
         //for now, up and down PID is the same, so slot 1 is used for climbing
         /*
