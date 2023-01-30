@@ -16,6 +16,7 @@ find_package(catkin REQUIRED COMPONENTS
   controllers_2019_msgs
   #controllers_2020_msgs
   controllers_2022_msgs
+  controllers_2023_msgs
   ddynamic_reconfigure
   frc_msgs
   field_obj
@@ -134,8 +135,8 @@ include_directories(
 catkin_package(
    #INCLUDE_DIRS include
    #LIBRARIES behaviors
-   CATKIN_DEPENDS actionlib_msgs actionlib behavior_actions path_follower_msgs nav_msgs roscpp rospy std_msgs tf2_ros geometry_msgs frc_msgs
-   DEPENDS
+   CATKIN_DEPENDS actionlib_msgs actionlib behavior_actions path_follower_msgs nav_msgs roscpp rospy std_msgs tf2_ros geometry_msgs frc_msgs std_srvs
+   DEPENDS 
 )
 
 # Generic actionlib code
@@ -152,14 +153,18 @@ add_executable(game_piece_path_server src/game_piece_path_gen.cpp)
 target_link_libraries(game_piece_path_server ${catkin_LIBRARIES})
 add_dependencies(game_piece_path_server ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
+# 2023 actionlib servers
 add_executable(path_to_apriltag src/path_to_apriltag.cpp)
 target_link_libraries(path_to_apriltag ${catkin_LIBRARIES})
 add_dependencies(path_to_apriltag ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
-# 2023 actionlib servers
 add_executable(2023_align_to_grid_node src/2023_align_to_grid.cpp)
 target_link_libraries(2023_align_to_grid_node ${catkin_LIBRARIES})
 add_dependencies(2023_align_to_grid_node ${behaviors_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+
+add_executable(2023_updown_elevater_server src/2023_updown_elevater_server.cpp)
+target_link_libraries(2023_updown_elevater_server ${catkin_LIBRARIES})
+add_dependencies(2023_updown_elevater_server ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 # 2022 actionlib servers
 add_executable(2022_shooting_server_node src/2022_shooting_server.cpp)
@@ -342,17 +347,18 @@ endif()
 
 ## Mark executable scripts (Python etc.) for installation
 ## in contrast to setup.py, you can choose the destination
-# install(PROGRAMS
-#   scripts/my_python_script
-#   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
-# )
+install(PROGRAMS
+   src/2023_balancer_server.py 
+   src/2023_balancing_server.py
+   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+ )
 
 ## Mark executables and/or libraries for installation
 install(TARGETS
 	auto_node
 	publish_pid_cmd_vel_node
 	game_piece_path_server
-
+  2023_updown_elevater_server
 	#align_to_shoot_server
 	#align_hatch_server
 	#align_with_camera
