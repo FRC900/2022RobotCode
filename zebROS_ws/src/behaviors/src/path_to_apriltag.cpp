@@ -183,7 +183,7 @@ public:
         // angle now relative to apriltag
         spline_gen_srv.request.points[1] = pt;
         spline_gen_srv.request.point_frame_id[0] = "base_link";
-        spline_gen_srv.request.point_frame_id[1] = "base_link";
+        spline_gen_srv.request.point_frame_id[1] = goal->frame_id;
         base_trajectory_msgs::PathOffsetLimit path_offset_limit;
         spline_gen_srv.request.path_offset_limit.push_back(path_offset_limit);
 

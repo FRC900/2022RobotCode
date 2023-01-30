@@ -9,7 +9,6 @@
 #include <geometry_msgs/TransformStamped.h>
 #include <tf2/LinearMath/Quaternion.h>
 #include <tf2_ros/transform_broadcaster.h>
-#include <tf2_ros/transform_listener.h>
 #include <apriltag_ros/AprilTagDetectionArray.h>
 #include <apriltag_ros/AprilTagDetection.h>
 #include <field_obj/Detection.h>
@@ -98,9 +97,6 @@ class SimAprilTagPub
 		// Translate stage base_marker_detection into our custom goal detection message
 		void msgCallback(const marker_msgs::MarkerDetectionConstPtr &msgIn)
 		{
-			static tf2_ros::TransformBroadcaster br;
-			static tf2_ros::Buffer tfBuffer;
-  			static tf2_ros::TransformListener tfListener(tfBuffer);
 			std::vector<apriltag_ros::AprilTagDetection> detections;
 			std::vector<field_obj::Object> objects;
 			for(size_t i = 0; i < msgIn->markers.size(); i++)
@@ -131,7 +127,7 @@ class SimAprilTagPub
 				transformStamped.transform.rotation.z = q.z();
 				transformStamped.transform.rotation.w = q.w();
 
-				br.sendTransform(transformStamped);
+				br_.sendTransform(transformStamped);
 
 				detections.push_back(createAprilTag(msgIn->markers[i].ids[0]-100, p.x, p.y, p.z, msgIn->header));
 				objects.push_back(apriltagDetectionObject(msgIn->markers[i].ids[0]-100, p.x, p.y, p.z));
@@ -153,9 +149,10 @@ class SimAprilTagPub
 		}
 
 	private:
-		ros::Subscriber            sub_;
-		ros::Publisher             pub_;
-		ros::Publisher             tfPub_;
+		ros::Subscriber               sub_;
+		ros::Publisher                pub_;
+		ros::Publisher                tfPub_;
+		tf2_ros::TransformBroadcaster br_;
 };
 
 int main(int argc, char** argv)

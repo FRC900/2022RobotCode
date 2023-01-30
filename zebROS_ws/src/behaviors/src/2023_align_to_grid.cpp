@@ -15,7 +15,7 @@
 #include <tf2/LinearMath/Quaternion.h>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 
-inline geometry_msgs::Point operator-(const geometry_msgs::Point& lhs, const geometry_msgs::Point& rhs) {
+geometry_msgs::Point operator-(const geometry_msgs::Point& lhs, const geometry_msgs::Point& rhs) {
     geometry_msgs::Point p;
     p.x = lhs.x - rhs.x;
     p.y = lhs.y - rhs.y;
@@ -23,7 +23,7 @@ inline geometry_msgs::Point operator-(const geometry_msgs::Point& lhs, const geo
     return p;
 }
 
-inline geometry_msgs::Point operator+(const geometry_msgs::Point& lhs, const geometry_msgs::Point& rhs) {
+geometry_msgs::Point operator+(const geometry_msgs::Point& lhs, const geometry_msgs::Point& rhs) {
     geometry_msgs::Point p;
     p.x = lhs.x + rhs.x;
     p.y = lhs.y + rhs.y;
@@ -32,14 +32,14 @@ inline geometry_msgs::Point operator+(const geometry_msgs::Point& lhs, const geo
 }
 
 double distance(const geometry_msgs::Point &pt) {
-    return sqrt(pt.x * pt.x + pt.y * pt.y + pt.z * pt.z);
+    return hypot(pt.x, pt.y, pt.z);
 }
 
-inline bool operator<(const geometry_msgs::Point& lhs, const geometry_msgs::Point& rhs) {
+bool operator<(const geometry_msgs::Point& lhs, const geometry_msgs::Point& rhs) {
     return distance(lhs) < distance(rhs);
 }
 
-inline bool operator>(const geometry_msgs::Point& lhs, const geometry_msgs::Point& rhs) {
+bool operator>(const geometry_msgs::Point& lhs, const geometry_msgs::Point& rhs) {
     return distance(lhs) > distance(rhs);
 }
 
@@ -47,9 +47,9 @@ class Tag {
 public:
 	geometry_msgs::Point location;
 	double rotation;
-	Tag(geometry_msgs::Point location = geometry_msgs::Point(), bool _rotation = 0) {
+	Tag(geometry_msgs::Point location = geometry_msgs::Point(), bool rotation = 0) {
 		this->location = location;
-		this->rotation = _rotation;
+		this->rotation = rotation;
 	}
 };
 
@@ -79,13 +79,14 @@ protected:
   std::map<int, Tag> tags_;
   std::map<int, GridLocation> gridLocations_; // should probably be uint8_t
   actionlib::SimpleActionClient<behavior_actions::PathToAprilTagAction> client_;
+  double xOffset_;
 
 public:
 
   AlignToGridAction(std::string name) :
     as_(nh_, name, boost::bind(&AlignToGridAction::executeCB, this, _1), false),
     action_name_(name),
-    sub_(nh_.subscribe<field_obj::Detection>("/tf_object_detection/tag_detection_world", 1, boost::bind(&AlignToGridAction::callback, this, _1))),
+    sub_(nh_.subscribe<field_obj::Detection>("/tf_object_detection/tag_detection_world", 1, &AlignToGridAction::callback, this)),
     client_("/path_to_apriltag", true)
   {
     XmlRpc::XmlRpcValue tagList;
@@ -93,6 +94,8 @@ public:
 
     XmlRpc::XmlRpcValue gridList;
     nh_.getParam("grid_locations", gridList);
+
+    nh_.getParam("offset_from_cube_tag_to_end", xOffset_);
 
     for (XmlRpc::XmlRpcValue::iterator tag=tagList.begin(); tag!=tagList.end(); ++tag) {
       Tag t;
@@ -176,7 +179,8 @@ public:
     // need dest - src
 
     geometry_msgs::Point offset;
-    offset.x = -1.0;
+    offset.x = -xOffset_; // TODO consider going to a bit behind this and then driving forward for a preset amount of time? (in case we overshoot)
+    ROS_INFO_STREAM("xOffset: " << offset.x);
     if (goal->alliance == 1) {
       offset.y = gridLocation.y - tag.location.y; // should be gridLocation.y - tag.location.y
     } else {
@@ -199,6 +203,7 @@ public:
     aprilGoal.id = closestId;
     aprilGoal.tagRotation = tag.rotation;
     aprilGoal.offset = pose;
+    aprilGoal.frame_id = "front_bumper";
 
     client_.sendGoal(aprilGoal);
 

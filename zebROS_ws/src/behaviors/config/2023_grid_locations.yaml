@@ -15,3 +15,5 @@ grid_locations:
   pos8: ["cube", 4.431] # cube, tag id 6 blue or 3 red
   pos9: ["cone", 4.989] # cone
 
+# x distance from the apriltag on the cube node to the end of the things that stick out between nodes
+offset_from_cube_tag_to_end: 0.35
