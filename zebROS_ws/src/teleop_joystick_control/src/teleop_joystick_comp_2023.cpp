@@ -1,5 +1,4 @@
 // Toggle between rotation using rightStickX and rightTrigger - leftTrigger
-// TODO: Need to update this from 2022, it's a direct copy right now
 #define ROTATION_WITH_STICK
 
 
@@ -17,9 +16,6 @@
 #include "std_msgs/Float64.h"
 
 #include "std_srvs/Empty.h"
-
-#include "controllers_2022_msgs/DynamicArmSrv.h"
-#include "controllers_2022_msgs/Intake.h"
 
 #include <vector>
 #include "teleop_joystick_control/RobotOrient.h"
@@ -47,7 +43,7 @@ std::unique_ptr<TeleopCmdVel<teleop_joystick_control::TeleopJoystickComp2023Conf
 
 bool diagnostics_mode = false;
 
-double orient_strafing_angle;
+double orient_strafing_angle = 0; // set from service call anyway
 
 frc_msgs::ButtonBoxState button_box;
 
@@ -58,8 +54,6 @@ std::vector <std::string> topic_array;
 ros::Publisher orient_strafing_enable_pub;
 ros::Publisher orient_strafing_setpoint_pub;
 ros::Publisher orient_strafing_state_pub;
-
-ros::Publisher shooter_offset_pub;
 
 teleop_joystick_control::TeleopJoystickComp2023Config config;
 teleop_joystick_control::TeleopJoystickCompDiagnostics2023Config diagnostics_config;
@@ -80,9 +74,6 @@ bool joystick1_right_trigger_pressed = false;
 // Diagnostic mode controls
 imu_zero::ImuZeroAngle imu_cmd;
 
-//Shooter speed tuner
-std_msgs::Float64 speed_offset;
-ros::Publisher speed_offset_publisher; //shooter speed offset
 
 bool imu_service_needed = true;
 
@@ -246,19 +237,7 @@ void buttonBoxCallback(const ros::MessageEvent<frc_msgs::ButtonBoxState const>& 
 
 	if(button_box.leftRedPress)
 	{
-		ROS_INFO_STREAM("Snapping to angle for climb!");
-		// Align for climbing
-		std_msgs::Bool enable_align_msg;
-		enable_align_msg.data = true;
-		// To align the robot to an angle, enable_align_msg.data
-		// needs to be true and the desired angle (in radians)
-		// needs to be published to orient_strafing_setpoint_pub
-		orient_strafing_enable_pub.publish(enable_align_msg);
 
-		std_msgs::Float64 orient_strafing_angle_msg;
-		orient_strafing_angle_msg.data = orient_strafing_angle;
-		orient_strafing_setpoint_pub.publish(orient_strafing_angle_msg);
-		snappingToAngle = true;
 	}
 
 	if(button_box.leftRedButton)
@@ -267,12 +246,6 @@ void buttonBoxCallback(const ros::MessageEvent<frc_msgs::ButtonBoxState const>& 
 	}
 	if(button_box.leftRedRelease)
 	{
-		std_msgs::Bool enable_align_msg;
-		enable_align_msg.data = false;
-		orient_strafing_enable_pub.publish(enable_align_msg);
-		ROS_INFO_STREAM("Stopping snapping to angle!");
-		snappingToAngle = false;
-		sendRobotZero = false;
 	}
 
 	if(button_box.rightRedPress)
@@ -718,7 +691,6 @@ void evaluateCommands(const ros::MessageEvent<frc_msgs::JoystickState const>& ev
 #ifdef ROTATION_WITH_STICK
 			if(joystick_states_array[0].leftTrigger > config.trigger_threshold)
 			{
-				// Intake
 				if(!joystick1_left_trigger_pressed)
 				{
 				}
@@ -727,7 +699,6 @@ void evaluateCommands(const ros::MessageEvent<frc_msgs::JoystickState const>& ev
 			}
 			else
 			{
-				// Preempt intake server, but only once
 				if(joystick1_left_trigger_pressed)
 				{
 				}
@@ -897,7 +868,6 @@ void evaluateCommands(const ros::MessageEvent<frc_msgs::JoystickState const>& ev
 			}
 			else
 			{
-				//Preempt intake server, but only once
 				if(joystick1_left_trigger_pressed)
 				{
 				}
@@ -1055,10 +1025,6 @@ int main(int argc, char **argv)
 	{
 		ROS_ERROR("Could not read rotate_rate_limit_time in teleop_joystick_comp");
 	}
-	if(!n_params.getParam("climber_align_angle", config.climber_align_angle))
-	{
-		ROS_ERROR("Could not read climber_align_angle in teleop_joystick_comp");
-	}
 	if(!n_params.getParam("trigger_threshold", config.trigger_threshold))
 	{
 		ROS_ERROR("Could not read trigger_threshold in teleop_joystick_comp");
@@ -1079,8 +1045,6 @@ int main(int argc, char **argv)
 	{
 		ROS_ERROR("Could not read top_position_angle in teleop_joystick_comp");
 	}
-
-	orient_strafing_angle = config.climber_align_angle;
 
 	teleop_cmd_vel = std::make_unique<TeleopCmdVel<teleop_joystick_control::TeleopJoystickComp2023Config>>(config);
 
