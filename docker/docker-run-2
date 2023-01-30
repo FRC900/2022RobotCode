@@ -7,6 +7,7 @@ set -e
 set -o pipefail
 
 docker run "$@" -it --net=host -v  /tmp/.X11-unix:/tmp/.X11-unix \
+ --ipc=host \
  -v $HOME/2022RobotCode:/home/ubuntu/.2022RobotCode.readonly \
  -v /mnt/hgfs/Zebracorns:/mnt/hgfs/Zebracorns \
   --shm-size=8G \
