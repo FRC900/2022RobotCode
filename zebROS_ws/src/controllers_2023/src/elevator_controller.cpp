@@ -126,7 +126,7 @@ bool ElevatorController_2023::init(hardware_interface::RobotHW *hw,
         return false;
     }
 
-    if (!readIntoScalar(controller_nh, "arb_feed_forward_high", arb_feed_forward_up_high))
+    if (!readIntoScalar(controller_nh, "arb_feed_forward_high", arb_feed_forward_high))
     {
         ROS_ERROR("Could not find arb_feed_forward_hgih");
         return false;
@@ -179,9 +179,9 @@ bool ElevatorController_2023::init(hardware_interface::RobotHW *hw,
         return false;
     }
 
-    if (!controller_nh.getParam("MAX_HEIGHT_VAL", MAX_HEIGHT_VAL))
+    if (!controller_nh.getParam("max_height_val", MAX_HEIGHT_VAL))
     {
-        ROS_ERROR("Could not find MAX_HEIGHT_VAL");
+        ROS_ERROR("Could not find max_height_val");
         return false;
     
     }
