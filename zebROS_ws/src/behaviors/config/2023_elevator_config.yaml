@@ -1,3 +1,4 @@
+position_tolerance: 0.02 # meters, if elevator position is +/- than the server set success
 cube:
   intake: 1.00
   low_node: 2.05
