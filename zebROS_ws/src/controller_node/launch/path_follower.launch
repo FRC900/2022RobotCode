@@ -4,7 +4,7 @@
 		<arg name="odom_topic" default="/frcrobot_jetson/swerve_drive_controller/odom"/>
 		<arg name="pose_topic" default="/zed_objdetect/pose"/>
 		<arg name="use_pose_for_odom" default="true"/>
-		<arg name="year" default="2022"/>
+		<arg name="year" default="2023"/>
 
         <group ns="path_follower">
             <rosparam file="$(find path_follower)/config/path_follower_config.yaml" command="load"/>
@@ -21,7 +21,7 @@
 			<node name="map_server" pkg="map_server" type="map_server" args="$(find controller_node)/maps/slalom_path.yaml" output="screen">
 			<node name="map_server" pkg="map_server" type="map_server" args="$(find controller_node)/maps/bounce_path.yaml" output="screen">
 				-->
-			<node name="map_server" pkg="map_server" type="map_server" args="$(find controller_node)/maps/barrel_path.yaml" output="screen">
+			<node name="map_server" pkg="map_server" type="map_server" args="$(find controller_node)/maps/2023FRC_field.yaml" output="screen">
 				<param name="frame_id" value="/map"/>
 			</node>
 
