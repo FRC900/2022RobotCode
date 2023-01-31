@@ -59,6 +59,9 @@ class AutoBalancing:
         self.current_pitch_time = -1000
         self.state = States.NO_WEELS_ON 
         self.sub_imu = rospy.Subscriber(imu_sub_topic, sensor_msgs.msg.Imu, self.imu_callback)
+        self.down_measurements = 0
+        self.threshold = math.radians(0.5) # how much a measurement must change by to be counted
+        
 
         rospy.loginfo("Finished initalizing balancing server")
 
@@ -79,6 +82,7 @@ class AutoBalancing:
         #self.balancer_client.cancel_all_goals()
         
         self.balancer_client.cancel_goal()
+        self.state = States.NO_WEELS_ON
         #self.balancer_client.cancel_goals_at_and_before_time(rospy.Time.now())
 
     def balancing_callback(self, goal):
@@ -102,7 +106,7 @@ class AutoBalancing:
                 self._as.set_preempted()
                 break
 
-            if (self.current_pitch >= math.radians(10) or self.current_pitch <= math.radians(10)) and self.state == States.NO_WEELS_ON:
+            if (self.current_pitch >= math.radians(10) or self.current_pitch <= math.radians(-10)) and self.state == States.NO_WEELS_ON:
                 rospy.logwarn("Recalled balancer with 0 offset=======================")
                 self.balancer_client.cancel_all_goals()
                 r.sleep()
