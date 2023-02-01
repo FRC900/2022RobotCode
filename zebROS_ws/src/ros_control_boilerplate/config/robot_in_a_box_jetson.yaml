@@ -31,6 +31,7 @@ hardware_interface:
        - {name: do1, local: false, type: digital_output}
        - {name: do2, local_update: true, local_hardware: false, type: digital_output}
        - {name: candle1, can_id: 5, can_bus: CANivore, type: candle, local: true}
+       - {name: four_bar_leader, type: can_talon_fx, can_bus: CANivore, can_id: 22, local: true}
        
 joint_state_controller:
    type:         joint_state_controller/JointStateController
