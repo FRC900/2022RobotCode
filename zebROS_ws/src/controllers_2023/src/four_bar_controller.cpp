@@ -61,7 +61,9 @@ class FourBarController_2023 : public controller_interface::MultiInterfaceContro
                         controllers_2023_msgs::FourBarSrv::Response &res);
 
         double angleFromX(double x) {
-            return acos((x-intake_length_-parallel_bar_length_)/diagonal_bar_length_);
+            // motor reads clockwise as positive, but angles are counterclockwise.
+            // so, this angle needs to be negative.
+            return acos((min_extension_-intake_length_-parallel_bar_length_)/diagonal_bar_length_)-acos((x-intake_length_-parallel_bar_length_)/diagonal_bar_length_);
         }
 
 
@@ -337,7 +339,7 @@ void FourBarController_2023::update(const ros::Time &time, const ros::Duration &
         {
             zeroed_ = true;
             last_zeroed_ = true;
-            four_bar_joint_.setSelectedSensorPosition(angleFromX(min_extension_)); // relative to motor which is why we can have negative extension
+            four_bar_joint_.setSelectedSensorPosition(0); // relative to min position
             four_bar_joint_.setDemand1Type(hardware_interface::DemandType_ArbitraryFeedForward);
             four_bar_joint_.setDemand1Value(arb_feed_forward);
         }

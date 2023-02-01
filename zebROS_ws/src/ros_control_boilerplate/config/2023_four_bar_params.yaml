@@ -9,20 +9,20 @@ four_bar_controller_2023:
     diagonal_bar_length: 0.355
     intake_length: 0.065
 
-    arb_feed_forward: 0.052
+    arb_feed_forward: 0.0
     
 
-    motion_magic_velocity: 1.7
-    motion_magic_acceleration: 3.5
+    motion_magic_velocity: 0.5
+    motion_magic_acceleration: 0.5
 
     # not sure if this needs to be here and below
     motion_s_curve_strength: 0 
 
-    # How quickly the elevator moves down when zeroing itself
-    four_bar_zeroing_percent_output: -0.2 # TODO : tune me
+    # How quickly the four bar moves down when zeroing itself
+    four_bar_zeroing_percent_output: -0.05 # TODO : tune me
 
     # If there are no negative velocity readings while zeroing
-    # for this amount of time, assume the elevator is stuck
+    # for this amount of time, assume the four bar is stuck
     # or has hit bottom and the limit switch is broken.  Stop
     # trying to drive down to prevent killing the motor
     four_bar_zeroing_timeout:  2.0
@@ -35,7 +35,7 @@ four_bar_controller_2023:
             - {p: 0.25, i: 0.0, d: 0, f: 0.58, i_zone: 4096, closed_loop_peak_output: 1.0}
 
         sensor_phase: True 
-        invert_output: False
+        invert_output: False # CCW should be positive, because angles
 
         feedback_type: IntegratedSensor
 
