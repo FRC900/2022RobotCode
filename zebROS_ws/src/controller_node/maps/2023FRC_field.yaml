@@ -1,5 +1,5 @@
-image: charged_up_field.png
-resolution: 0.0194793
+image: charged_up_fieldBW.png
+resolution: 0.0124254699
 origin: [0.0, 0.0, 0.0]
 negate: 0
 occupied_thresh: 0.2

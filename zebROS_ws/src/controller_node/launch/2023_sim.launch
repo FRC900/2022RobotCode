@@ -45,6 +45,7 @@
 
 	-->
 	<node pkg="tf" type="static_transform_publisher" name="link_basetoimu" args="0 0 0 0 0 0 1 base_link imu 100" />
+
 	<!--From blue 0,0 to red 0,0 is the field lenght plus a 180 turn-->
 	<node pkg="tf" type="static_transform_publisher" name="blue0_to_red0" args="16.458 8.228 0 3.1415926 0 0 blue0 red0 10" />
 	<!-- stage publishes an odom->base_footprint transform.  Link zed_objdet_odom to odom using an identity transform.
@@ -64,19 +65,16 @@
 	<node pkg="fake_sensors" type="fake_goal_detect_node" name="fake_goal_detect" >
 		<remap from="goal_detect_msg" to="/goal_detection/goal_detect_msg" />
 	</node>
-	
+	<!-- 
 	<group ns="pf_localization">
 	<rosparam file="$(find pf_localization)/config/2023_params.yaml" command="load"/>
 	<node pkg="pf_localization" type="pf_localization_node" name="pf_localization" output="screen" >
 	</node>
 	</group>
+	-->
 	<!--
 	set up cargo filter (red/blue -> friendly/opponent)
 	-->
-	<group ns="tf_object_detection">
-		<node pkg="tf_object_detection" name="cargo_detection_filter" type="cargo_detection_filter" output="screen">
-		</node>
-	</group>
 	<!-- 
 	<include file="$(find controller_node)/launch/rosbridge_websocket.launch">
 		<arg name="port" value="5803"/>
@@ -84,9 +82,6 @@
 	-->
 	<!-- set up auto node to create paths -->
 	<include file="$(find behaviors)/launch/auto_node.launch"/>
-	<include file="$(find behaviors)/launch/2022_apriltag_shooting.launch"/>
-
-	<include file="$(find teleop_joystick_control)/launch/2022_snap_to_angle.launch"/>
 
 	<include file="$(find controller_node)/launch/path_follower.launch" if="$(eval arg('run_path_follower'))">
 		<!--
@@ -105,7 +100,7 @@
 	-->
 	<group ns="cmd_vel_mux">
 		<node name="twist_mux" pkg="twist_mux" type="twist_mux">
-			<rosparam command="load" file="$(find talon_swerve_drive_controller)/config/2022_twist_mux.yaml"/>
+			<rosparam command="load" file="$(find talon_swerve_drive_controller)/config/2023_twist_mux.yaml"/>
 			<remap from="cmd_vel_out" to="/cmd_vel"/>
 		</node>
 
