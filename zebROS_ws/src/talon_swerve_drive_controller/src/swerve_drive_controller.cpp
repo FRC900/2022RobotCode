@@ -325,6 +325,7 @@ bool init(hardware_interface::TalonCommandInterface *hw,
 	dont_set_angle_mode_serv_ = controller_nh.advertiseService("dont_set_angle", &TalonSwerveDriveController::dontSetAngleModeService, this);
 	percent_out_drive_mode_serv_ = controller_nh.advertiseService("percent_out_drive_mode", &TalonSwerveDriveController::percentOutDriveModeService, this);
 	change_center_of_rotation_serv_ = controller_nh.advertiseService("change_center_of_rotation", &TalonSwerveDriveController::changeCenterOfRotationService, this);
+	set_neutral_mode_serv_ = controller_nh.advertiseService("set_neutral_mode", &TalonSwerveDriveController::setNeturalModeService, this);
 
 	double odom_pub_freq;
 	controller_nh.param("odometry_publishing_frequency", odom_pub_freq, DEF_ODOM_PUB_FREQ);
@@ -501,7 +502,7 @@ void update(const ros::Time &time, const ros::Duration &period)
 			{
 				if (!dont_set_angle_mode)
 					steering_joints_[i].setCommand(speeds_angles_[i][1]);
-				speed_joints_[i].setNeutralMode(hardware_interface::NeutralMode::NeutralMode_Coast);
+				speed_joints_[i].setNeutralMode(neutral_mode_);
 			}
 		}
 		if (publish_cmd_ && cmd_vel_pub_->trylock())
@@ -836,6 +837,25 @@ bool changeCenterOfRotationService(talon_swerve_drive_controller::SetXY::Request
 	}
 }
 
+bool setNeturalModeService(std_srvs::SetBool::Request& req, std_srvs::SetBool::Response&/*res*/)
+{
+	if(isRunning())
+	{
+		if (req.data) {
+			neutral_mode_ = hardware_interface::NeutralMode::NeutralMode_Coast;
+		}
+		else {
+			neutral_mode_ = hardware_interface::NeutralMode::NeutralMode_Brake;
+		}	
+	}
+	else
+	{
+		ROS_ERROR_STREAM_NAMED(name_, __PRETTY_FUNCTION__ << " : Can't accept new commands. Controller is not running.");
+		return false;
+	}
+	
+}
+
 bool resetOdomService(std_srvs::Empty::Request &/*req*/, std_srvs::Empty::Response &/*res*/)
 {
 	if (isRunning())
@@ -970,6 +990,7 @@ Eigen::Matrix2Xd wheel_pos_;
 Eigen::Vector2d neg_wheel_centroid_;
 std::array<double, WHEELCOUNT> last_wheel_rot_;	    // used for odom calcs
 std::array<double, WHEELCOUNT> last_wheel_angle_;	//
+std::atomic<hardware_interface::NeutralMode> neutral_mode_ = hardware_interface::NeutralMode::NeutralMode_Coast;
 
 std::string name_;
 
@@ -1005,6 +1026,8 @@ std::array<Eigen::Vector2d, WHEELCOUNT> speeds_angles_;
 ros::Subscriber sub_command_;
 
 ros::ServiceServer change_center_of_rotation_serv_;
+ros::ServiceServer set_neutral_mode_serv_;
+
 realtime_tools::RealtimeBuffer<Eigen::Vector2d> center_of_rotation_;
 
 ros::ServiceServer brake_serv_;
