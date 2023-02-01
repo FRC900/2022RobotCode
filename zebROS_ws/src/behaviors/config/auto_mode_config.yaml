@@ -333,16 +333,21 @@ drive_path_test_1:
       - {min_x: 0, max_x: 0, min_y: 0, max_y: 0}
     optimize_final_velocity: true
 
+# top x = 4.14 y = 4.785
+# bottom x = 3.94 y = 0.83
+# middle x= 3.89 y= 2.719
 mini_drive_test:
   type: "path"
   goal:
-    apply_offset: false
+    apply_offset: true
     points:
-      - [1.0, 1.0, 0.0]
-      - [2.0, -1.0, 0.0]
-      - [3.0, 0.0, 0.0]
+      - [4.14, 4.785, 0.0]
+      - [3.94, 0.83, 0.0]
+      - [3.89, 2.719, 0.0]
     frame_id: "map"
-    point_frame_id: []
+    point_frame_id: ["map"]
     path_offset_limit:
+      - {min_x: 0, max_x: 0, min_y: 0, max_y: 0}
+      - {min_x: -3, max_x: 3, min_y: 0, max_y: 0}
       - {min_x: 0, max_x: 0, min_y: 0, max_y: 0}
     optimize_final_velocity: true

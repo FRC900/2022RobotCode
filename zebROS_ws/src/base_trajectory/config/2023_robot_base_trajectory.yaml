@@ -85,12 +85,12 @@ base_trajectory_node:
         publish_frequency: 0.5
         transform_tolerance: 10.
         rolling_window: true # use absolute position in static map
-      # These should be set when the static layer loads a map
-      # width: 5.0
-      # height: 5.0
-      # resolution: 0.05
-      # origin_x: 2.0
-      # origin_y: 2.0
+      #These should be set when the static layer loads a map
+        #width: 5.0
+        #height: 5.0
+        #resolution: 0.05
+        #origin_x: 0.0
+        #origin_y: 0.0
 
         # Static layer comes from the map topic.  Inflation increases
         # obstacle sizes by robot footprint to detect collisions based

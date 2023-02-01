@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 # write a node that publishes the base_link to map transform, using the topic /base_pose_ground_truth as truth
 
 import rospy
@@ -17,9 +19,10 @@ def callback(data):
     transform.transform.translation.x = data.pose.pose.position.x
     transform.transform.translation.y = data.pose.pose.position.y
     transform.transform.translation.z = data.pose.pose.position.z
-    print("x: ", data.pose.pose.position.x)
-    print("y: ", data.pose.pose.position.y)
-    print("z: ", data.pose.pose.position.z)
+    rospy.loginfo_throttle(2, f"header {data.header}")
+    rospy.loginfo_throttle(2,f"x: {data.pose.pose.position.x}")
+    rospy.loginfo_throttle(2,f"y: {data.pose.pose.position.y}")
+    rospy.loginfo_throttle(2,f"z: {data.pose.pose.position.z}")
 
     # set the rotation
     transform.transform.rotation.x = data.pose.pose.orientation.x
@@ -43,6 +46,6 @@ r = rospy.Rate(10)
 pub = rospy.Publisher("/tf", TFMessage, queue_size=100)
 # subscribe to the topic
 rospy.Subscriber("/base_pose_ground_truth", Odometry, callback, queue_size=1)
-7
+
 # spin
 rospy.spin()
