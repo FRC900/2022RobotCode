@@ -496,7 +496,7 @@ void update(const ros::Time &time, const ros::Duration &period)
 		{
 			speed_joints_[i].setCommand(0);
 			speed_joints_[i].setMode(hardware_interface::TalonMode::TalonMode_PercentOutput);
-			
+
 			// commented out for testing
 			speed_joints_[i].setDemand1Type(hardware_interface::DemandType::DemandType_Neutral);
 			speed_joints_[i].setDemand1Value(copysign(stopping_ff_, last_wheel_sign_[i]));
@@ -561,7 +561,7 @@ void update(const ros::Time &time, const ros::Duration &period)
 					last_wheel_sign_[i] = copysign(1, speeds_angles_[i][0]);
 				}
 				else
-				{	
+				{
 					ROS_WARN_STREAM("============Swerve drive controller, probably never here but if you see this.....");
 					speed_joints_[i].setDemand1Type(hardware_interface::DemandType::DemandType_Neutral);
 					speed_joints_[i].setDemand1Value(0);
@@ -858,7 +858,7 @@ bool setNeturalModeService(std_srvs::SetBool::Request& req, std_srvs::SetBool::R
 		}
 		else {
 			neutral_mode_ = hardware_interface::NeutralMode::NeutralMode_Brake;
-		}	
+		}
 	}
 	else
 	{
@@ -866,7 +866,6 @@ bool setNeturalModeService(std_srvs::SetBool::Request& req, std_srvs::SetBool::R
 		return false;
 	}
 	return true;
-	
 }
 
 bool resetOdomService(std_srvs::Empty::Request &/*req*/, std_srvs::Empty::Response &/*res*/)
