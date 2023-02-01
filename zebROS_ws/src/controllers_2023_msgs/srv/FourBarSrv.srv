@@ -1,0 +1,3 @@
+float64 position # x distance outward (negative is backwards and may be invalid)
+---
+
