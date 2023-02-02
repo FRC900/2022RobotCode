@@ -498,7 +498,7 @@ void update(const ros::Time &time, const ros::Duration &period)
 			speed_joints_[i].setMode(hardware_interface::TalonMode::TalonMode_PercentOutput);
 
 			// commented out for testing
-			speed_joints_[i].setDemand1Type(hardware_interface::DemandType::DemandType_Neutral);
+			speed_joints_[i].setDemand1Type(hardware_interface::DemandType::DemandType_ArbitraryFeedForward);
 			speed_joints_[i].setDemand1Value(copysign(stopping_ff_, last_wheel_sign_[i]));
 		}
 		if ((time.toSec() - time_before_brake_) > parking_config_time_delay_)
