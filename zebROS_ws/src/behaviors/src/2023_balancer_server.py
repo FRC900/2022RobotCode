@@ -59,7 +59,7 @@ class Balancer:
         rospy.loginfo(f"Using imu topic {imu_sub_topic}")
 
         self.PID_enabled = False
-        self.desired_pitch = -0.05235987755982989 # just in case we want to change it later, add offset or something
+        self.desired_pitch = 0.0 # just in case we want to change it later, add offset or something
         self.time_to_balamced = 2 # how many seconds of being within the angle threshold to be considered balanced 
         self.first_balance_time = None
         self.current_pitch = -999

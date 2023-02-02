@@ -13,6 +13,7 @@ find_package(catkin REQUIRED COMPONENTS
 	roscpp
 	sensor_msgs
 	std_msgs
+  std_srvs
 	talon_interface
 	talon_state_msgs
 )
@@ -20,7 +21,7 @@ find_package(catkin REQUIRED COMPONENTS
 # Declare catkin package
 catkin_package(
   CATKIN_DEPENDS realtime_tools roscpp hardware_interface pluginlib
-  controller_interface sensor_msgs talon_state_msgs
+  controller_interface sensor_msgs talon_state_msgs 
   #INCLUDE_DIRS include
   #LIBRARIES ${PROJECT_NAME}
   )

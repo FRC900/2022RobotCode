@@ -491,6 +491,9 @@ void update(const ros::Time &time, const ros::Duration &period)
 		{
 			speed_joints_[i].setCommand(0);
 			speed_joints_[i].setMode(hardware_interface::TalonMode::TalonMode_PercentOutput);
+			
+			speed_joints_[i].setDemand1Type(hardware_interface::DemandType::DemandType_Neutral);
+			speed_joints_[i].setDemand1Value(0);
 		}
 		if ((time.toSec() - time_before_brake_) > parking_config_time_delay_)
 		{
@@ -551,10 +554,12 @@ void update(const ros::Time &time, const ros::Duration &period)
 					speed_joints_[i].setDemand1Value(copysign(f_s_, speeds_angles_[i][0]));
 				}
 				else
-				{
+				{	
+					ROS_WARN_STREAM("============Ca")
 					speed_joints_[i].setDemand1Type(hardware_interface::DemandType::DemandType_Neutral);
 					speed_joints_[i].setDemand1Value(0);
 				}
+
 
 				speed_joints_[i].setCommand(speeds_angles_[i][0]);
 			}
@@ -853,6 +858,7 @@ bool setNeturalModeService(std_srvs::SetBool::Request& req, std_srvs::SetBool::R
 		ROS_ERROR_STREAM_NAMED(name_, __PRETTY_FUNCTION__ << " : Can't accept new commands. Controller is not running.");
 		return false;
 	}
+	return true;
 	
 }
 

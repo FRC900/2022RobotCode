@@ -41,7 +41,7 @@ swerve_drive_controller:
     encoder_steering_set_units: 1
 
     wheel_coords: [[-0.27305, 0.27305], [0.27305, 0.27305], [-0.27305, -0.27305], [0.27305, -0.27305]]
-    parking_config_time_delay: 0.75
+    parking_config_time_delay: 10.75
     drive_speed_time_delay: 0.125
     cmd_vel_timeout: 0.5 # we test this separately, give plenty for the other tests
     use_cos_scaling: True # scale motor speed by how close angle motors are to setpoints
