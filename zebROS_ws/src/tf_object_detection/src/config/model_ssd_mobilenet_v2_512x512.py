@@ -1,7 +1,7 @@
 import graphsurgeon as gs
 import tensorflow as tf
 
-name = 'ssd_mobilenet_v2_512x512'
+name = '2023_trt_ssd_mobilenet_v2'
 path = '/home/ubuntu/2022RobotCode/zebROS_ws/src/tf_object_detection/src/' + name + '.pb'
 #TRTbin = '/home/ubuntu/2022RobotCode/zebROS_ws/src/tf_object_detection/src/TRT_' + name + '.bin'
 TRTbin = 'TRT_' + name + '.bin'
