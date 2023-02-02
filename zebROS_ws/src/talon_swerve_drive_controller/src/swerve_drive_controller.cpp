@@ -555,7 +555,7 @@ void update(const ros::Time &time, const ros::Duration &period)
 				}
 				else
 				{	
-					ROS_WARN_STREAM("============Ca")
+					ROS_WARN_STREAM("============Called back");
 					speed_joints_[i].setDemand1Type(hardware_interface::DemandType::DemandType_Neutral);
 					speed_joints_[i].setDemand1Value(0);
 				}
@@ -586,7 +586,7 @@ void update(const ros::Time &time, const ros::Duration &period)
 	}
 	for (size_t i = 0; i < WHEELCOUNT; ++i)
 	{
-		speed_joints_[i].setNeutralMode(hardware_interface::NeutralMode::NeutralMode_Coast);
+		speed_joints_[i].setNeutralMode(neutral_mode_);
 	}
 
 	if (publish_cmd_ && cmd_vel_pub_->trylock())
