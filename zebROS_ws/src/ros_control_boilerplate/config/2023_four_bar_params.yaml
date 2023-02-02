@@ -3,7 +3,7 @@ four_bar_controller_2023:
 
     four_bar_joint: [ 'four_bar_leader' ]
     max_extension: 0.65 # tbd, in meters
-    min_extension: 0.0 # tbd, in meters
+    min_extension: 0.24 # tbd, in meters
 
     parallel_bar_length: 0.205
     diagonal_bar_length: 0.355
@@ -35,7 +35,9 @@ four_bar_controller_2023:
             - {p: 0.25, i: 0.0, d: 0, f: 0.58, i_zone: 4096, closed_loop_peak_output: 1.0}
 
         sensor_phase: True 
-        invert_output: False # CCW should be positive, because angles
+        invert_output: True # idk anymore
+
+        neutral_mode: Brake
 
         feedback_type: IntegratedSensor
 
@@ -51,7 +53,7 @@ four_bar_controller_2023:
         voltage_compensation_enable: True
         voltage_compensation_saturation: 12
         
-        conversion_factor: 0.19354838709 # should be 12/62 since that's the gear ratio for the prototype
+        conversion_factor: 0.086021505 # should be 12:62 * 24:54 since that's the gear ratio for the prototype
         neutral_deadband: 0.001
 
         dynamic_reconfigure: False
