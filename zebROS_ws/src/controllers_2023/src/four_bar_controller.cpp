@@ -60,10 +60,11 @@ class FourBarController_2023 : public controller_interface::MultiInterfaceContro
         bool cmdService(controllers_2023_msgs::FourBarSrv::Request &req,
                         controllers_2023_msgs::FourBarSrv::Response &res);
 
-        double angleFromX(double x) {
+        double angleFromX(double x, bool below) {
             // motor reads clockwise as positive, but angles are counterclockwise.
             // so, this angle needs to be negative.
-            return acos((min_extension_-intake_length_-parallel_bar_length_)/diagonal_bar_length_)-acos((x-intake_length_-parallel_bar_length_)/diagonal_bar_length_);
+            double angle = acos((min_extension_-intake_length_-parallel_bar_length_)/diagonal_bar_length_) - acos((x-intake_length_-parallel_bar_length_)/diagonal_bar_length_);
+            return below ? acos((min_extension_-intake_length_-parallel_bar_length_)/diagonal_bar_length_) + acos((x-intake_length_-parallel_bar_length_)/diagonal_bar_length_) : angle;
         }
 
 
@@ -132,8 +133,8 @@ bool FourBarController_2023::init(hardware_interface::RobotHW *hw,
         ROS_WARN("Could not find min_extension, using default");
     }
 
-    max_extension_ = std::max(max_extension_, math_max_extension_);
-    min_extension_ = std::min(min_extension_, math_min_extension_);
+    if (max_extension_ > math_max_extension_) { ROS_WARN("max_extension_ > math_max_extension_"); }
+    if (min_extension_ > math_min_extension_) { ROS_WARN("min_extension_ > math_min_extension_"); }
 
     if (!readIntoScalar(controller_nh, "parallel_bar_length", parallel_bar_length_))
     {
@@ -329,7 +330,7 @@ void FourBarController_2023::starting(const ros::Time &time)
     last_zeroed_  = false;
     last_mode_ = hardware_interface::TalonMode_Disabled;
     last_angle_ = -1; // give nonsense position to force update on first time through update()
-    position_command_.writeFromNonRT(FourBarCommand_2023(angleFromX(min_extension_)));
+    position_command_.writeFromNonRT(FourBarCommand_2023(angleFromX(min_extension_, false)));
 }
 
 void FourBarController_2023::update(const ros::Time &time, const ros::Duration &/*duration*/)
@@ -429,7 +430,7 @@ bool FourBarController_2023::cmdService(controllers_2023_msgs::FourBarSrv::Reque
     if (isRunning())
     {
         //adjust talon mode, arb feed forward, and PID slot appropriately
-        double calcAngle = angleFromX(req.position);
+        double calcAngle = angleFromX(req.position, req.below);
         if (isnan(calcAngle)) {
             ROS_ERROR_STREAM("FourBar controller: req.position resulted in a NaN angle! The robot can't derive meaning of not a number!");
             return false;
