@@ -418,7 +418,7 @@ bool FourBarController_2023::cmdService(controllers_2023_msgs::FourBarSrv::Reque
 {   
     if (req.position > max_extension_)
     {
-        ROS_ERROR_STREAM("FourBar controller: req.position too forward : " << req.position << ". Stop violating physics! Setting to minimum position.");
+        ROS_ERROR_STREAM("FourBar controller: req.position too forward : " << req.position << ". Stop violating physics! Setting to maximum position.");
         req.position = max_extension_;
     }
     if (req.position < min_extension_)
