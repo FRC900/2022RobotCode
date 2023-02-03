@@ -492,8 +492,9 @@ void update(const ros::Time &time, const ros::Duration &period)
 			speed_joints_[i].setCommand(0);
 			speed_joints_[i].setMode(hardware_interface::TalonMode::TalonMode_PercentOutput);
 			
+			// commented out for testing
 			speed_joints_[i].setDemand1Type(hardware_interface::DemandType::DemandType_Neutral);
-			speed_joints_[i].setDemand1Value(0);
+			speed_joints_[i].setDemand1Value(copysign(1, ));
 		}
 		if ((time.toSec() - time_before_brake_) > parking_config_time_delay_)
 		{
@@ -552,6 +553,7 @@ void update(const ros::Time &time, const ros::Duration &period)
 				{
 					speed_joints_[i].setDemand1Type(hardware_interface::DemandType::DemandType_ArbitraryFeedForward);
 					speed_joints_[i].setDemand1Value(copysign(f_s_, speeds_angles_[i][0]));
+					last_wheel_sign_[i] = copysign(1, speeds_angles_[i][0]);
 				}
 				else
 				{	
@@ -996,6 +998,8 @@ Eigen::Matrix2Xd wheel_pos_;
 Eigen::Vector2d neg_wheel_centroid_;
 std::array<double, WHEELCOUNT> last_wheel_rot_;	    // used for odom calcs
 std::array<double, WHEELCOUNT> last_wheel_angle_;	//
+std::array<double, WHEELCOUNT> last_wheel_sign_;
+
 std::atomic<hardware_interface::NeutralMode> neutral_mode_ = hardware_interface::NeutralMode::NeutralMode_Coast;
 
 std::string name_;
@@ -1029,6 +1033,7 @@ double parking_config_time_delay_{0.1};
 double drive_speed_time_delay_{0.1};
 std::array<Eigen::Vector2d, WHEELCOUNT> speeds_angles_;
 
+
 ros::Subscriber sub_command_;
 
 ros::ServiceServer change_center_of_rotation_serv_;
@@ -1044,7 +1049,7 @@ ros::ServiceServer reset_odom_serv_;
 std::atomic<bool> reset_odom_{false};
 
 /// Publish executed commands
-std::unique_ptr<realtime_tools::RealtimePublisher<geometry_msgs::TwistStamped> > cmd_vel_pub_;
+std::unique_ptr<realtime_tools::RealtimePublisher<geometry_msgs::TwistStamped>> cmd_vel_pub_;
 
 /// Wheel radius (assuming it's the same for the left and right wheels):
 double wheel_radius_{};
