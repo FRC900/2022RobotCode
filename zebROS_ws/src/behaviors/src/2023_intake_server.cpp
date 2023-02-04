@@ -15,7 +15,7 @@ protected:
 
 	double speed_;
 	double fast_speed_;
-	double server_timeout_;
+	ros::Duration timeout_;
 
 	ros::Publisher intake_pub_;
 
@@ -46,10 +46,12 @@ public:
 			ROS_ERROR_STREAM("2023_intake_server : could not find intake_fast_speed");
 			return;
 		}
-		if (!nh_.getParam("intake_server_timeout", server_timeout_)) {
-			ROS_WARN_STREAM("2023_intake_server : could not find intake_server_timeout, defaulting to 10 seconds");
-			server_timeout_ = 10;
+		double temp_timeout_;
+		if (!nh_.getParam("intake_timeout", temp_timeout_)) {
+			ROS_WARN_STREAM("2023_intake_server : could not find intake_timeout, defaulting to 10 seconds");
+			temp_timeout_ = 10;
 		}
+		timeout_ = ros::Duration(temp_timeout_);
 		const std::map<std::string, std::string> service_connection_header{{"tcp_nodelay", "1"}};
 		as_.start();
 	}
@@ -85,7 +87,9 @@ public:
 		// 	success = true;
 		// }
 		make_sure_publish(intake_pub_, percent_out); // replace with service based JointPositionController once we write it
-		while (ros::ok() && !result_.timed_out) {
+		ros::Time start = ros::Time::now();
+		ros::Rate r(100);
+		while (ros::ok() && !result_.timed_out && ros::Time::now() - start <= timeout_) {
 			if (as_.isPreemptRequested() || !ros::ok()) {
 				ROS_INFO_STREAM("2023_intake_server : preempted. retracting & stopping intake.");
 				as_.setPreempted(result_);
@@ -101,6 +105,16 @@ public:
 				make_sure_publish(intake_pub_, percent_out);
 				return;
 			}
+			r.sleep();
+		}
+
+		if (ros::Time::now() - start > timeout_) {
+			ROS_INFO_STREAM("2023_intake_server: timed out!");
+			std_msgs::Float64 percent_out;
+			percent_out.data = 0.0;
+			make_sure_publish(intake_pub_, percent_out);
+			success = false;
+			as_.setAborted(result_);
 		}
 
 		if(success)
