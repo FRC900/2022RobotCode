@@ -213,6 +213,11 @@ bool init(hardware_interface::TalonCommandInterface *hw,
 		ROS_ERROR("Could not read f_s_s in talon swerve drive controller");
 		return false;
 	}
+	if (!controller_nh.getParam("stoping_ff", stopping_ff_))
+	{
+		ROS_ERROR("Could not read stoping_ff in talon swerve drive controller");
+		return false;
+	}
 
 	XmlRpc::XmlRpcValue wheel_coords;
 
@@ -494,7 +499,7 @@ void update(const ros::Time &time, const ros::Duration &period)
 			
 			// commented out for testing
 			speed_joints_[i].setDemand1Type(hardware_interface::DemandType::DemandType_Neutral);
-			speed_joints_[i].setDemand1Value(copysign(1, ));
+			speed_joints_[i].setDemand1Value(copysign(stopping_ff_, last_wheel_sign_[i]));
 		}
 		if ((time.toSec() - time_before_brake_) > parking_config_time_delay_)
 		{
@@ -1066,7 +1071,7 @@ double f_a_;
 double f_v_;
 double f_s_v_;
 double f_s_s_;
-
+double stopping_ff_;
 /// Timeout to consider cmd_vel commands old:
 double cmd_vel_timeout_{0.5};
 
