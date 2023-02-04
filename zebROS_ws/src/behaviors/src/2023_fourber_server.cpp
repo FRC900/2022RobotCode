@@ -214,7 +214,7 @@ public:
   void executeCB(const behavior_actions::Fourber2023GoalConstPtr &goal)
   {
     ros::spinOnce();
-
+    previous_position_ = fourbar_cur_position_;
     behavior_actions::Fourber2023Feedback feedback;
     behavior_actions::Fourber2023Result result;
 
@@ -224,6 +224,7 @@ public:
         saftey_state_ = SafteyState::SAFTEY_HIGH;
         fourbar_srv_.call(safety_high_req_);
         if (!waitForFourbar(safety_high_req_.request.position)) {
+          FourberERR("Failed calling fourber");
           feedback.success = false;
           result.success = false;
           as_.publishFeedback(feedback);
@@ -243,6 +244,7 @@ public:
         saftey_state_ = SafteyState::SAFTEY_LOW;
         fourbar_srv_.call(safety_low_req_);
         if (!waitForFourbar(safety_low_req_.request.position)) {
+          FourberERR("Failed calling fourber");
           feedback.success = false;
           result.success = false;
           as_.publishFeedback(feedback);
@@ -261,6 +263,21 @@ public:
 
     if (goal->safety_position == fourber_ns::SAFETY_TO_NO_SAFETY) {
       saftey_state_ == SafteyState::NONE;
+      if (!fourbar_srv_.call(safety_low_req_)) {
+        FourberERR("Failed calling fourber");
+        feedback.success = false;
+        result.success = false;
+        as_.publishFeedback(feedback);
+        as_.setAborted(result);
+      }
+      else {
+        feedback.success = true;
+        feedback.success = true; 
+        // @todo figure out how to encode this result
+        as_.publishFeedback(feedback);
+        as_.setSucceeded(result);
+        return;
+      }
     }
 
     // select piece, nice synatax makes loading params worth it
@@ -285,6 +302,7 @@ public:
     // we know that saftey is set to none 
     controllers_2023_msgs::FourBarSrv req;
     req.request.position = req_position;
+    req.request.below = req_bool;
 
     if (!fourbar_srv_.call(req)) { // somehow fourbar has failed, set status and abort to pass error up
       FourberERR("Failed to moving fourbar :(");
@@ -326,8 +344,8 @@ public:
     ros::spinOnce();
   }
   
-  void heightOffsetCallback(const std_msgs::Float64 speed_offset_msg) { 
-    position_offset_ = speed_offset_msg.data;
+  void heightOffsetCallback(const std_msgs::Float64 position_offset_msg) { 
+    position_offset_ = position_offset_msg.data;
   }
 
   // "borrowed" from 2019 climb server
