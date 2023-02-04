@@ -562,7 +562,7 @@ void update(const ros::Time &time, const ros::Duration &period)
 				}
 				else
 				{	
-					ROS_WARN_STREAM("============Called back");
+					ROS_WARN_STREAM("============Swerve drive controller, probably never here but if you see this.....");
 					speed_joints_[i].setDemand1Type(hardware_interface::DemandType::DemandType_Neutral);
 					speed_joints_[i].setDemand1Value(0);
 				}
