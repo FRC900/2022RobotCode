@@ -236,19 +236,22 @@ public:
   // "borrowed" from 2019 climb server
   void talonStateCallback(const talon_state_msgs::TalonState &talon_state)
   {
-    static size_t elevator_master_idx = std::numeric_limits<size_t>::max();
-    if (elevator_master_idx >= talon_state.name.size()) // could maybe just check for > 0 
+    // think the old code here didn't actually work
+    double elevator_master_idx = -1;
+    if (!talon_state.name.size() > 0) {
+      return; 
+    }
+
+    for (size_t i = 0; i < talon_state.name.size(); i++)
     {
-      for (size_t i = 0; i < talon_state.name.size(); i++)
+      if (talon_state.name[i] == "elevator_master")
       {
-        if (talon_state.name[i] == "elevator_master")
-        {
-          elevator_master_idx = i;
-          break;
-        }
+        elevator_master_idx = i;
+        break;
       }
     }
-    else {
+    
+    if (!elevator_master_idx == -1) {
       elev_cur_position_ = talon_state.position[elevator_master_idx];
     }
   }

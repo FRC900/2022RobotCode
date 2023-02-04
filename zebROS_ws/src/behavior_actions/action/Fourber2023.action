@@ -4,6 +4,18 @@ uint8 VERTICAL_CONE=1
 uint8 BASE_TOWARDS_US_CONE=2 
 uint8 BASE_AWAY_US_CONE=3
 uint8 piece
+
+uint8 INTAKE=0
+uint8 LOW_NODE=1
+uint8 MIDDLE_NODE=2
+uint8 HIGH_NODE=3
+uint8 mode
+
+uint8 NO_SAFTEY=0
+uint8 SAFTEY_INTAKE_LOW=1 # should be just two places that we need to call saftey with: when intaking and when going above a certain height
+uint8 SAFTEY_HIGH=2
+uint8 saftey_position # looks up config value on where to go based on this, ignored if saftey is false
+
 ---
 #result
 bool success # if we got there
