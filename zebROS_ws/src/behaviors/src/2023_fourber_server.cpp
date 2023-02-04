@@ -256,7 +256,7 @@ public:
           // @todo figure out how to encode this result
           as_.publishFeedback(feedback);
           as_.setSucceeded(result);
-        }
+        } 
       }
       return;
     }

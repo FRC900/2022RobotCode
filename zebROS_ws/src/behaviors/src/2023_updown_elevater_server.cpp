@@ -65,6 +65,7 @@ protected:
   double position_tolerance_ = 0.02;
   double safety_high_position_ = -999;
   double safety_low_position_ = -999;
+  size_t elevater_master_idx; 
 
 public:
 
@@ -80,6 +81,7 @@ public:
     // current mech designs do have us going to diffrent heights based on what we have, and this is essentially the lookup so that every node doesn't have to do this
     // we will never (hopefully) need more posibilites than this, so we are prepared for everything mech could come up with
     // also if we for certain pieces/heights we can change height if we notice something off
+    elevater_master_idx = std::numeric_limits<size_t>::max();
 
     load_param_helper(nh_, "position_tolerance", position_tolerance_, 0.02);
     // default values are guesses
@@ -266,23 +268,21 @@ public:
   // "borrowed" from 2019 climb server
   void talonStateCallback(const talon_state_msgs::TalonState &talon_state)
   {
-    // think the old code here didn't actually work
-    double elevator_master_idx = -1;
-    if (!talon_state.name.size() > 0) {
-      return; 
-    }
-
-    for (size_t i = 0; i < talon_state.name.size(); i++)
+    // fourbar_master_idx == max of size_t at the start
+    if (elevater_master_idx >= talon_state.name.size()) // could maybe just check for > 0 
     {
-      if (talon_state.name[i] == "elevator_master")
+      for (size_t i = 0; i < talon_state.name.size(); i++)
       {
-        elevator_master_idx = i;
-        break;
+        if (talon_state.name[i] == "elevater_master")
+        {
+          elevater_master_idx = i;
+          break;
+        }
       }
+      ElevaterERR("Can not find talong with name = " << "elevater_master");
     }
-    
-    if (!elevator_master_idx == -1) {
-      elev_cur_position_ = talon_state.position[elevator_master_idx];
+    if (!elevater_master_idx == std::numeric_limits<size_t>::max()) {
+      elev_cur_position_ = talon_state.position[elevater_master_idx];
     }
   }
 
