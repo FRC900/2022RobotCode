@@ -8,6 +8,7 @@
 #include <talon_state_msgs/TalonState.h>
 
 #define FourberINFO(x) ROS_INFO_STREAM("2023_fourber_server : " << x)
+#define FourberWARN(x) ROS_WARN_STREAM("2023_fourber_server : " << x)
 #define FourberERR(x) ROS_ERROR_STREAM("2023_fourber_server : " << x)
 
 typedef behavior_actions::Fourber2023Goal fourber_ns;
@@ -203,6 +204,7 @@ public:
       }
 
       if (goal->saftey_position == fourber_ns::SAFTEY_INTAKE_LOW) {
+        FourberINFO("Safey LOW mode called for fourbar");
         fourbar_srv_.call(saftey_low_req_);
         if (!waitForFourbar(saftey_low_req_.request.position)) {
           feedback.success = false;
@@ -225,6 +227,9 @@ public:
 
     // apply offset
     req_position += position_offset_;
+    if (!position_offset_) {
+      FourberWARN("Offset of " << position_offset_);
+    }
     FourberINFO("FourbERing a " << piece_to_string[goal->piece] << " to the position " << mode_to_string[goal->mode] << " and the FOURBAR to the position=" << req_position << " meters");
 
     // we know that saftey is set to none 
@@ -239,7 +244,7 @@ public:
       as_.setAborted(result);
       return;
     }
-    
+
     ros::Rate r = ros::Rate(10);
     while (true) {
       ros::spinOnce();

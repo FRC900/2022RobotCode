@@ -1,0 +1,41 @@
+# all numbers currently random
+
+position_tolerance: 0.02 # meters, if elevator position is +/- than the server set success
+
+# distance that the server should be called with
+
+# purposly capitlized, same terminolgy in the elevater
+cube:
+  intake: 1.00
+  low_node: 2.05
+  middle_node: 2.00
+  high_node: 2.00
+
+vertical_cone:
+  intake: 0.20
+  low_node: 2.00
+  middle_node: 2.00
+  high_node: 2.10
+
+base_towards_us_cone:
+  intake: 1.00
+  low_node: 2.00
+  middle_node: 2.00
+  high_node: 2.00
+
+base_away_us_cone:
+  intake: 1.00
+  low_node: 2.00
+  middle_node: 2.00
+  high_node: 2.00
+
+
+
+# minimum distance out the intake 
+safety_high: 
+  distace: 2.00
+  below: false
+
+safety_intake:
+  distance: 2.00
+  below: true
