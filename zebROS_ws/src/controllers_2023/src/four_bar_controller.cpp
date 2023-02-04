@@ -68,31 +68,37 @@ class FourBarController_2023 : public controller_interface::MultiInterfaceContro
         bool cmdService(controllers_2023_msgs::FourBarSrv::Request &req,
                         controllers_2023_msgs::FourBarSrv::Response &res);
 
-        double angleFromX(double x, bool below) const {
+        double angleFromX(double x, bool below) const
+        {
             // motor reads clockwise as positive, but angles are counterclockwise.
             // so, this angle needs to be negative.
             double xAngle;
-            if ((x-intake_length_-parallel_bar_length_) >= diagonal_bar_length_) {
+            if ((x - intake_length_ - parallel_bar_length_) >= diagonal_bar_length_)
+            {
                 xAngle = 0;
                 ROS_WARN_STREAM("Desired x was >= maximum x, setting to maximum angle");
-            } else {
-                xAngle = acos((x-intake_length_-parallel_bar_length_)/diagonal_bar_length_);
             }
-            
-            double angle = acos((min_extension_-intake_length_-parallel_bar_length_)/diagonal_bar_length_) - xAngle;
-            return below ? acos((min_extension_-intake_length_-parallel_bar_length_)/diagonal_bar_length_) + xAngle : angle;
+            else
+            {
+                xAngle = acos((x - intake_length_ - parallel_bar_length_) / diagonal_bar_length_);
+            }
+
+            double angle = acos((min_extension_ - intake_length_ - parallel_bar_length_) / diagonal_bar_length_) - xAngle;
+            return below ? acos((min_extension_ - intake_length_ - parallel_bar_length_) / diagonal_bar_length_) + xAngle : angle;
         }
 }; //class
 
 // Set the conversion_factor so that 1 rad = 1 turn of the 4bar
 
- //namespace
+//namespace
 
 //END OF HPP CONTENTS
 template<typename T>
-bool readIntoScalar(ros::NodeHandle &n, const std::string &name, std::atomic<T> &scalar){
+bool readIntoScalar(ros::NodeHandle &n, const std::string &name, std::atomic<T> &scalar)
+{
     T val;
-	if (n.getParam(name, val)){
+    if (n.getParam(name, val))
+    {
         scalar = val;
         return true;
     }
@@ -100,8 +106,8 @@ bool readIntoScalar(ros::NodeHandle &n, const std::string &name, std::atomic<T> 
 }
 
 bool FourBarController_2023::init(hardware_interface::RobotHW *hw,
-                                   ros::NodeHandle             &/*root_nh*/,
-                                   ros::NodeHandle             &controller_nh)
+                                  ros::NodeHandle             &/*root_nh*/,
+                                  ros::NodeHandle             &controller_nh)
 {
     //create the interface used to initialize the talon joint
     hardware_interface::TalonCommandInterface *const talon_command_iface = hw->get<hardware_interface::TalonCommandInterface>();
@@ -140,12 +146,14 @@ bool FourBarController_2023::init(hardware_interface::RobotHW *hw,
         ROS_WARN("Could not find min_extension, using default");
     }
 
-    if (max_extension_ > math_max_extension_) { 
+    if (max_extension_ > math_max_extension_)
+    {
         ROS_WARN_STREAM("max_extension_ > math_max_extension_, setting to math_max_extension_: " << math_max_extension_);
         max_extension_ = math_max_extension_;
         // if we set max_extension_ higher than math_max_extension_, we will get NaN because that physically won't work
     }
-    if (min_extension_ < math_min_extension_) {
+    if (min_extension_ < math_min_extension_)
+    {
         ROS_WARN_STREAM("min_extension_ < math_min_extension_, setting to math_max_extension_: " << math_min_extension_);
         min_extension_ = math_min_extension_;
     }
@@ -184,8 +192,8 @@ bool FourBarController_2023::init(hardware_interface::RobotHW *hw,
 
     if (!readIntoScalar(controller_nh, "motion_s_curve_strength", motion_s_curve_strength))
     {
-    	ROS_ERROR("Could not find motion_s_curve_strength");
-    	return false;
+        ROS_ERROR("Could not find motion_s_curve_strength");
+        return false;
     }
 
 
@@ -211,9 +219,12 @@ bool FourBarController_2023::init(hardware_interface::RobotHW *hw,
     },
     [this, math_max_extension_](double b)
     {
-        if (b > math_max_extension_) {
+        if (b > math_max_extension_)
+        {
             max_extension_.store(b);
-        } else {
+        }
+        else
+        {
             ROS_WARN_STREAM("ddr: max_extension_ set to greater than the theoretical maximum. setting to calculated maximum instead.");
         }
     },
@@ -227,9 +238,12 @@ bool FourBarController_2023::init(hardware_interface::RobotHW *hw,
     },
     [this, math_min_extension_](double b)
     {
-        if (b < math_min_extension_) {
+        if (b < math_min_extension_)
+        {
             min_extension_.store(b);
-        } else {
+        }
+        else
+        {
             ROS_WARN_STREAM("ddr: min_extension_ set to less than the theoretical minimum. setting to calculated minimum instead.");
         }
     },
@@ -337,7 +351,7 @@ bool FourBarController_2023::init(hardware_interface::RobotHW *hw,
         motion_s_curve_strength.store(b);
     },
     "S Curve Strength");
-    
+
     ddr_.publishServicesTopics();
 
     //initialize the four_bar joint
@@ -363,7 +377,7 @@ void FourBarController_2023::starting(const ros::Time &time)
 void FourBarController_2023::update(const ros::Time &time, const ros::Duration &/*duration*/)
 {
     // If we hit the limit switch, (re)zero the position.
-    if (four_bar_joint_.getReverseLimitSwitch()) 
+    if (four_bar_joint_.getReverseLimitSwitch())
     {
         ROS_INFO_THROTTLE(2, "FourBarController_2023 : hit limit switch");
         if (!last_zeroed_)
@@ -390,11 +404,11 @@ void FourBarController_2023::update(const ros::Time &time, const ros::Duration &
         four_bar_joint_.setCommand(position_command_);
 
         //if we're not climbing, add an arbitrary feed forward to hold the four_bar up
-       
+
         four_bar_joint_.setMotionAcceleration(motion_magic_acceleration);
         four_bar_joint_.setMotionCruiseVelocity(motion_magic_velocity);
         four_bar_joint_.setPIDFSlot(0);
- 
+
         four_bar_joint_.setDemand1Type(hardware_interface::DemandType_ArbitraryFeedForward);
         four_bar_joint_.setDemand1Value(arb_feed_forward);
     }
@@ -434,8 +448,8 @@ void FourBarController_2023::stopping(const ros::Time &/*time*/)
 }
 
 bool FourBarController_2023::cmdService(controllers_2023_msgs::FourBarSrv::Request  &req,
-        controllers_2023_msgs::FourBarSrv::Response &/*response*/)
-{   
+                                        controllers_2023_msgs::FourBarSrv::Response &/*response*/)
+{
     if (req.position > max_extension_)
     {
         ROS_ERROR_STREAM("FourBar controller: req.position too forward : " << req.position << ". Stop violating physics!");
@@ -451,7 +465,8 @@ bool FourBarController_2023::cmdService(controllers_2023_msgs::FourBarSrv::Reque
     {
         //adjust talon mode, arb feed forward, and PID slot appropriately
         double calcAngle = angleFromX(req.position, req.below);
-        if (!std::isfinite(calcAngle)) {
+        if (!std::isfinite(calcAngle))
+        {
             ROS_ERROR_STREAM("FourBar controller: req.position resulted in a NaN angle! The robot can't derive meaning of not a number!");
             return false;
         }
