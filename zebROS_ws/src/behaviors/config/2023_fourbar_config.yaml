@@ -29,8 +29,6 @@ base_away_us_cone:
   middle_node: 2.00
   high_node: 2.00
 
-
-
 # minimum distance out the intake 
 safety_high: 
   distace: 2.00

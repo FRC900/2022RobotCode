@@ -6,6 +6,7 @@
 #include <controllers_2023_msgs/FourBarSrv.h>
 #include <iostream>
 #include <talon_state_msgs/TalonState.h>
+#include <atomic>
 
 #define FourberINFO(x) ROS_INFO_STREAM("2023_fourber_server : " << x)
 #define FourberWARN(x) ROS_WARN_STREAM("2023_fourber_server : " << x)
@@ -23,8 +24,6 @@ uint8 VERTICAL_CONE=1
 uint8 BASE_TOWARDS_US_CONE=2 
 uint8 BASE_AWAY_US_CONE=3
 uint8 piece
-
-bool saftey # if true, will move and stay in a safe position based on the next field, returns to original position when it is safe
 
 uint8 INTAKE_LOW=0 # should be just two places that we need to call saftey with: when intaking and when going above a certain height
 uint8 HIGH=1 
@@ -46,6 +45,11 @@ void load_param_helper(const ros::NodeHandle &nh, std::string name, T &result, T
       result = default_val;
     }
 }
+enum SafteyState {
+  NONE,
+  SAFTEY_HIGH,
+  SAFTEY_LOW
+};
 
 class FourberAction2023 {
 
@@ -55,8 +59,8 @@ protected:
   ros::NodeHandle nh_params_;
   actionlib::SimpleActionServer<behavior_actions::Fourber2023Action> as_;
 
-  controllers_2023_msgs::FourBarSrv saftey_high_req_;
-  controllers_2023_msgs::FourBarSrv saftey_low_req_;
+  controllers_2023_msgs::FourBarSrv safety_high_req_;
+  controllers_2023_msgs::FourBarSrv safety_low_req_;
 
   ros::ServiceClient fourbar_srv_;
   std::string action_name_;
@@ -69,7 +73,12 @@ protected:
   double position_offset_ = 0;
   double position_tolerance_ = 0.02;
 	double fourbar_cur_position_;
-  
+
+  std::atomic<SafteyState> saftey_state_;
+  double previous_position_;
+
+  size_t fourbar_master_idx; 
+
 public:
 
   FourberAction2023(std::string name) :
@@ -79,7 +88,7 @@ public:
     ddr_(nh_params_)
   {
 
-
+    fourbar_master_idx = std::numeric_limits<size_t>::max();
     const std::map<std::string, std::string> service_connection_header{{"tcp_nodelay", "1"}};
     // TODO check topic
 		fourbar_srv_ = nh_.serviceClient<controllers_2023_msgs::FourBarSrv>("/frcrobot_jetson/four_bar_controller_2023/four_bar_service", false, service_connection_header);
@@ -131,15 +140,15 @@ public:
     game_piece_lookup_[fourber_ns::BASE_AWAY_US_CONE][fourber_ns::HIGH_NODE] = res;
 
     bool res_bool = false;
-    load_param_helper(nh_, "saftey_high/distance", res, 0.4);
-    saftey_high_req_.request.position = res;
-    load_param_helper(nh_, "saftey_high/below", res_bool, false);
-    saftey_high_req_.request.below = res_bool;
+    load_param_helper(nh_, "safety_high/distance", res, 0.4);
+    safety_high_req_.request.position = res;
+    load_param_helper(nh_, "safety_high/below", res_bool, false);
+    safety_high_req_.request.below = res_bool;
 
-    load_param_helper(nh_, "saftey_intake/distance", res, 0.4);
-    saftey_low_req_.request.position = res;
-    load_param_helper(nh_, "saftey_intake/below", res_bool, true);
-    saftey_low_req_.request.below = res_bool;
+    load_param_helper(nh_, "safety_intake/distance", res, 0.4);
+    safety_low_req_.request.position = res;
+    load_param_helper(nh_, "safety_intake/below", res_bool, true);
+    safety_low_req_.request.below = res_bool;
 
     ddr_.publishServicesTopics();
     as_.start();
@@ -183,12 +192,13 @@ public:
 
     behavior_actions::Fourber2023Feedback feedback;
     behavior_actions::Fourber2023Result result;
-
-    if (goal->saftey_position == fourber_ns::SAFTEY_HIGH || goal->saftey_position == fourber_ns::SAFTEY_INTAKE_LOW) {
-      if (goal->saftey_position == fourber_ns::SAFTEY_HIGH) {
+    
+    if (goal->safety_position == fourber_ns::SAFETY_HIGH || goal->safety_position == fourber_ns::SAFETY_INTAKE_LOW) {
+      if (goal->safety_position == fourber_ns::SAFETY_HIGH) {
         FourberINFO("Safey HIGH mode called for fourbar");
-        fourbar_srv_.call(saftey_high_req_);
-        if (!waitForFourbar(saftey_high_req_.request.position)) {
+        saftey_state_ = SafteyState::SAFTEY_HIGH;
+        fourbar_srv_.call(safety_high_req_);
+        if (!waitForFourbar(safety_high_req_.request.position)) {
           feedback.success = false;
           result.success = false;
           as_.publishFeedback(feedback);
@@ -203,10 +213,11 @@ public:
         }
       }
 
-      if (goal->saftey_position == fourber_ns::SAFTEY_INTAKE_LOW) {
+      if (goal->safety_position == fourber_ns::SAFETY_INTAKE_LOW) {
         FourberINFO("Safey LOW mode called for fourbar");
-        fourbar_srv_.call(saftey_low_req_);
-        if (!waitForFourbar(saftey_low_req_.request.position)) {
+        saftey_state_ = SafteyState::SAFTEY_LOW;
+        fourbar_srv_.call(safety_low_req_);
+        if (!waitForFourbar(safety_low_req_.request.position)) {
           feedback.success = false;
           result.success = false;
           as_.publishFeedback(feedback);
@@ -220,6 +231,7 @@ public:
           as_.setSucceeded(result);
         }
       }
+      return;
     }
     
     // select piece, nice synatax makes loading params worth it
@@ -254,7 +266,7 @@ public:
       // hopefully saves a few seconds in a match
 			if (as_.isPreemptRequested() || !ros::ok()) {
         req.request.position = fourbar_cur_position_;
-        fourbar_srv_.call(req);
+        fourbar_srv_.call(req); // don't check for result because we already failed
         result.success = false;
 				as_.setPreempted(result);
 				return;
@@ -283,7 +295,7 @@ public:
   // "borrowed" from 2019 climb server
   void talonStateCallback(const talon_state_msgs::TalonState &talon_state)
   {
-    static size_t fourbar_master_idx = std::numeric_limits<size_t>::max();
+    // fourbar_master_idx == max of size_t at the start
     if (fourbar_master_idx >= talon_state.name.size()) // could maybe just check for > 0 
     {
       for (size_t i = 0; i < talon_state.name.size(); i++)
@@ -294,8 +306,9 @@ public:
           break;
         }
       }
+      FourberERR("Can not find talong with name = " << "four_bar_leader");
     }
-    else {
+    if (!fourbar_master_idx == std::numeric_limits<size_t>::max()) {
       fourbar_cur_position_ = talon_state.position[fourbar_master_idx];
     }
   }

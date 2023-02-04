@@ -1,11 +1,16 @@
 #include <ros/ros.h>
+
 #include <actionlib/server/simple_action_server.h>
+#include <actionlib/client/simple_action_client.h>
+
 #include <behavior_actions/Elevater2023Action.h>
+#include <behavior_actions/Fourber2023Action.h>
+
 #include <ddynamic_reconfigure/ddynamic_reconfigure.h>
 #include <std_msgs/Float64.h>
 #include <controllers_2023_msgs/ElevatorSrv.h>
-#include <iostream>
 #include <talon_state_msgs/TalonState.h>
+#include <iostream>
 
 #define ElevaterINFO(x) ROS_INFO_STREAM("2023_elevater_server : " << x)
 #define ElevaterERR(x) ROS_ERROR_STREAM("2023_elevater_server : " << x)
@@ -31,7 +36,7 @@ template <class T>
 void load_param_helper(const ros::NodeHandle &nh, std::string name, T &result, T default_val) {
     if (!nh.getParam(name, result))
     {
-      ElevaterERR("Could not find" << name << ", defaulting to " << default_val);
+      ElevaterERR("Could not find " << name << ", defaulting to " << default_val);
       result = default_val;
     }
 }
@@ -43,6 +48,8 @@ protected:
   ros::NodeHandle nh_;
   ros::NodeHandle nh_params_;
   actionlib::SimpleActionServer<behavior_actions::Elevater2023Action> as_;
+  actionlib::SimpleActionClient<behavior_actions::Fourber2023Action> ac_fourber_;
+
   ros::ServiceClient elevator_srv_;
   std::string action_name_;
 
@@ -56,14 +63,17 @@ protected:
 	double elev_cur_position_;
   double position_offset_ = 0;
   double position_tolerance_ = 0.02;
+  double safety_high_position_ = -999;
+  double safety_low_position_ = -999;
 
 public:
 
   ElevaterAction2023(std::string name) :
     as_(nh_, name, boost::bind(&ElevaterAction2023::executeCB, this, _1), false),
+    ac_fourber_("/elevator/fourber_server_2023" , true), 
     nh_params_(nh_, "elevater_server_2023"),
     action_name_(name),
-    ddr_(nh_params_)
+    ddr_(nh_params_) 
   {
     // time to load all 16 params!
     // the idea here is that the customization is good, and if values are the same than thats great
@@ -111,6 +121,12 @@ public:
     load_param_helper(nh_, "base_away_us_cone/high_node", res, 1.0);
     game_piece_lookup_[elevater_ns::BASE_AWAY_US_CONE][elevater_ns::HIGH_NODE] = res;
 
+
+    load_param_helper(nh_, "safety_high", safety_high_position_, 0.5);
+    load_param_helper(nh_, "safety_intake", safety_low_position_, 2.0);
+
+    game_piece_lookup_[elevater_ns::BASE_AWAY_US_CONE][elevater_ns::HIGH_NODE] = res;
+
     ElevaterINFO("Game Piece params");
     for(const auto& elem : game_piece_lookup_)
     {
@@ -130,6 +146,8 @@ public:
     elevator_offset_sub_ = nh_.subscribe("/elevator_position_offset", 1, &ElevaterAction2023::heightOffsetCallback, this);
     talon_states_sub_ = nh_.subscribe("/frcrobot_jetson/talon_states",1, &ElevaterAction2023::talonStateCallback, this);
 
+    ddr_.registerVariable<double>("safety_high_position", &game_piece_lookup_[elevater_ns::CUBE][elevater_ns::INTAKE], "If elevator high requester greater than this, saftey mode called for fourbar", 0, 4);
+    ddr_.registerVariable<double>("safety_low_position", &game_piece_lookup_[elevater_ns::CUBE][elevater_ns::INTAKE], "If elevator height requester less than this, saftey low mode called for fourbar", 0, 4);
 
     ddr_.registerVariable<double>("CUBE_intake", &game_piece_lookup_[elevater_ns::CUBE][elevater_ns::INTAKE], "", 0, 4);
     ddr_.registerVariable<double>("CUBE_low_node", &game_piece_lookup_[elevater_ns::CUBE][elevater_ns::LOW_NODE], "", 0, 4);
@@ -179,9 +197,21 @@ public:
 
     // apply offset
     req_position += position_offset_;
+    assert(req_position >= 0); // probably done in elevator server also 
+    behavior_actions::Fourber2023Goal fourber_goal;
+
+    if (req_position >= safety_high_position_) {
+      fourber_goal.safety_position = behavior_actions::Fourber2023Goal::SAFETY_HIGH;
+    }
+    else if (req_position <= safety_low_position_) {
+      fourber_goal.safety_position = behavior_actions::Fourber2023Goal::SAFETY_INTAKE_LOW;
+    }
+    else {
+      fourber_goal.safety_position = behavior_actions::Fourber2023Goal::SAFETY_TO_NO_SAFETY;
+    }
+    ac_fourber_.sendGoal(fourber_goal);
     ElevaterINFO("Moving a " << piece_to_string[goal->piece] << " to the position " << mode_to_string[goal->mode] << " and the ELEVATOR to the position=" << req_position << " meters");
 
-    assert(req_position >= 0); // probably done in elevator server also 
     
     behavior_actions::Elevater2023Feedback feedback;
     behavior_actions::Elevater2023Result result;
