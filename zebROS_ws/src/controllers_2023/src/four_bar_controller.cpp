@@ -63,8 +63,16 @@ class FourBarController_2023 : public controller_interface::MultiInterfaceContro
         double angleFromX(double x, bool below) {
             // motor reads clockwise as positive, but angles are counterclockwise.
             // so, this angle needs to be negative.
-            double angle = acos((min_extension_-intake_length_-parallel_bar_length_)/diagonal_bar_length_) - acos((x-intake_length_-parallel_bar_length_)/diagonal_bar_length_);
-            return below ? acos((min_extension_-intake_length_-parallel_bar_length_)/diagonal_bar_length_) + acos((x-intake_length_-parallel_bar_length_)/diagonal_bar_length_) : angle;
+            double xAngle;
+            if ((x-intake_length_-parallel_bar_length_) >= diagonal_bar_length_) {
+                xAngle = 0;
+                ROS_WARN_STREAM("Desired x was >= maximum x, setting to maximum angle");
+            } else {
+                xAngle = acos((x-intake_length_-parallel_bar_length_)/diagonal_bar_length_);
+            }
+            
+            double angle = acos((min_extension_-intake_length_-parallel_bar_length_)/diagonal_bar_length_) - xAngle;
+            return below ? acos((min_extension_-intake_length_-parallel_bar_length_)/diagonal_bar_length_) + xAngle : angle;
         }
 
 
@@ -119,23 +127,6 @@ bool FourBarController_2023::init(hardware_interface::RobotHW *hw,
     //create the interface used to initialize the talon joint
     hardware_interface::TalonCommandInterface *const talon_command_iface = hw->get<hardware_interface::TalonCommandInterface>();
 
-    // set defaults
-    double math_max_extension_ = parallel_bar_length_ + diagonal_bar_length_ + intake_length_;
-    double math_min_extension_ = -diagonal_bar_length_ + parallel_bar_length_ + intake_length_;
-
-    if (!controller_nh.getParam("max_extension", max_extension_))
-    {
-        ROS_WARN("Could not find max_extension, using default");
-    }
-
-    if (!controller_nh.getParam("min_extension", min_extension_))
-    {
-        ROS_WARN("Could not find min_extension, using default");
-    }
-
-    if (max_extension_ > math_max_extension_) { ROS_WARN("max_extension_ > math_max_extension_"); }
-    if (min_extension_ > math_min_extension_) { ROS_WARN("min_extension_ > math_min_extension_"); }
-
     if (!readIntoScalar(controller_nh, "parallel_bar_length", parallel_bar_length_))
     {
         ROS_ERROR("Could not find parallel_bar_length");
@@ -154,6 +145,31 @@ bool FourBarController_2023::init(hardware_interface::RobotHW *hw,
         return false;
     }
 
+    // set defaults
+    double math_max_extension_ = parallel_bar_length_ + diagonal_bar_length_ + intake_length_;
+    double math_min_extension_ = -diagonal_bar_length_ + parallel_bar_length_ + intake_length_;
+
+    ROS_INFO_STREAM("math. max: " << math_max_extension_ << ", " << "min: " << math_min_extension_);
+
+    if (!controller_nh.getParam("max_extension", max_extension_))
+    {
+        ROS_WARN("Could not find max_extension, using default");
+    }
+
+    if (!controller_nh.getParam("min_extension", min_extension_))
+    {
+        ROS_WARN("Could not find min_extension, using default");
+    }
+
+    if (max_extension_ > math_max_extension_) { 
+        ROS_WARN_STREAM("max_extension_ > math_max_extension_, setting to math_max_extension_: " << math_max_extension_);
+        max_extension_ = math_max_extension_;
+        // if we set max_extension_ higher than math_max_extension_, we will get NaN because that physically won't work
+    }
+    if (min_extension_ < math_min_extension_) {
+        ROS_WARN_STREAM("min_extension_ < math_min_extension_, setting to math_max_extension_: " << math_min_extension_);
+        min_extension_ = math_min_extension_;
+    }
 
     if (!readIntoScalar(controller_nh, "arb_feed_forward", arb_feed_forward))
     {
