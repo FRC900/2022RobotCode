@@ -17,27 +17,6 @@
 namespace four_bar_controller_2023
 {
 
-class FourBarCommand_2023
-{
-    public:
-        FourBarCommand_2023()
-        {
-            angle_ = 0;
-        }
-        FourBarCommand_2023(double angle)
-        {
-            angle_ = angle;
-        }
-        double GetAngle() const
-        {
-            return angle_;
-        }
-
-
-    private:
-        double angle_; // radians.
-        // lower limit = 0 (all the way to the left), upper limit = pi (all the way to the right)
-};
 //this is the actual controller, so it stores all of the  update() functions and the actual handle from the joint interface
 //if it was only one type, controller_interface::Controller<TalonCommandInterface> here
 class FourBarController_2023 : public controller_interface::MultiInterfaceController<hardware_interface::TalonCommandInterface>
@@ -57,10 +36,39 @@ class FourBarController_2023 : public controller_interface::MultiInterfaceContro
         virtual void update(const ros::Time &time, const ros::Duration &period) override;
         virtual void stopping(const ros::Time &time) override;
 
+
+    private:
+        ros::Time last_time_down_;
+        talon_controllers::TalonControllerInterface four_bar_joint_; //interface for the talon joint
+
+        std::atomic<double> position_command_; //this is the buffer for percent output commands to be published
+        ros::ServiceServer four_bar_service_; //service for receiving commands
+
+        bool zeroed_;
+        bool last_zeroed_;
+        double last_angle_;
+        //double last_setpoint_;
+        hardware_interface::TalonMode last_mode_;
+
+        std::atomic<double> max_extension_;
+        std::atomic<double> min_extension_;
+        std::atomic<double> parallel_bar_length_;
+        std::atomic<double> diagonal_bar_length_;
+        std::atomic<double> intake_length_;
+
+        std::atomic<double> arb_feed_forward;
+        std::atomic<double> four_bar_zeroing_percent_output;
+        std::atomic<double> four_bar_zeroing_timeout;
+        std::atomic<double> motion_magic_velocity;
+        std::atomic<double> motion_magic_acceleration;
+        std::atomic<int> motion_s_curve_strength;
+
+        ddynamic_reconfigure::DDynamicReconfigure ddr_;
+
         bool cmdService(controllers_2023_msgs::FourBarSrv::Request &req,
                         controllers_2023_msgs::FourBarSrv::Response &res);
 
-        double angleFromX(double x, bool below) {
+        double angleFromX(double x, bool below) const {
             // motor reads clockwise as positive, but angles are counterclockwise.
             // so, this angle needs to be negative.
             double xAngle;
@@ -74,35 +82,6 @@ class FourBarController_2023 : public controller_interface::MultiInterfaceContro
             double angle = acos((min_extension_-intake_length_-parallel_bar_length_)/diagonal_bar_length_) - xAngle;
             return below ? acos((min_extension_-intake_length_-parallel_bar_length_)/diagonal_bar_length_) + xAngle : angle;
         }
-
-
-    private:
-        ros::Time last_time_down_;
-        talon_controllers::TalonControllerInterface four_bar_joint_; //interface for the talon joint
-
-        realtime_tools::RealtimeBuffer<FourBarCommand_2023> position_command_; //this is the buffer for percent output commands to be published
-        ros::ServiceServer four_bar_service_; //service for receiving commands
-
-        bool zeroed_;
-        bool last_zeroed_;
-        double last_angle_;
-        //double last_setpoint_;
-        hardware_interface::TalonMode last_mode_;
-
-        double max_extension_;
-        double min_extension_;
-        std::atomic<double> parallel_bar_length_;
-        std::atomic<double> diagonal_bar_length_;
-        std::atomic<double> intake_length_;
-
-        std::atomic<double> arb_feed_forward;
-        std::atomic<double> four_bar_zeroing_percent_output;
-        std::atomic<double> four_bar_zeroing_timeout;
-        std::atomic<double> motion_magic_velocity;
-        std::atomic<double> motion_magic_acceleration;
-        std::atomic<int> motion_s_curve_strength;
-
-        ddynamic_reconfigure::DDynamicReconfigure ddr_;
 }; //class
 
 // Set the conversion_factor so that 1 rad = 1 turn of the 4bar
@@ -151,12 +130,12 @@ bool FourBarController_2023::init(hardware_interface::RobotHW *hw,
 
     ROS_INFO_STREAM("math. max: " << math_max_extension_ << ", " << "min: " << math_min_extension_);
 
-    if (!controller_nh.getParam("max_extension", max_extension_))
+    if (!readIntoScalar(controller_nh, "max_extension", max_extension_))
     {
         ROS_WARN("Could not find max_extension, using default");
     }
 
-    if (!controller_nh.getParam("min_extension", min_extension_))
+    if (!readIntoScalar(controller_nh, "min_extension", min_extension_))
     {
         ROS_WARN("Could not find min_extension, using default");
     }
@@ -223,6 +202,38 @@ bool FourBarController_2023::init(hardware_interface::RobotHW *hw,
     {
         ROS_ERROR("Cannot initialize four_bar joint!");
     }
+
+    ddr_.registerVariable<double>
+    ("max_extension",
+     [this]()
+    {
+        return max_extension_.load();
+    },
+    [this, math_max_extension_](double b)
+    {
+        if (b > math_max_extension_) {
+            max_extension_.store(b);
+        } else {
+            ROS_WARN_STREAM("ddr: max_extension_ set to greater than the theoretical maximum. setting to calculated maximum instead.");
+        }
+    },
+    "Max extension");
+
+    ddr_.registerVariable<double>
+    ("min_extension",
+     [this]()
+    {
+        return min_extension_.load();
+    },
+    [this, math_min_extension_](double b)
+    {
+        if (b < math_min_extension_) {
+            min_extension_.store(b);
+        } else {
+            ROS_WARN_STREAM("ddr: min_extension_ set to less than the theoretical minimum. setting to calculated minimum instead.");
+        }
+    },
+    "Min extension");
 
     ddr_.registerVariable<double>
     ("parallel_bar_length",
@@ -346,7 +357,7 @@ void FourBarController_2023::starting(const ros::Time &time)
     last_zeroed_  = false;
     last_mode_ = hardware_interface::TalonMode_Disabled;
     last_angle_ = -1; // give nonsense position to force update on first time through update()
-    position_command_.writeFromNonRT(FourBarCommand_2023(angleFromX(min_extension_, false)));
+    position_command_ = angleFromX(min_extension_, false);
 }
 
 void FourBarController_2023::update(const ros::Time &time, const ros::Duration &/*duration*/)
@@ -369,16 +380,14 @@ void FourBarController_2023::update(const ros::Time &time, const ros::Duration &
         last_zeroed_ = false;
     }
 
-
     if (zeroed_) // run normally, seeking to various positions
     {
         four_bar_joint_.setMode(hardware_interface::TalonMode_MotionMagic);
-        if (((four_bar_joint_.getMode()) == (hardware_interface::TalonMode_Disabled)) && ((last_mode_) == (hardware_interface::TalonMode_Disabled)))
+        if (four_bar_joint_.getMode() == hardware_interface::TalonMode_Disabled && last_mode_ == hardware_interface::TalonMode_Disabled)
         {
-            position_command_.writeFromNonRT(FourBarCommand_2023 (four_bar_joint_.getPosition()));
+            position_command_ = four_bar_joint_.getPosition();
         }
-        const FourBarCommand_2023 setpoint = *(position_command_.readFromRT());
-        four_bar_joint_.setCommand(setpoint.GetAngle());
+        four_bar_joint_.setCommand(position_command_);
 
         //if we're not climbing, add an arbitrary feed forward to hold the four_bar up
        
@@ -420,38 +429,33 @@ void FourBarController_2023::update(const ros::Time &time, const ros::Duration &
     last_mode_ = four_bar_joint_.getMode();
 }
 
-
-
-
-
 void FourBarController_2023::stopping(const ros::Time &/*time*/)
 {
 }
 
-//Command Service Function
 bool FourBarController_2023::cmdService(controllers_2023_msgs::FourBarSrv::Request  &req,
         controllers_2023_msgs::FourBarSrv::Response &/*response*/)
 {   
     if (req.position > max_extension_)
     {
-        ROS_ERROR_STREAM("FourBar controller: req.position too forward : " << req.position << ". Stop violating physics! Setting to maximum position.");
-        req.position = max_extension_;
+        ROS_ERROR_STREAM("FourBar controller: req.position too forward : " << req.position << ". Stop violating physics!");
+        return false;
     }
     if (req.position < min_extension_)
     {
-        ROS_ERROR_STREAM("FourBar controller: req.position too backward : " << req.position << ". Stop violating physics! Setting to minimum position.");
-        req.position = min_extension_;
+        ROS_ERROR_STREAM("FourBar controller: req.position too backward : " << req.position << ". Stop violating physics!");
+        return false;
     }
 
     if (isRunning())
     {
         //adjust talon mode, arb feed forward, and PID slot appropriately
         double calcAngle = angleFromX(req.position, req.below);
-        if (isnan(calcAngle)) {
+        if (!std::isfinite(calcAngle)) {
             ROS_ERROR_STREAM("FourBar controller: req.position resulted in a NaN angle! The robot can't derive meaning of not a number!");
             return false;
         }
-        position_command_.writeFromNonRT(FourBarCommand_2023(calcAngle));
+        position_command_ = calcAngle;
         ROS_INFO_STREAM("writing " << std::to_string(calcAngle) << " radians to four_bar_controller");
     }
     else
@@ -462,16 +466,8 @@ bool FourBarController_2023::cmdService(controllers_2023_msgs::FourBarSrv::Reque
     return true;
 }
 
-
-
-}//namespace
-//namespace
-
-
+}
 
 //DON'T FORGET TO EXPORT THE CLASS SO CONTROLLER_MANAGER RECOGNIZES THIS AS A TYPE
 PLUGINLIB_EXPORT_CLASS(four_bar_controller_2023::FourBarController_2023, controller_interface::ControllerBase)
-
-
-
 #endif
