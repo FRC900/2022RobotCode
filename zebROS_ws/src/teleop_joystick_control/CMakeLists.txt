@@ -174,6 +174,15 @@ add_dependencies(snap_to_cargo_node_2022
 	${catkin_EXPORTED_TARGETS}
 	)
 
+add_executable(snap_to_conecube_node_2023 src/2023_snap_to_nearest_conecube.cpp)
+target_link_libraries(snap_to_conecube_node_2023
+	${catkin_LIBRARIES}
+	)
+add_dependencies(snap_to_conecube_node_2023
+	${${PROJECT_NAME}_EXPORTED_TARGETS}
+	${catkin_EXPORTED_TARGETS}
+	)
+
 #add_executable(test_interpolated_map src/test_interpolated_map.cpp)
 #target_link_libraries(test_interpolated_map
 #	${catkin_LIBRARIES})
@@ -185,7 +194,7 @@ add_dependencies(snap_to_cargo_node_2022
 
 # Install ------------------------------------------------------------
 # Install header files
-install(TARGETS teleop_joystick_comp_2022 teleop_joystick_comp_2023 teleop_joints_keyboard orient_strafing_node
+install(TARGETS teleop_joystick_comp_2022 teleop_joystick_comp_2023 teleop_joints_keyboard orient_strafing_node snap_to_conecube_node_2023
 	ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 	LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 	RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
