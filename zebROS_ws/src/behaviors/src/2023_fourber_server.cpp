@@ -45,6 +45,7 @@ void load_param_helper(const ros::NodeHandle &nh, std::string name, T &result, T
       result = default_val;
     }
 }
+
 enum SafteyState {
   NONE,
   SAFTEY_HIGH,
@@ -220,8 +221,6 @@ public:
 
   // min distance is the minimum distance the forbar must be extended to not cause problems
   void safetyBoundsAndCallService(double min_distance, bool below) {
-    behavior_actions::Fourber2023Feedback feedback;
-    behavior_actions::Fourber2023Result result;
     controllers_2023_msgs::FourBarSrv safety_req;
 
     // wanting to go to safe position and already at a safe position
@@ -297,7 +296,7 @@ public:
         FourberERR("Failed calling fourber with message 'go_to_previous_req'");
         publishFailure();
       }
-      
+
       if (!waitForFourbar(go_to_previous_req.request.position)) {
         publishFailure();
       }
