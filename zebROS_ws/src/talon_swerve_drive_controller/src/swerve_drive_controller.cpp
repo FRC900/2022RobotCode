@@ -498,8 +498,18 @@ void update(const ros::Time &time, const ros::Duration &period)
 			speed_joints_[i].setMode(hardware_interface::TalonMode::TalonMode_PercentOutput);
 
 			// commented out for testing
-			speed_joints_[i].setDemand1Type(hardware_interface::DemandType::DemandType_ArbitraryFeedForward);
-			speed_joints_[i].setDemand1Value(copysign(stopping_ff_, last_wheel_sign_[i]));
+			if (neutral_mode_ == hardware_interface::NeutralMode::NeutralMode_Coast)
+			{
+				// coast mode is now just ff term like before.
+				speed_joints_[i].setDemand1Type(hardware_interface::DemandType::DemandType_ArbitraryFeedForward);
+				speed_joints_[i].setDemand1Value(copysign(stopping_ff_, last_wheel_sign_[i]));
+			}
+			else
+			{
+				// if we are in brake mode it is time to stop.
+				speed_joints_[i].setDemand1Type(hardware_interface::DemandType::DemandType_Neutral);
+				speed_joints_[i].setDemand1Value(0);
+			}
 		}
 		if ((time.toSec() - time_before_brake_) > parking_config_time_delay_)
 		{
@@ -566,7 +576,6 @@ void update(const ros::Time &time, const ros::Duration &period)
 					speed_joints_[i].setDemand1Type(hardware_interface::DemandType::DemandType_Neutral);
 					speed_joints_[i].setDemand1Value(0);
 				}
-
 
 				speed_joints_[i].setCommand(speeds_angles_[i][0]);
 			}
