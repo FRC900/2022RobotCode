@@ -88,7 +88,10 @@ int direction_x{};
 int direction_y{};
 int direction_z{};
 
+ros::Time last_cube;
 double cube_angle;
+
+ros::Time last_cone;
 double cone_angle;
 
 void moveDirection(int x, int y, int z) {
@@ -555,20 +558,24 @@ void evaluateCommands(const ros::MessageEvent<frc_msgs::JoystickState const>& ev
 			//Joystick1: buttonA
 			if(joystick_states_array[0].buttonAPress)
 			{
-				ROS_INFO_STREAM("Snapping to nearest cargo and enabling robot relative driving mode!");
-				// Align for cargo
-				ros::spinOnce();
-				std_msgs::Float64 orient_strafing_angle_msg;
-				orient_strafing_angle_msg.data = cone_angle - imu_angle;
-				orient_strafing_setpoint_pub.publish(orient_strafing_angle_msg);
-				std_msgs::Bool enable_align_msg;
-				enable_align_msg.data = true;
-				// To align the robot to an angle, enable_align_msg.data
-				// needs to be true and the desired angle (in radians)
-				// needs to be published to orient_strafing_setpoint_pub
-				orient_strafing_enable_pub.publish(enable_align_msg);
-				teleop_cmd_vel->setRobotOrient(true, 0);
-				snappingToAngle = true;
+				if (ros::Time::now() - last_cone > ros::Duration(config.cone_cube_timeout)) {
+					ROS_ERROR_STREAM("Data too old! Can't snap to cone!");
+				} else {
+					ROS_INFO_STREAM("Snapping to nearest cone and enabling robot relative driving mode!");
+					// Align for cargo
+					ros::spinOnce();
+					std_msgs::Float64 orient_strafing_angle_msg;
+					orient_strafing_angle_msg.data = cone_angle - imu_angle;
+					orient_strafing_setpoint_pub.publish(orient_strafing_angle_msg);
+					std_msgs::Bool enable_align_msg;
+					enable_align_msg.data = true;
+					// To align the robot to an angle, enable_align_msg.data
+					// needs to be true and the desired angle (in radians)
+					// needs to be published to orient_strafing_setpoint_pub
+					orient_strafing_enable_pub.publish(enable_align_msg);
+					teleop_cmd_vel->setRobotOrient(true, 0);
+					snappingToAngle = true;
+				}
 			}
 			if(joystick_states_array[0].buttonAButton)
 			{
@@ -579,29 +586,32 @@ void evaluateCommands(const ros::MessageEvent<frc_msgs::JoystickState const>& ev
 				enable_align_msg.data = false;
 				orient_strafing_enable_pub.publish(enable_align_msg);
 				teleop_cmd_vel->setRobotOrient(last_robot_orient, last_offset);
-				ROS_INFO_STREAM("Stopping snapping to nearest cargo and disabling robot relative driving mode!");
+				ROS_INFO_STREAM("Stopping snapping to nearest cone and disabling robot relative driving mode!");
 				snappingToAngle = false;
 				sendRobotZero = false;
 			}
 
 			//Joystick1: buttonB
-			//Joystick1: buttonA
 			if(joystick_states_array[0].buttonBPress)
 			{
-				ROS_INFO_STREAM("Snapping to nearest cargo and enabling robot relative driving mode!");
-				// Align for cargo
-				ros::spinOnce();
-				std_msgs::Float64 orient_strafing_angle_msg;
-				orient_strafing_angle_msg.data = cube_angle - imu_angle;
-				orient_strafing_setpoint_pub.publish(orient_strafing_angle_msg);
-				std_msgs::Bool enable_align_msg;
-				enable_align_msg.data = true;
-				// To align the robot to an angle, enable_align_msg.data
-				// needs to be true and the desired angle (in radians)
-				// needs to be published to orient_strafing_setpoint_pub
-				orient_strafing_enable_pub.publish(enable_align_msg);
-				teleop_cmd_vel->setRobotOrient(true, 0);
-				snappingToAngle = true;
+				if (ros::Time::now() - last_cone > ros::Duration(config.cone_cube_timeout)) {
+					ROS_ERROR_STREAM("Data too old! Can't snap to cube!");
+				} else {
+					ROS_INFO_STREAM("Snapping to nearest cube and enabling robot relative driving mode!");
+					// Align for cargo
+					ros::spinOnce();
+					std_msgs::Float64 orient_strafing_angle_msg;
+					orient_strafing_angle_msg.data = cube_angle - imu_angle;
+					orient_strafing_setpoint_pub.publish(orient_strafing_angle_msg);
+					std_msgs::Bool enable_align_msg;
+					enable_align_msg.data = true;
+					// To align the robot to an angle, enable_align_msg.data
+					// needs to be true and the desired angle (in radians)
+					// needs to be published to orient_strafing_setpoint_pub
+					orient_strafing_enable_pub.publish(enable_align_msg);
+					teleop_cmd_vel->setRobotOrient(true, 0);
+					snappingToAngle = true;
+				}
 			}
 			if(joystick_states_array[0].buttonBButton)
 			{
@@ -612,7 +622,7 @@ void evaluateCommands(const ros::MessageEvent<frc_msgs::JoystickState const>& ev
 				enable_align_msg.data = false;
 				orient_strafing_enable_pub.publish(enable_align_msg);
 				teleop_cmd_vel->setRobotOrient(last_robot_orient, last_offset);
-				ROS_INFO_STREAM("Stopping snapping to nearest cargo and disabling robot relative driving mode!");
+				ROS_INFO_STREAM("Stopping snapping to nearest cube and disabling robot relative driving mode!");
 				snappingToAngle = false;
 				sendRobotZero = false;
 			}
@@ -1006,10 +1016,12 @@ void matchStateCallback(const frc_msgs::MatchSpecificData &msg)
 
 void coneAngleCallback(const std_msgs::Float64 &msg) {
 	cone_angle = msg.data;
+	last_cone = ros::Time::now();
 }
 
 void cubeAngleCallback(const std_msgs::Float64 &msg) {
 	cube_angle = msg.data;
+	last_cube = ros::Time::now();
 }
 
 /*
@@ -1095,6 +1107,10 @@ int main(int argc, char **argv)
 	if(!n_params.getParam("top_position_angle", config.top_position_angle))
 	{
 		ROS_ERROR("Could not read top_position_angle in teleop_joystick_comp");
+	}
+	if(!n_params.getParam("cone_cube_timeout", config.cone_cube_timeout))
+	{
+		ROS_ERROR("Could not read cone_cube_timeout in teleop_joystick_comp");
 	}
 
 	teleop_cmd_vel = std::make_unique<TeleopCmdVel<teleop_joystick_control::TeleopJoystickComp2023Config>>(config);

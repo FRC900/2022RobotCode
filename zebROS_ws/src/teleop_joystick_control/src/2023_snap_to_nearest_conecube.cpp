@@ -64,45 +64,49 @@ class SnapToConeCube2023
                     }
                 }
             }
-            std_msgs::Float64 msg1;
-            try
-            {
-                geometry_msgs::PoseStamped p1s;
-                p1s.header = msg.header;
-                p1s.pose.position = closest_cone.location;
-                tf2::Quaternion q1;
-                q1.setRPY(0, 0, closest_cone.angle * (M_PI / 180.0));
-                geometry_msgs::Quaternion q1m = tf2::toMsg(q1);
-                p1s.pose.orientation = q1m;
-                p1s = tf_buffer_.transform(p1s, "base_link", ros::Duration(0.05));
-                msg1.data = atan2(p1s.pose.position.y, p1s.pose.position.x);
+            if (shortest_cone_distance != std::numeric_limits<double>::max()) {
+                std_msgs::Float64 msg1;
+                try
+                {
+                    geometry_msgs::PoseStamped p1s;
+                    p1s.header = msg.header;
+                    p1s.pose.position = closest_cone.location;
+                    tf2::Quaternion q1;
+                    q1.setRPY(0, 0, closest_cone.angle * (M_PI / 180.0));
+                    geometry_msgs::Quaternion q1m = tf2::toMsg(q1);
+                    p1s.pose.orientation = q1m;
+                    p1s = tf_buffer_.transform(p1s, "base_link", ros::Duration(0.05));
+                    msg1.data = atan2(p1s.pose.position.y, p1s.pose.position.x);
+                }
+                catch (...)
+                {
+                    ROS_WARN_STREAM_THROTTLE(0.1, "snap_to_nearest_conecube_2023 : transform to base_link failed, using untransformed angle");
+                    msg1.data = closest_cone.angle * (M_PI / 180.0);
+                }
+                nearest_cone_pub_.publish(msg1);
             }
-            catch (...)
-            {
-                ROS_WARN_STREAM_THROTTLE(0.1, "snap_to_nearest_conecube_2023 : transform to base_link failed, using untransformed angle");
-                msg1.data = closest_cone.angle * (M_PI / 180.0);
-            }
-            nearest_cone_pub_.publish(msg1);
 
-            std_msgs::Float64 msg2;
-            try
-            {
-                geometry_msgs::PoseStamped p2s;
-                p2s.header = msg.header;
-                p2s.pose.position = closest_cube.location;
-                tf2::Quaternion q2;
-                q2.setRPY(0, 0, closest_cube.angle * (M_PI / 180.0));
-                geometry_msgs::Quaternion q2m = tf2::toMsg(q2);
-                p2s.pose.orientation = q2m;
-                p2s = tf_buffer_.transform(p2s, "base_link", ros::Duration(0.05));
-                msg2.data = atan2(p2s.pose.position.y, p2s.pose.position.x);
+            if (shortest_cube_distance != std::numeric_limits<double>::max()) {
+                std_msgs::Float64 msg2;
+                try
+                {
+                    geometry_msgs::PoseStamped p2s;
+                    p2s.header = msg.header;
+                    p2s.pose.position = closest_cube.location;
+                    tf2::Quaternion q2;
+                    q2.setRPY(0, 0, closest_cube.angle * (M_PI / 180.0));
+                    geometry_msgs::Quaternion q2m = tf2::toMsg(q2);
+                    p2s.pose.orientation = q2m;
+                    p2s = tf_buffer_.transform(p2s, "base_link", ros::Duration(0.05));
+                    msg2.data = atan2(p2s.pose.position.y, p2s.pose.position.x);
+                }
+                catch (...)
+                {
+                    ROS_WARN_STREAM_THROTTLE(0.1, "snap_to_nearest_conecube_2023 : transform to base_link failed, using untransformed angle");
+                    msg2.data = closest_cube.angle * (M_PI / 180.0);
+                }
+                nearest_cube_pub_.publish(msg2);
             }
-            catch (...)
-            {
-                ROS_WARN_STREAM_THROTTLE(0.1, "snap_to_nearest_conecube_2023 : transform to base_link failed, using untransformed angle");
-                msg2.data = closest_cube.angle * (M_PI / 180.0);
-            }
-            nearest_cube_pub_.publish(msg2);
         }
 
 
