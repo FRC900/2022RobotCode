@@ -58,9 +58,15 @@ protected:
   ros::NodeHandle nh_;
   ros::NodeHandle nh_params_;
   actionlib::SimpleActionServer<behavior_actions::Fourber2023Action> as_;
+  
+  // class memebers for the publishFailure function, reduces code duplication
+  behavior_actions::Fourber2023Feedback feedback_;
+  behavior_actions::Fourber2023Result result_;
 
-  controllers_2023_msgs::FourBarSrv safety_high_req_;
-  controllers_2023_msgs::FourBarSrv safety_low_req_;
+  double safety_high_distance_;
+  double safety_low_distance_;
+  bool safety_high_below_;
+  bool safety_low_below_;
 
   ros::ServiceClient fourbar_srv_;
   std::string action_name_;
@@ -72,10 +78,11 @@ protected:
 
   double position_offset_ = 0;
   double position_tolerance_ = 0.02;
-	double fourbar_cur_position_;
+	double fourbar_cur_setpoint_;
+  double fourbar_cur_position_;
 
   std::atomic<SafteyState> saftey_state_;
-  double previous_position_;
+  double previous_setpoint_;
 
   size_t fourbar_master_idx; 
 
@@ -93,7 +100,7 @@ public:
     // TODO check topic
 		fourbar_srv_ = nh_.serviceClient<controllers_2023_msgs::FourBarSrv>("/frcrobot_jetson/four_bar_controller_2023/four_bar_service", false, service_connection_header);
     if (!fourbar_srv_.waitForExistence(ros::Duration(5))) {
-        FourberERR("=======Could not find fourbar service========");
+        FourberERR("========Could not find fourbar service========");
     }
     fourbar_offset_sub_ = nh_.subscribe("/fourbar_position_offset", 1, &FourberAction2023::heightOffsetCallback, this);
     talon_states_sub_ = nh_.subscribe("/frcrobot_jetson/talon_states",1, &FourberAction2023::talonStateCallback, this);
@@ -166,14 +173,14 @@ public:
     game_piece_lookup_[fourber_ns::BASE_AWAY_US_CONE][fourber_ns::HIGH_NODE] = {res, res_bool};
 
     load_param_helper(nh_, "safety_high/distance", res, 0.4);
-    safety_high_req_.request.position = res;
+    safety_high_distance_ = res;
     load_param_helper(nh_, "safety_high/below", res_bool, false);
-    safety_high_req_.request.below = res_bool;
+    safety_high_below_ = res_bool;
 
     load_param_helper(nh_, "safety_intake/distance", res, 0.4);
-    safety_low_req_.request.position = res;
+    safety_low_distance_ = res;
     load_param_helper(nh_, "safety_intake/below", res_bool, true);
-    safety_low_req_.request.below = res_bool;
+    safety_low_below_ = res_bool;
 
     ddr_.publishServicesTopics();
     as_.start();
@@ -192,16 +199,16 @@ public:
       ros::spinOnce();
       FourberINFO("Waiting for fourbar");
 
-      // if we are preempted, we probably didn't want to move the elevator to the requested location, so stop it by requesting current position
-      // hopefully saves a few seconds in a match
+      // essentially just keep fourbar where it is now
 			if (as_.isPreemptRequested() || !ros::ok()) {
+        FourberWARN("Fourber Preemepted");
         controllers_2023_msgs::FourBarSrv last_req;
-        last_req.request.position = fourbar_cur_position_;
+        last_req.request.position = fourbar_cur_setpoint_;
         fourbar_srv_.call(last_req);
         return false;
 			}
 
-      if (fabs(fourbar_cur_position_-position) <= position_tolerance_) {
+      if (fabs(fourbar_cur_setpoint_-position) <= position_tolerance_) {
         FourberINFO("Elevator reached position!");
         break;
       }
@@ -211,73 +218,92 @@ public:
     return true;
   }
 
+  // min distance is the minimum distance the forbar must be extended to not cause problems
+  void safetyBoundsAndCallService(double min_distance, bool below) {
+    behavior_actions::Fourber2023Feedback feedback;
+    behavior_actions::Fourber2023Result result;
+    controllers_2023_msgs::FourBarSrv safety_req;
+
+    // wanting to go to safe position and already at a safe position
+    if (fourbar_cur_setpoint_ >= min_distance && fourbar_cur_position_ >= min_distance) {
+      // nothing to do
+      return; 
+    }
+    // we are trying to go to an illegal position, 
+    else if (fourbar_cur_setpoint_ < min_distance) {
+      safety_req.request.position = min_distance;
+    }
+    // currentlly in illegal position but want to go to legal position
+    else if (fourbar_cur_setpoint_ >= min_distance && fourbar_cur_position_ < min_distance) {
+      safety_req.request.position = fourbar_cur_setpoint_;
+    }
+
+    safety_req.request.below = below;
+    fourbar_srv_.call(safety_req);
+    if (!waitForFourbar(safety_req.request.position)) {
+      FourberERR("Failed calling fourber with message 'safety_req'");
+      publishFailure();
+    }
+    else {
+      publishSuccess();
+    }
+  }
+
+  void publishFailure() {
+    feedback_.success = false;
+    result_.success = false;
+    as_.publishFeedback(feedback_);
+    as_.setAborted(result_);
+  }
+
+  void publishSuccess() {
+    feedback_.success = true;
+    result_.success = true;
+    as_.publishFeedback(feedback_);
+    as_.setSucceeded(result_);
+  }
+
   void executeCB(const behavior_actions::Fourber2023GoalConstPtr &goal)
   {
     ros::spinOnce();
-    previous_position_ = fourbar_cur_position_;
-    behavior_actions::Fourber2023Feedback feedback;
-    behavior_actions::Fourber2023Result result;
 
+    // case where elevater node has given info that we are in a zone we need to be safe
     if (goal->safety_position == fourber_ns::SAFETY_HIGH || goal->safety_position == fourber_ns::SAFETY_INTAKE_LOW) {
+      // rememeber where we were when moving ot saftey mode as the only one that uses saftey mode is the elevatER
+      previous_setpoint_ = fourbar_cur_setpoint_;
       if (goal->safety_position == fourber_ns::SAFETY_HIGH) {
         FourberINFO("Safey HIGH mode called for fourbar");
         saftey_state_ = SafteyState::SAFTEY_HIGH;
-        fourbar_srv_.call(safety_high_req_);
-        if (!waitForFourbar(safety_high_req_.request.position)) {
-          FourberERR("Failed calling fourber");
-          feedback.success = false;
-          result.success = false;
-          as_.publishFeedback(feedback);
-          as_.setAborted(result);
-        }
-        else {
-          feedback.success = true;
-          feedback.success = true; 
-          // @todo figure out how to encode this result
-          as_.publishFeedback(feedback);
-          as_.setSucceeded(result);
-        }
+        safetyBoundsAndCallService(safety_high_distance_, safety_high_below_);
       }
 
       if (goal->safety_position == fourber_ns::SAFETY_INTAKE_LOW) {
         FourberINFO("Safey LOW mode called for fourbar");
         saftey_state_ = SafteyState::SAFTEY_LOW;
-        fourbar_srv_.call(safety_low_req_);
-        if (!waitForFourbar(safety_low_req_.request.position)) {
-          FourberERR("Failed calling fourber");
-          feedback.success = false;
-          result.success = false;
-          as_.publishFeedback(feedback);
-          as_.setAborted(result);
-        }
-        else {
-          feedback.success = true;
-          feedback.success = true; 
-          // @todo figure out how to encode this result
-          as_.publishFeedback(feedback);
-          as_.setSucceeded(result);
-        } 
+        safetyBoundsAndCallService(safety_low_distance_, safety_low_below_); 
       }
       return;
     }
 
+    // case where we have move back to where we were
     if (goal->safety_position == fourber_ns::SAFETY_TO_NO_SAFETY) {
       saftey_state_ == SafteyState::NONE;
-      if (!fourbar_srv_.call(safety_low_req_)) {
-        FourberERR("Failed calling fourber");
-        feedback.success = false;
-        result.success = false;
-        as_.publishFeedback(feedback);
-        as_.setAborted(result);
+      controllers_2023_msgs::FourBarSrv go_to_previous_req;
+      go_to_previous_req.request.position = previous_setpoint_;
+      // should be good to hardcode this because the only time we want this to be true is when we are intaking which is in a restricted zone
+      go_to_previous_req.request.below = false; 
+
+      if (!fourbar_srv_.call(go_to_previous_req)) {
+        FourberERR("Failed calling fourber with message 'go_to_previous_req'");
+        publishFailure();
       }
-      else {
-        feedback.success = true;
-        feedback.success = true; 
-        // @todo figure out how to encode this result
-        as_.publishFeedback(feedback);
-        as_.setSucceeded(result);
-        return;
+      
+      if (!waitForFourbar(go_to_previous_req.request.position)) {
+        publishFailure();
       }
+
+      publishSuccess(); 
+      return;
     }
 
     // select piece, nice synatax makes loading params worth it
@@ -290,11 +316,14 @@ public:
       FourberWARN("Offset of " << position_offset_);
     }
 
+    // for movements when inside a safe zone
     if (saftey_state_ == SafteyState::SAFTEY_HIGH) {
-      req_position = std::max(req_position, safety_high_req_.request.position);
+      req_position = std::max(req_position, safety_high_distance_);
+      req_bool = safety_high_below_;
     }
     if (saftey_state_ == SafteyState::SAFTEY_LOW) {
-      req_position = std::max(req_position, safety_low_req_.request.position);
+      req_position = std::max(req_position, safety_low_distance_);
+      req_bool = safety_low_below_;
     }
 
     FourberINFO("FourbERing a " << piece_to_string[goal->piece] << " to the position " << mode_to_string[goal->mode] << " and the FOURBAR to the position=" << req_position << " meters");
@@ -306,41 +335,16 @@ public:
 
     if (!fourbar_srv_.call(req)) { // somehow fourbar has failed, set status and abort to pass error up
       FourberERR("Failed to moving fourbar :(");
-      feedback.success = false;
-      result.success = false;
-      as_.publishFeedback(feedback);
-      as_.setAborted(result);
+      publishFailure();
       return;
     }
 
-    ros::Rate r = ros::Rate(10);
-    while (true) {
-      ros::spinOnce();
-      FourberINFO("Moving fourbar");
-
-      // if we are preempted, we probably didn't want to move the fourbar to the requested location, so stop it by requesting current position
-      // hopefully saves a few seconds in a match
-			if (as_.isPreemptRequested() || !ros::ok()) {
-        req.request.position = fourbar_cur_position_;
-        fourbar_srv_.call(req); // don't check for result because we already failed
-        result.success = false;
-				as_.setPreempted(result);
-				return;
-			}
-
-      if (fabs(fourbar_cur_position_-req_position) <= position_tolerance_) {
-        FourberINFO("Fourbar reached position!");
-        break;
-      }
-      r.sleep();
+    // failed 
+    if (!waitForFourbar(req_position)) {
+      publishFailure();
     }
-
     FourberINFO("Succeeded moving Fourbar!");
-    feedback.success = true;
-    result.success = true;
-    as_.publishFeedback(feedback);
-    as_.setSucceeded(result); // not sure if code higher up wants feedback or success, so supply both
-    // print_map();
+    publishSuccess();
     ros::spinOnce();
   }
   
@@ -365,10 +369,10 @@ public:
       FourberERR("Can not find talong with name = " << "four_bar_leader");
     }
     if (!fourbar_master_idx == std::numeric_limits<size_t>::max()) {
+      fourbar_cur_setpoint_ = talon_state.set_point[fourbar_master_idx];
       fourbar_cur_position_ = talon_state.position[fourbar_master_idx];
     }
   }
-
 }; // FourberAction2023
 
 int main(int argc, char** argv)
