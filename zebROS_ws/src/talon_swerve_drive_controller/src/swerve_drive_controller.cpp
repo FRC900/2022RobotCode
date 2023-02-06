@@ -213,7 +213,7 @@ bool init(hardware_interface::TalonCommandInterface *hw,
 		ROS_ERROR("Could not read f_s_s in talon swerve drive controller");
 		return false;
 	}
-	if (!controller_nh.getParam("stoping_ff", stopping_ff_))
+	if (!controller_nh.getParam("stopping_ff", stopping_ff_))
 	{
 		ROS_ERROR("Could not read stoping_ff in talon swerve drive controller");
 		return false;
@@ -515,7 +515,7 @@ void update(const ros::Time &time, const ros::Duration &period)
 				{
 					// coast mode is now just ff term like before.  The small force commanded
 					// from the motor will slow the robot gradually vs. brake mode's immediate stop
-					speed_joints_[i].setCommand(stopping_ff_, last_wheel_sign_[i]);
+					speed_joints_[i].setCommand(last_wheel_sign_[i] * stopping_ff_);
 				}
 				else
 				{
@@ -575,7 +575,7 @@ void update(const ros::Time &time, const ros::Duration &period)
 				{
 					speed_joints_[i].setDemand1Type(hardware_interface::DemandType::DemandType_ArbitraryFeedForward);
 					speed_joints_[i].setDemand1Value(copysign(f_s_, speeds_angles_[i][0]));
-					last_wheel_sign_[i] = copysign(1, speeds_angles_[i][0]);
+					last_wheel_sign_[i] = copysign(1., speeds_angles_[i][0]);
 				}
 				else
 				{
