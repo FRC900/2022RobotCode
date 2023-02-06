@@ -507,21 +507,21 @@ void update(const ros::Time &time, const ros::Duration &period)
 			// the drive base is currently configured.
 			for (size_t i = 0; i < WHEELCOUNT; ++i)
 			{
-				speed_joints_[i].setCommand(0);
 				speed_joints_[i].setMode(hardware_interface::TalonMode::TalonMode_PercentOutput);
+				speed_joints_[i].setDemand1Type(hardware_interface::DemandType::DemandType_Neutral);
+				speed_joints_[i].setDemand1Value(0);
 
 				if (neutral_mode_ == hardware_interface::NeutralMode::NeutralMode_Coast)
 				{
 					// coast mode is now just ff term like before.  The small force commanded
 					// from the motor will slow the robot gradually vs. brake mode's immediate stop
-					speed_joints_[i].setDemand1Type(hardware_interface::DemandType::DemandType_ArbitraryFeedForward);
-					speed_joints_[i].setDemand1Value(copysign(stopping_ff_, last_wheel_sign_[i]));
+					speed_joints_[i].setCommand(stopping_ff_, last_wheel_sign_[i]);
 				}
 				else
 				{
 					// if we are in brake mode it is time to stop immediately.
-					speed_joints_[i].setDemand1Type(hardware_interface::DemandType::DemandType_Neutral);
-					speed_joints_[i].setDemand1Value(0);
+					// Setting speed to 0 will trigger brake mode
+					speed_joints_[i].setCommand(0);
 				}
 				speed_joints_[i].setNeutralMode(neutral_mode_);
 
