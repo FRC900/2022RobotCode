@@ -44,7 +44,7 @@ def add_plugin(graph):
         nmsThreshold=0.4,
         topK=100,
         keepTopK=100,
-        numClasses=39, # 24 object + 1 for unknown class, but Chris trained it on 39 /shrug
+        numClasses=25, # 24 object + 1 for unknown class
         inputOrder=[1, 2, 0],
         confSigmoid=1,
         isNormalized=1
