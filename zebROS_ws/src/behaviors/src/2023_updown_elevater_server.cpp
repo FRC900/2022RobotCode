@@ -19,6 +19,7 @@
 #define ElevaterERR(x) ROS_ERROR_STREAM("2023_elevater_server : " << x)
 
 typedef behavior_actions::Elevater2023Goal elevater_ns;
+
 /*
 uint8 INTAKE=0
 uint8 LOW_NODE=1
