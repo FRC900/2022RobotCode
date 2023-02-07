@@ -3,6 +3,8 @@
 #include <actionlib/server/simple_action_server.h>
 #include <actionlib/client/simple_action_client.h>
 
+#include <actionlib/client/simple_client_goal_state.h>
+
 #include <behavior_actions/Elevater2023Action.h>
 #include <behavior_actions/Fourber2023Action.h>
 
@@ -11,6 +13,7 @@
 #include <controllers_2023_msgs/ElevatorSrv.h>
 #include <talon_state_msgs/TalonState.h>
 #include <iostream>
+#include <behaviors/game_pieces_2023.h>
 
 #define ElevaterINFO(x) ROS_INFO_STREAM("2023_elevater_server : " << x)
 #define ElevaterERR(x) ROS_ERROR_STREAM("2023_elevater_server : " << x)
@@ -29,8 +32,6 @@ uint8 BASE_TOWARDS_US_CONE=2
 uint8 BASE_AWAY_US_CONE=3
 uint8 piece
 */
-constexpr std::array mode_to_string = {"INTAKE", "LOW_NODE", "MIDDLE_NODE", "HIGH_NODE"};
-constexpr std::array piece_to_string = {"CUBE", "VERTICAL_CONE", "BASE_TOWARDS_US_CONE", "BASE_AWAY_US_CONE"};
 
 template <class T>
 void load_param_helper(const ros::NodeHandle &nh, std::string name, T &result, T default_val) {
@@ -63,9 +64,16 @@ protected:
 	double elev_cur_position_;
   double position_offset_ = 0;
   double position_tolerance_ = 0.02;
-  double safety_high_position_ = -999;
-  double safety_low_position_ = -999;
+
+  // only need to avoid certain points above and below
+  double safety_high_position_min_;
+  double safety_high_position_max_;
+
+  double safety_intake_position_min_;
+  double safety_intake_position_max_;
+
   size_t elevater_master_idx; 
+  SafteyState fourber_safety_state_; // feels bad to also hold fourber state here but it is needed to be able to properly send transition state vs no safety
 
 public:
 
@@ -124,8 +132,11 @@ public:
     game_piece_lookup_[elevater_ns::BASE_AWAY_US_CONE][elevater_ns::HIGH_NODE] = res;
 
 
-    load_param_helper(nh_, "safety_high", safety_high_position_, 0.5);
-    load_param_helper(nh_, "safety_intake", safety_low_position_, 2.0);
+    load_param_helper(nh_, "saftey_high_min", safety_high_position_min_, 2.0);
+    load_param_helper(nh_, "saftey_high_max", safety_high_position_max_, 2.5);
+
+    load_param_helper(nh_, "safety_intake_min", safety_intake_position_min_, 0.0);
+    load_param_helper(nh_, "safety_intake_max", safety_intake_position_max_, 0.5);
 
     game_piece_lookup_[elevater_ns::BASE_AWAY_US_CONE][elevater_ns::HIGH_NODE] = res;
 
@@ -191,6 +202,24 @@ public:
     }
   }
 
+  void publishFailure() {
+    behavior_actions::Elevater2023Feedback feedback;
+    behavior_actions::Elevater2023Result result;
+    feedback.success = false;
+    result.success = false;
+    as_.publishFeedback(feedback);
+    as_.setAborted(result);
+  }
+
+  void publishSuccess() {
+    behavior_actions::Elevater2023Feedback feedback;
+    behavior_actions::Elevater2023Result result;
+    feedback.success = true;
+    result.success = true;
+    as_.publishFeedback(feedback);
+    as_.setSucceeded(result);
+  }
+
   void executeCB(const behavior_actions::Elevater2023GoalConstPtr &goal)
   {
     ros::spinOnce();
@@ -202,19 +231,37 @@ public:
     assert(req_position >= 0); // probably done in elevator server also 
     behavior_actions::Fourber2023Goal fourber_goal;
 
-    if (req_position >= safety_high_position_) {
+    // high and low range checks
+    if (safety_high_position_min_ <= req_position && req_position <= safety_high_position_max_) {
       fourber_goal.safety_position = behavior_actions::Fourber2023Goal::SAFETY_HIGH;
+      fourber_safety_state_ = SafteyState::SAFTEY_HIGH;
     }
-    else if (req_position <= safety_low_position_) {
+    else if (safety_intake_position_min_ <= req_position && req_position <= safety_intake_position_max_) {
       fourber_goal.safety_position = behavior_actions::Fourber2023Goal::SAFETY_INTAKE_LOW;
+      fourber_safety_state_ = SafteyState::SAFTEY_LOW;
+    }
+    // not going within eaither of those, so if the safety state is set, we can trainsition to it being unset
+    else if (fourber_safety_state_ == SafteyState::SAFTEY_HIGH || fourber_safety_state_ == SafteyState::SAFTEY_LOW) {
+      fourber_goal.safety_position = behavior_actions::Fourber2023Goal::SAFETY_TO_NO_SAFETY;
+      fourber_safety_state_ == SafteyState::NONE;
     }
     else {
-      fourber_goal.safety_position = behavior_actions::Fourber2023Goal::SAFETY_TO_NO_SAFETY;
+      fourber_goal.safety_position = behavior_actions::Fourber2023Goal::NO_SAFETY;
     }
-    ac_fourber_.sendGoal(fourber_goal);
+
+    // have a meaningful message to send
+    bool fourber_success = false;
+    if (!fourber_goal.safety_position == behavior_actions::Fourber2023Goal::NO_SAFETY) {
+      auto fourbar_result = ac_fourber_.sendGoalAndWait(fourber_goal, ros::Duration(5), ros::Duration(3));
+      if (!(fourbar_result == actionlib::SimpleClientGoalState::SUCCEEDED)) {
+        ElevaterERR("Fourber actionlib called from elevater has failed. Unable to safely move elevator. Aborting");
+        publishFailure();
+        return;
+      } 
+    }
+    
     ElevaterINFO("Moving a " << piece_to_string[goal->piece] << " to the position " << mode_to_string[goal->mode] << " and the ELEVATOR to the position=" << req_position << " meters");
 
-    
     behavior_actions::Elevater2023Feedback feedback;
     behavior_actions::Elevater2023Result result;
 
@@ -223,10 +270,7 @@ public:
 
     if (!elevator_srv_.call(req)) { // somehow elevator has failed, set status and abort to pass error up
       ElevaterERR("Failed to moving elevator :(");
-      feedback.success = false;
-      result.success = false;
-      as_.publishFeedback(feedback);
-      as_.setAborted(result);
+      publishFailure();
       return;
     }
 
@@ -239,7 +283,9 @@ public:
       // hopefully saves a few seconds in a match
 			if (as_.isPreemptRequested() || !ros::ok()) {
         req.request.position = elev_cur_position_;
-        elevator_srv_.call(req);
+        if (!elevator_srv_.call(req)) {
+          ElevaterERR("Failed to set elevator setpoint to current height during preempt!");
+        }
         result.success = false;
 				as_.setPreempted(result);
 				return;
@@ -253,12 +299,10 @@ public:
     }
 
     ElevaterINFO("Succeeded moving elevator!");
-    feedback.success = true;
-    result.success = true;
-    as_.publishFeedback(feedback);
-    as_.setSucceeded(result); // not sure if code higher up wants feedback or success, so supply both
+    publishSuccess();
     // print_map();
     ros::spinOnce();
+    return;
   }
   
   void heightOffsetCallback(const std_msgs::Float64 speed_offset_msg) { 

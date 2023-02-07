@@ -1,5 +1,7 @@
 #include <ros/ros.h>
 #include <actionlib/server/simple_action_server.h>
+#include <actionlib/client/simple_action_client.h>
+
 #include <behavior_actions/Fourber2023Action.h>
 #include <ddynamic_reconfigure/ddynamic_reconfigure.h>
 #include <std_msgs/Float64.h>
@@ -7,15 +9,13 @@
 #include <iostream>
 #include <talon_state_msgs/TalonState.h>
 #include <atomic>
+#include <behaviors/game_pieces_2023.h>
 
 #define FourberINFO(x) ROS_INFO_STREAM("2023_fourber_server : " << x)
 #define FourberWARN(x) ROS_WARN_STREAM("2023_fourber_server : " << x)
 #define FourberERR(x) ROS_ERROR_STREAM("2023_fourber_server : " << x)
 
 typedef behavior_actions::Fourber2023Goal fourber_ns;
-
-constexpr std::array mode_to_string = {"INTAKE", "LOW_NODE", "MIDDLE_NODE", "HIGH_NODE"};
-constexpr std::array piece_to_string = {"CUBE", "VERTICAL_CONE", "BASE_TOWARDS_US_CONE", "BASE_AWAY_US_CONE"};
 
 /*
 # Fourber = 
@@ -46,11 +46,15 @@ void load_param_helper(const ros::NodeHandle &nh, std::string name, T &result, T
     }
 }
 
-enum SafteyState {
-  NONE,
-  SAFTEY_HIGH,
-  SAFTEY_LOW
+// contains the data sent to the four bar controller for diffrent combinations of cubes/cones
+struct FourBarMessage {
+  double distance;
+  bool below;
+  FourBarMessage(double dist, bool bel) : distance(dist), below(bel) {}
+  FourBarMessage() {}
 };
+
+
 
 class FourberAction2023 {
 
@@ -59,10 +63,6 @@ protected:
   ros::NodeHandle nh_;
   ros::NodeHandle nh_params_;
   actionlib::SimpleActionServer<behavior_actions::Fourber2023Action> as_;
-  
-  // class memebers for the publishFailure function, reduces code duplication
-  behavior_actions::Fourber2023Feedback feedback_;
-  behavior_actions::Fourber2023Result result_;
 
   double safety_high_distance_;
   double safety_low_distance_;
@@ -72,10 +72,9 @@ protected:
   ros::ServiceClient fourbar_srv_;
   std::string action_name_;
 
-  ddynamic_reconfigure::DDynamicReconfigure ddr_;
   ros::Subscriber fourbar_offset_sub_;
   ros::Subscriber talon_states_sub_;
-  std::map<int, std::map<int, std::pair<double, bool>>> game_piece_lookup_;
+  std::map<int, std::map<int, FourBarMessage>> game_piece_lookup_;
 
   double position_offset_ = 0;
   double position_tolerance_ = 0.02;
@@ -85,18 +84,16 @@ protected:
   std::atomic<SafteyState> saftey_state_;
   double previous_setpoint_;
 
-  size_t fourbar_master_idx; 
+  size_t fourbar_master_idx = std::numeric_limits<size_t>::max(); 
 
 public:
 
   FourberAction2023(std::string name) :
     as_(nh_, name, boost::bind(&FourberAction2023::executeCB, this, _1), false),
     nh_params_(nh_, "fourber_server_2023"),
-    action_name_(name),
-    ddr_(nh_params_)
+    action_name_(name)
   {
 
-    fourbar_master_idx = std::numeric_limits<size_t>::max();
     const std::map<std::string, std::string> service_connection_header{{"tcp_nodelay", "1"}};
     // TODO check topic
 		fourbar_srv_ = nh_.serviceClient<controllers_2023_msgs::FourBarSrv>("/frcrobot_jetson/four_bar_controller_2023/four_bar_service", false, service_connection_header);
@@ -114,64 +111,64 @@ public:
     // cube
     load_param_helper(nh_, "cube/intake", res, 0.0);
     load_param_helper(nh_, "cube/intake_below", res_bool, true);
-    game_piece_lookup_[fourber_ns::CUBE][fourber_ns::INTAKE] = {res, res_bool};
+    game_piece_lookup_[fourber_ns::CUBE][fourber_ns::INTAKE] = FourBarMessage(res, res_bool);
 
     load_param_helper(nh_, "cube/low_node", res, 0.5);
     load_param_helper(nh_, "cube/low_node_below", res_bool, false);
-    game_piece_lookup_[fourber_ns::CUBE][fourber_ns::LOW_NODE] =  {res, res_bool};
+    game_piece_lookup_[fourber_ns::CUBE][fourber_ns::LOW_NODE] =  FourBarMessage(res, res_bool);
 
     load_param_helper(nh_, "cube/middle_node", res, 0.7);
     load_param_helper(nh_, "cube/middle_node_below", res_bool, false);
-    game_piece_lookup_[fourber_ns::CUBE][fourber_ns::MIDDLE_NODE] = {res, res_bool};
+    game_piece_lookup_[fourber_ns::CUBE][fourber_ns::MIDDLE_NODE] = FourBarMessage(res, res_bool);
 
     load_param_helper(nh_, "cube/high_node", res, 1.0);
     load_param_helper(nh_, "cube/high_node_below", res_bool, false);
-    game_piece_lookup_[fourber_ns::CUBE][fourber_ns::HIGH_NODE] = {res, res_bool};
+    game_piece_lookup_[fourber_ns::CUBE][fourber_ns::HIGH_NODE] = FourBarMessage(res, res_bool);
     // vertical cone
     load_param_helper(nh_, "vertical_cone/intake", res, 0.0);
     load_param_helper(nh_, "vertical_cone/intake_below", res_bool, true);
-    game_piece_lookup_[fourber_ns::VERTICAL_CONE][fourber_ns::INTAKE] = {res, res_bool};
+    game_piece_lookup_[fourber_ns::VERTICAL_CONE][fourber_ns::INTAKE] = FourBarMessage(res, res_bool);
 
     load_param_helper(nh_, "vertical_cone/low_node", res, 0.5);
     load_param_helper(nh_, "vertical_cone/low_node_below", res_bool, false);
-    game_piece_lookup_[fourber_ns::VERTICAL_CONE][fourber_ns::LOW_NODE] =  {res, res_bool};
+    game_piece_lookup_[fourber_ns::VERTICAL_CONE][fourber_ns::LOW_NODE] =  FourBarMessage(res, res_bool);
 
     load_param_helper(nh_, "vertical_cone/middle_node", res, 0.7);
     load_param_helper(nh_, "vertical_cone/middle_node_below", res_bool, false);
-    game_piece_lookup_[fourber_ns::VERTICAL_CONE][fourber_ns::MIDDLE_NODE] = {res, res_bool};
+    game_piece_lookup_[fourber_ns::VERTICAL_CONE][fourber_ns::MIDDLE_NODE] = FourBarMessage(res, res_bool);
 
     load_param_helper(nh_, "vertical_cone/high_node", res, 1.0);
     load_param_helper(nh_, "vertical_cone/high_node_below", res_bool, false);
-    game_piece_lookup_[fourber_ns::VERTICAL_CONE][fourber_ns::HIGH_NODE] = {res, res_bool};
+    game_piece_lookup_[fourber_ns::VERTICAL_CONE][fourber_ns::HIGH_NODE] = FourBarMessage(res, res_bool);
     // cone with base toward us
     load_param_helper(nh_, "base_towards_us_cone/intake", res, 0.0);
     load_param_helper(nh_, "base_towards_us_cone/intake_below", res_bool, true);
-    game_piece_lookup_[fourber_ns::BASE_TOWARDS_US_CONE][fourber_ns::INTAKE] = {res, res_bool};
+    game_piece_lookup_[fourber_ns::BASE_TOWARDS_US_CONE][fourber_ns::INTAKE] = FourBarMessage(res, res_bool);
 
     load_param_helper(nh_, "base_towards_us_cone/low_node", res, 0.5);
     load_param_helper(nh_, "base_towards_us_cone/low_node_below", res_bool, false);
-    game_piece_lookup_[fourber_ns::BASE_TOWARDS_US_CONE][fourber_ns::LOW_NODE] =  {res, res_bool};
+    game_piece_lookup_[fourber_ns::BASE_TOWARDS_US_CONE][fourber_ns::LOW_NODE] =  FourBarMessage(res, res_bool);
 
     load_param_helper(nh_, "base_towards_us_cone/middle_node", res, 0.7);
     load_param_helper(nh_, "base_towards_us_cone/middle_node_below", res_bool, false);
-    game_piece_lookup_[fourber_ns::BASE_TOWARDS_US_CONE][fourber_ns::MIDDLE_NODE] = {res, res_bool};
+    game_piece_lookup_[fourber_ns::BASE_TOWARDS_US_CONE][fourber_ns::MIDDLE_NODE] = FourBarMessage(res, res_bool);
 
     load_param_helper(nh_, "base_towards_us_cone/high_node", res, 1.0);
     load_param_helper(nh_, "base_towards_us_cone/high_node_below", res_bool, false);
-    game_piece_lookup_[fourber_ns::BASE_TOWARDS_US_CONE][fourber_ns::HIGH_NODE] = {res, res_bool};
+    game_piece_lookup_[fourber_ns::BASE_TOWARDS_US_CONE][fourber_ns::HIGH_NODE] = FourBarMessage(res, res_bool);
     // cone with base away from us
     load_param_helper(nh_, "base_away_us_cone/intake", res, 0.0);
     load_param_helper(nh_, "base_away_us_cone/intake_below", res_bool, true);
-    game_piece_lookup_[fourber_ns::BASE_AWAY_US_CONE][fourber_ns::INTAKE] = {res, res_bool};
+    game_piece_lookup_[fourber_ns::BASE_AWAY_US_CONE][fourber_ns::INTAKE] = FourBarMessage(res, res_bool);
     load_param_helper(nh_, "base_away_us_cone/low_node", res, 0.5);
     load_param_helper(nh_, "base_away_us_cone/low_node_below", res_bool, false);
-    game_piece_lookup_[fourber_ns::BASE_AWAY_US_CONE][fourber_ns::LOW_NODE] =  {res, res_bool};
+    game_piece_lookup_[fourber_ns::BASE_AWAY_US_CONE][fourber_ns::LOW_NODE] =  FourBarMessage(res, res_bool);
     load_param_helper(nh_, "base_away_us_cone/middle_node", res, 0.7);
     load_param_helper(nh_, "base_away_us_cone/middle_node_below", res_bool, false);
-    game_piece_lookup_[fourber_ns::BASE_AWAY_US_CONE][fourber_ns::MIDDLE_NODE] = {res, res_bool};
+    game_piece_lookup_[fourber_ns::BASE_AWAY_US_CONE][fourber_ns::MIDDLE_NODE] = FourBarMessage(res, res_bool);
     load_param_helper(nh_, "base_away_us_cone/high_node", res, 1.0);
     load_param_helper(nh_, "base_away_us_cone/high_node_below", res_bool, false);
-    game_piece_lookup_[fourber_ns::BASE_AWAY_US_CONE][fourber_ns::HIGH_NODE] = {res, res_bool};
+    game_piece_lookup_[fourber_ns::BASE_AWAY_US_CONE][fourber_ns::HIGH_NODE] = FourBarMessage(res, res_bool);
 
     load_param_helper(nh_, "safety_high/distance", res, 0.4);
     safety_high_distance_ = res;
@@ -183,13 +180,30 @@ public:
     load_param_helper(nh_, "safety_intake/below", res_bool, true);
     safety_low_below_ = res_bool;
 
-    ddr_.publishServicesTopics();
     as_.start();
     FourberINFO("Started Fourber Action server");
   }
 
   ~FourberAction2023(void)
   {
+  }
+  
+  void publishFailure() {
+    behavior_actions::Fourber2023Feedback feedback;
+    behavior_actions::Fourber2023Result result;
+    feedback.success = false;
+    result.success = false;
+    as_.publishFeedback(feedback);
+    as_.setAborted(result);
+  }
+
+  void publishSuccess() {
+    behavior_actions::Fourber2023Feedback feedback;
+    behavior_actions::Fourber2023Result result;
+    feedback.success = true;
+    result.success = true;
+    as_.publishFeedback(feedback);
+    as_.setSucceeded(result);
   }
 
   // blocks until fourbar is at the correct position
@@ -198,14 +212,16 @@ public:
     
     while (true) {
       ros::spinOnce();
-      FourberINFO("Waiting for fourbar");
+      ROS_INFO_STREAM_THROTTLE(1, "Waiting for fourbar");
 
       // essentially just keep fourbar where it is now
 			if (as_.isPreemptRequested() || !ros::ok()) {
         FourberWARN("Fourber Preemepted");
         controllers_2023_msgs::FourBarSrv last_req;
         last_req.request.position = fourbar_cur_setpoint_;
-        fourbar_srv_.call(last_req);
+        if (!fourbar_srv_.call(last_req)) {
+          FourberERR("Could not set fourbar to the current setpoint!");
+        }
         return false;
 			}
 
@@ -238,33 +254,44 @@ public:
     }
 
     safety_req.request.below = below;
-    fourbar_srv_.call(safety_req);
+    if (!fourbar_srv_.call(safety_req)) {
+      FourberERR("Unable to call fourbar service in saftey code");
+      publishFailure();
+      return;
+    }
+  
     if (!waitForFourbar(safety_req.request.position)) {
       FourberERR("Failed calling fourber with message 'safety_req'");
       publishFailure();
+      return; 
     }
     else {
       publishSuccess();
+      return;
     }
-  }
-
-  void publishFailure() {
-    feedback_.success = false;
-    result_.success = false;
-    as_.publishFeedback(feedback_);
-    as_.setAborted(result_);
-  }
-
-  void publishSuccess() {
-    feedback_.success = true;
-    result_.success = true;
-    as_.publishFeedback(feedback_);
-    as_.setSucceeded(result_);
   }
 
   void executeCB(const behavior_actions::Fourber2023GoalConstPtr &goal)
   {
     ros::spinOnce();
+    switch (goal->safety_position) {
+      case fourber_ns::SAFETY_HIGH:
+        FourberINFO("Called with SAFETY_HIGH, will deploy fourbar to avoid high zone");
+        break;
+      case fourber_ns::SAFETY_INTAKE_LOW:
+        FourberINFO("Called with SAFETY_HIGH, will deploy fourbar to avoid high zone");
+        break;
+      case fourber_ns::NO_SAFETY:
+        FourberINFO("Generic case, called with NO_SAFTEY, will use current saftey setting");
+        break;
+      case fourber_ns::SAFETY_TO_NO_SAFETY:
+        FourberINFO("Called with SAFETY_TO_NO_SAFETY, no illegal positions for the current elevator state");
+        break;
+      default:
+        FourberERR("Saftey position enum is invalid!! Ignoring request");
+        publishFailure();
+        return;
+    }
 
     // case where elevater node has given info that we are in a zone we need to be safe
     if (goal->safety_position == fourber_ns::SAFETY_HIGH || goal->safety_position == fourber_ns::SAFETY_INTAKE_LOW) {
@@ -276,11 +303,12 @@ public:
         safetyBoundsAndCallService(safety_high_distance_, safety_high_below_);
       }
 
-      if (goal->safety_position == fourber_ns::SAFETY_INTAKE_LOW) {
+      else if (goal->safety_position == fourber_ns::SAFETY_INTAKE_LOW) {
         FourberINFO("Safey LOW mode called for fourbar");
         saftey_state_ = SafteyState::SAFTEY_LOW;
         safetyBoundsAndCallService(safety_low_distance_, safety_low_below_); 
       }
+      // we have moved to the required position to be safe or errored out
       return;
     }
 
@@ -293,12 +321,14 @@ public:
       go_to_previous_req.request.below = false; 
 
       if (!fourbar_srv_.call(go_to_previous_req)) {
-        FourberERR("Failed calling fourber with message 'go_to_previous_req'");
+        FourberERR("Failed calling fourber service with message 'go_to_previous_req'");
         publishFailure();
+        return;
       }
 
       if (!waitForFourbar(go_to_previous_req.request.position)) {
         publishFailure();
+        return;
       }
 
       publishSuccess(); 
@@ -306,8 +336,8 @@ public:
     }
 
     // select piece, nice synatax makes loading params worth it
-    double req_position = game_piece_lookup_[goal->piece][goal->mode].first;
-    bool req_bool = game_piece_lookup_[goal->piece][goal->mode].second;
+    double req_position = game_piece_lookup_[goal->piece][goal->mode].distance;
+    bool req_bool = game_piece_lookup_[goal->piece][goal->mode].below;
 
     // apply offset
     req_position += position_offset_;
@@ -341,10 +371,13 @@ public:
     // failed 
     if (!waitForFourbar(req_position)) {
       publishFailure();
+      return;
     }
+
+    ros::spinOnce();
     FourberINFO("Succeeded moving Fourbar!");
     publishSuccess();
-    ros::spinOnce();
+    return;
   }
   
   void heightOffsetCallback(const std_msgs::Float64 position_offset_msg) { 
