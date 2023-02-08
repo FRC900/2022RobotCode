@@ -58,7 +58,7 @@ class ElevaterAction2023
         std::string action_name_;
 
         // lookup is [enum for piece][enum for level]
-        std::map<int, std::map<int, double>> game_piece_lookup_;
+        std::map<PieceMode, double> game_piece_lookup_;
 
         ddynamic_reconfigure::DDynamicReconfigure ddr_;
         ros::Subscriber elevator_offset_sub_;
@@ -99,40 +99,41 @@ class ElevaterAction2023
             double res = -1;
             // cube
             load_param_helper(nh_, "cube/intake", res, 0.0);
-            game_piece_lookup_[elevater_ns::CUBE][elevater_ns::INTAKE] = res;
+            //game_piece_lookup_[elevater_ns::CUBE, elevater_ns::INTAKE] = res;
+            game_piece_lookup_[PieceMode(elevater_ns::CUBE, elevater_ns::INTAKE)] = res;
             load_param_helper(nh_, "cube/low_node", res, 0.5);
-            game_piece_lookup_[elevater_ns::CUBE][elevater_ns::LOW_NODE] = res;
+            game_piece_lookup_[PieceMode(elevater_ns::CUBE, elevater_ns::LOW_NODE)] = res;
             load_param_helper(nh_, "cube/middle_node", res, 0.7);
-            game_piece_lookup_[elevater_ns::CUBE][elevater_ns::MIDDLE_NODE] = res;
+            game_piece_lookup_[PieceMode(elevater_ns::CUBE, elevater_ns::MIDDLE_NODE)] = res;
             load_param_helper(nh_, "cube/high_node", res, 1.0);
-            game_piece_lookup_[elevater_ns::CUBE][elevater_ns::HIGH_NODE] = res;
+            game_piece_lookup_[PieceMode(elevater_ns::CUBE, elevater_ns::HIGH_NODE)] = res;
             // vertical cone
             load_param_helper(nh_, "vertical_cone/intake", res, 0.0);
-            game_piece_lookup_[elevater_ns::VERTICAL_CONE][elevater_ns::INTAKE] = res;
+            game_piece_lookup_[PieceMode(elevater_ns::VERTICAL_CONE, elevater_ns::INTAKE)] = res;
             load_param_helper(nh_, "vertical_cone/low_node", res, 0.5);
-            game_piece_lookup_[elevater_ns::VERTICAL_CONE][elevater_ns::LOW_NODE] = res;
+            game_piece_lookup_[PieceMode(elevater_ns::VERTICAL_CONE, elevater_ns::LOW_NODE)] = res;
             load_param_helper(nh_, "vertical_cone/middle_node", res, 0.7);
-            game_piece_lookup_[elevater_ns::VERTICAL_CONE][elevater_ns::MIDDLE_NODE] = res;
+            game_piece_lookup_[PieceMode(elevater_ns::VERTICAL_CONE, elevater_ns::MIDDLE_NODE)] = res;
             load_param_helper(nh_, "vertical_cone/high_node", res, 0.5);
-            game_piece_lookup_[elevater_ns::VERTICAL_CONE][elevater_ns::HIGH_NODE] = res;
+            game_piece_lookup_[PieceMode(elevater_ns::VERTICAL_CONE, elevater_ns::HIGH_NODE)] = res;
             // cone with base toward us
             load_param_helper(nh_, "base_towards_us_cone/intake", res, 0.0);
-            game_piece_lookup_[elevater_ns::BASE_TOWARDS_US_CONE][elevater_ns::INTAKE] = res;
+            game_piece_lookup_[PieceMode(elevater_ns::BASE_TOWARDS_US_CONE, elevater_ns::INTAKE)] = res;
             load_param_helper(nh_, "base_towards_us_cone/low_node", res, 0.5);
-            game_piece_lookup_[elevater_ns::BASE_TOWARDS_US_CONE][elevater_ns::LOW_NODE] = res;
+            game_piece_lookup_[PieceMode(elevater_ns::BASE_TOWARDS_US_CONE, elevater_ns::LOW_NODE)] = res;
             load_param_helper(nh_, "base_towards_us_cone/middle_node", res, 0.7);
-            game_piece_lookup_[elevater_ns::BASE_TOWARDS_US_CONE][elevater_ns::MIDDLE_NODE] = res;
+            game_piece_lookup_[PieceMode(elevater_ns::BASE_TOWARDS_US_CONE, elevater_ns::MIDDLE_NODE)] = res;
             load_param_helper(nh_, "base_towards_us_cone/high_node", res, 1.0);
-            game_piece_lookup_[elevater_ns::BASE_TOWARDS_US_CONE][elevater_ns::HIGH_NODE] = res;
+            game_piece_lookup_[PieceMode(elevater_ns::BASE_TOWARDS_US_CONE, elevater_ns::HIGH_NODE)] = res;
             // cone with base away from us
             load_param_helper(nh_, "base_away_us_cone/intake", res, 0.0);
-            game_piece_lookup_[elevater_ns::BASE_AWAY_US_CONE][elevater_ns::INTAKE] = res;
+            game_piece_lookup_[PieceMode(elevater_ns::BASE_AWAY_US_CONE, elevater_ns::INTAKE)] = res;
             load_param_helper(nh_, "base_away_us_cone/low_node", res, 0.5);
-            game_piece_lookup_[elevater_ns::BASE_AWAY_US_CONE][elevater_ns::LOW_NODE] = res;
+            game_piece_lookup_[PieceMode(elevater_ns::BASE_AWAY_US_CONE, elevater_ns::LOW_NODE)] = res;
             load_param_helper(nh_, "base_away_us_cone/middle_node", res, 0.7);
-            game_piece_lookup_[elevater_ns::BASE_AWAY_US_CONE][elevater_ns::MIDDLE_NODE] = res;
+            game_piece_lookup_[PieceMode(elevater_ns::BASE_AWAY_US_CONE, elevater_ns::MIDDLE_NODE)] = res;
             load_param_helper(nh_, "base_away_us_cone/high_node", res, 1.0);
-            game_piece_lookup_[elevater_ns::BASE_AWAY_US_CONE][elevater_ns::HIGH_NODE] = res;
+            game_piece_lookup_[PieceMode(elevater_ns::BASE_AWAY_US_CONE, elevater_ns::HIGH_NODE)] = res;
 
 
             load_param_helper(nh_, "saftey_high_min", safety_high_position_min_, 2.0);
@@ -141,18 +142,7 @@ class ElevaterAction2023
             load_param_helper(nh_, "safety_intake_min", safety_intake_position_min_, 0.0);
             load_param_helper(nh_, "safety_intake_max", safety_intake_position_max_, 0.5);
 
-            game_piece_lookup_[elevater_ns::BASE_AWAY_US_CONE][elevater_ns::HIGH_NODE] = res;
-
             ElevaterINFO("Game Piece params");
-            for (const auto &elem : game_piece_lookup_)
-            {
-                std::cout << elem.first << "\n";
-                for (const auto &sub_elem : elem.second)
-                {
-                    std::cout << sub_elem.first << " " << sub_elem.second << "\n";
-                }
-                std::cout << "\n\n";
-            }
 
             const std::map<std::string, std::string> service_connection_header{{"tcp_nodelay", "1"}};
             // TODO check topic
@@ -164,28 +154,28 @@ class ElevaterAction2023
             elevator_offset_sub_ = nh_.subscribe("/elevator_position_offset", 1, &ElevaterAction2023::heightOffsetCallback, this);
             talon_states_sub_ = nh_.subscribe("/frcrobot_jetson/talon_states", 1, &ElevaterAction2023::talonStateCallback, this);
 
-            ddr_.registerVariable<double>("safety_high_position", &game_piece_lookup_[elevater_ns::CUBE][elevater_ns::INTAKE], "If elevator high requester greater than this, saftey mode called for fourbar", 0, 4);
-            ddr_.registerVariable<double>("safety_low_position", &game_piece_lookup_[elevater_ns::CUBE][elevater_ns::INTAKE], "If elevator height requester less than this, saftey low mode called for fourbar", 0, 4);
+            ddr_.registerVariable<double>("safety_high_position", &game_piece_lookup_[PieceMode(elevater_ns::CUBE, elevater_ns::INTAKE)], "If elevator high requester greater than this, saftey mode called for fourbar", 0, 4);
+            ddr_.registerVariable<double>("safety_low_position", &game_piece_lookup_[PieceMode(elevater_ns::CUBE, elevater_ns::INTAKE)], "If elevator height requester less than this, saftey low mode called for fourbar", 0, 4);
 
-            ddr_.registerVariable<double>("CUBE_intake", &game_piece_lookup_[elevater_ns::CUBE][elevater_ns::INTAKE], "", 0, 4);
-            ddr_.registerVariable<double>("CUBE_low_node", &game_piece_lookup_[elevater_ns::CUBE][elevater_ns::LOW_NODE], "", 0, 4);
-            ddr_.registerVariable<double>("CUBE_middle_node", &game_piece_lookup_[elevater_ns::CUBE][elevater_ns::MIDDLE_NODE], "", 0, 4);
-            ddr_.registerVariable<double>("CUBE_high_node", &game_piece_lookup_[elevater_ns::CUBE][elevater_ns::HIGH_NODE], "", 0, 4);
+            ddr_.registerVariable<double>("CUBE_intake", &game_piece_lookup_[PieceMode(elevater_ns::CUBE, elevater_ns::INTAKE)], "", 0, 4);
+            ddr_.registerVariable<double>("CUBE_low_node", &game_piece_lookup_[PieceMode(elevater_ns::CUBE, elevater_ns::LOW_NODE)], "", 0, 4);
+            ddr_.registerVariable<double>("CUBE_middle_node", &game_piece_lookup_[PieceMode(elevater_ns::CUBE, elevater_ns::MIDDLE_NODE)], "", 0, 4);
+            ddr_.registerVariable<double>("CUBE_high_node", &game_piece_lookup_[PieceMode(elevater_ns::CUBE, elevater_ns::HIGH_NODE)], "", 0, 4);
 
-            ddr_.registerVariable<double>("VERTICAL_CONE_intake", &game_piece_lookup_[elevater_ns::CUBE][elevater_ns::INTAKE], "", 0, 4);
-            ddr_.registerVariable<double>("VERTICAL_CONE_low_node", &game_piece_lookup_[elevater_ns::VERTICAL_CONE][elevater_ns::LOW_NODE], "", 0, 4);
-            ddr_.registerVariable<double>("VERTICAL_CONE_middle_node", &game_piece_lookup_[elevater_ns::VERTICAL_CONE][elevater_ns::MIDDLE_NODE], "", 0, 4);
-            ddr_.registerVariable<double>("VERTICAL_CONE_high_node", &game_piece_lookup_[elevater_ns::VERTICAL_CONE][elevater_ns::HIGH_NODE], "", 0, 4);
+            ddr_.registerVariable<double>("VERTICAL_CONE_intake", &game_piece_lookup_[PieceMode(elevater_ns::CUBE, elevater_ns::INTAKE)], "", 0, 4);
+            ddr_.registerVariable<double>("VERTICAL_CONE_low_node", &game_piece_lookup_[PieceMode(elevater_ns::VERTICAL_CONE, elevater_ns::LOW_NODE)], "", 0, 4);
+            ddr_.registerVariable<double>("VERTICAL_CONE_middle_node", &game_piece_lookup_[PieceMode(elevater_ns::VERTICAL_CONE, elevater_ns::MIDDLE_NODE)], "", 0, 4);
+            ddr_.registerVariable<double>("VERTICAL_CONE_high_node", &game_piece_lookup_[PieceMode(elevater_ns::VERTICAL_CONE, elevater_ns::HIGH_NODE)], "", 0, 4);
 
-            ddr_.registerVariable<double>("BASE_TOWARDS_US_CONE_intake", &game_piece_lookup_[elevater_ns::BASE_TOWARDS_US_CONE][elevater_ns::INTAKE], "", 0, 4);
-            ddr_.registerVariable<double>("BASE_TOWARDS_US_CONE_low_node", &game_piece_lookup_[elevater_ns::BASE_TOWARDS_US_CONE][elevater_ns::LOW_NODE], "", 0, 4);
-            ddr_.registerVariable<double>("BASE_TOWARDS_US_CONE_middle_node", &game_piece_lookup_[elevater_ns::BASE_TOWARDS_US_CONE][elevater_ns::MIDDLE_NODE], "", 0, 4);
-            ddr_.registerVariable<double>("BASE_TOWARDS_US_CONE_high_node", &game_piece_lookup_[elevater_ns::BASE_TOWARDS_US_CONE][elevater_ns::HIGH_NODE], "", 0, 4);
+            ddr_.registerVariable<double>("BASE_TOWARDS_US_CONE_intake", &game_piece_lookup_[PieceMode(elevater_ns::BASE_TOWARDS_US_CONE, elevater_ns::INTAKE)], "", 0, 4);
+            ddr_.registerVariable<double>("BASE_TOWARDS_US_CONE_low_node", &game_piece_lookup_[PieceMode(elevater_ns::BASE_TOWARDS_US_CONE, elevater_ns::LOW_NODE)], "", 0, 4);
+            ddr_.registerVariable<double>("BASE_TOWARDS_US_CONE_middle_node", &game_piece_lookup_[PieceMode(elevater_ns::BASE_TOWARDS_US_CONE, elevater_ns::MIDDLE_NODE)], "", 0, 4);
+            ddr_.registerVariable<double>("BASE_TOWARDS_US_CONE_high_node", &game_piece_lookup_[PieceMode(elevater_ns::BASE_TOWARDS_US_CONE, elevater_ns::HIGH_NODE)], "", 0, 4);
 
-            ddr_.registerVariable<double>("BASE_AWAY_US_CONE_intake", &game_piece_lookup_[elevater_ns::BASE_AWAY_US_CONE][elevater_ns::INTAKE], "", 0, 4);
-            ddr_.registerVariable<double>("BASE_AWAY_US_CONE_low_node", &game_piece_lookup_[elevater_ns::BASE_AWAY_US_CONE][elevater_ns::LOW_NODE], "", 0, 4);
-            ddr_.registerVariable<double>("BASE_AWAY_US_CONE_middle_node", &game_piece_lookup_[elevater_ns::BASE_AWAY_US_CONE][elevater_ns::MIDDLE_NODE], "", 0, 4);
-            ddr_.registerVariable<double>("BASE_AWAY_US_CONE_high_node", &game_piece_lookup_[elevater_ns::BASE_AWAY_US_CONE][elevater_ns::HIGH_NODE], "", 0, 4);
+            ddr_.registerVariable<double>("BASE_AWAY_US_CONE_intake", &game_piece_lookup_[PieceMode(elevater_ns::BASE_AWAY_US_CONE, elevater_ns::INTAKE)], "", 0, 4);
+            ddr_.registerVariable<double>("BASE_AWAY_US_CONE_low_node", &game_piece_lookup_[PieceMode(elevater_ns::BASE_AWAY_US_CONE, elevater_ns::LOW_NODE)], "", 0, 4);
+            ddr_.registerVariable<double>("BASE_AWAY_US_CONE_middle_node", &game_piece_lookup_[PieceMode(elevater_ns::BASE_AWAY_US_CONE, elevater_ns::MIDDLE_NODE)], "", 0, 4);
+            ddr_.registerVariable<double>("BASE_AWAY_US_CONE_high_node", &game_piece_lookup_[PieceMode(elevater_ns::BASE_AWAY_US_CONE, elevater_ns::HIGH_NODE)], "", 0, 4);
 
             ddr_.publishServicesTopics();
             as_.start();
@@ -196,6 +186,7 @@ class ElevaterAction2023
         {
         }
 
+        /*
         void print_map()
         {
             for (const auto &elem : game_piece_lookup_)
@@ -208,7 +199,7 @@ class ElevaterAction2023
                 std::cout << "\n\n";
             }
         }
-
+        */
         void publishFailure()
         {
             behavior_actions::Elevater2023Feedback feedback;
@@ -233,7 +224,16 @@ class ElevaterAction2023
         {
             ros::spinOnce();
             // select piece, nice synatax makes loading params worth it
-            double req_position = game_piece_lookup_[goal->piece][goal->mode];
+            PieceMode lookup = PieceMode(goal->piece, goal->mode);
+            double req_position;
+            if (lookup.isValid()) {
+                req_position = game_piece_lookup_[lookup];
+            }
+            else {
+                ElevaterERR("Failed game piece lookup");
+                publishFailure();
+                return;
+            }
 
             // apply offset
             req_position += position_offset_;
