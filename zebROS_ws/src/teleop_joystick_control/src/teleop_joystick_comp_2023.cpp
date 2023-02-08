@@ -579,6 +579,16 @@ void evaluateCommands(const ros::MessageEvent<frc_msgs::JoystickState const>& ev
 			}
 			if(joystick_states_array[0].buttonAButton)
 			{
+				// if (ros::Time::now() - last_cone > ros::Duration(config.cone_cube_timeout)) {
+				// 	ROS_ERROR_STREAM("Data too old! Can't snap to cone!");
+				// } else {
+				// 	ROS_INFO_STREAM_THROTTLE(0.1, "Updating cone");
+				// 	// Align for cargo
+				// 	ros::spinOnce();
+				// 	std_msgs::Float64 orient_strafing_angle_msg;
+				// 	orient_strafing_angle_msg.data = cone_angle - imu_angle;
+				// 	orient_strafing_setpoint_pub.publish(orient_strafing_angle_msg);
+				// }
 			}
 			if(joystick_states_array[0].buttonARelease)
 			{
@@ -594,7 +604,7 @@ void evaluateCommands(const ros::MessageEvent<frc_msgs::JoystickState const>& ev
 			//Joystick1: buttonB
 			if(joystick_states_array[0].buttonBPress)
 			{
-				if (ros::Time::now() - last_cone > ros::Duration(config.cone_cube_timeout)) {
+				if (ros::Time::now() - last_cube > ros::Duration(config.cone_cube_timeout)) {
 					ROS_ERROR_STREAM("Data too old! Can't snap to cube!");
 				} else {
 					ROS_INFO_STREAM("Snapping to nearest cube and enabling robot relative driving mode!");
@@ -615,6 +625,16 @@ void evaluateCommands(const ros::MessageEvent<frc_msgs::JoystickState const>& ev
 			}
 			if(joystick_states_array[0].buttonBButton)
 			{
+				// if (ros::Time::now() - last_cube > ros::Duration(config.cone_cube_timeout)) {
+				// 	ROS_ERROR_STREAM("Data too old! Can't snap to cube!");
+				// } else {
+				// 	ROS_INFO_STREAM_THROTTLE(0.1, "Updating cube");
+				// 	// Align for cargo
+				// 	ros::spinOnce();
+				// 	std_msgs::Float64 orient_strafing_angle_msg;
+				// 	orient_strafing_angle_msg.data = cube_angle - imu_angle;
+				// 	orient_strafing_setpoint_pub.publish(orient_strafing_angle_msg);
+				// }
 			}
 			if(joystick_states_array[0].buttonBRelease)
 			{
@@ -1135,7 +1155,7 @@ int main(int argc, char **argv)
 	auto_mode_select_pub = n.advertise<behavior_actions::AutoMode>("/auto/auto_mode", 1, true);
 
 	cone_angle_sub = n.subscribe("/snap_to_angle/nearest_cone_angle", 1, &coneAngleCallback);
-	cube_angle_sub = n.subscribe("/snap_to_angle/nearest_cube_angle", 1, &coneAngleCallback);
+	cube_angle_sub = n.subscribe("/snap_to_angle/nearest_cube_angle", 1, &cubeAngleCallback);
 
 	const ros::Duration startup_wait_time_secs(15);
 	const ros::Time startup_start_time = ros::Time::now();

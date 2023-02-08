@@ -3,11 +3,13 @@
 #include <field_obj/Detection.h>
 #include <std_msgs/Bool.h>
 #include <std_msgs/Float64.h>
+#include <std_msgs/Time.h>
 #include <tf2/LinearMath/Quaternion.h>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 #include <tf2_ros/transform_listener.h>
 #include <geometry_msgs/PoseStamped.h>
 #include <geometry_msgs/PointStamped.h>
+#include <geometry_msgs/TwistStamped.h>
 
 class SnapToConeCube2023
 {
@@ -15,12 +17,14 @@ class SnapToConeCube2023
 
         ros::NodeHandle nh_;
         ros::Subscriber object_detection_sub_;
+        ros::Subscriber cmd_vel_sub_;
         ros::Publisher nearest_cone_pub_;
         ros::Publisher nearest_cube_pub_;
         double nearest_cargo_angle_;
         double nearest_opponent_cargo_angle_;
         tf2_ros::Buffer tf_buffer_;
         tf2_ros::TransformListener tf_listener_;
+        geometry_msgs::TwistStamped cmd_vel_out_;
 
     public:
 
@@ -34,7 +38,12 @@ class SnapToConeCube2023
             nearest_cone_pub_ = nh_.advertise<std_msgs::Float64>("nearest_cone_angle", 1);
             nearest_cube_pub_ = nh_.advertise<std_msgs::Float64>("nearest_cube_angle", 1);
             object_detection_sub_ = nh_.subscribe("/tf_object_detection/object_detection_world_filtered", 1, &SnapToConeCube2023::objectDetectionCallback, this);
+            cmd_vel_sub_ = nh_.subscribe("/frcrobot_jetson/swerve_drive_controller/cmd_vel_out", 1, &SnapToConeCube2023::cmdVelSub, this);
             ROS_INFO_STREAM("snap_to_nearest_conecube_2023 : initialized");
+        }
+
+        void cmdVelSub(const geometry_msgs::TwistStamped &msg) {
+            cmd_vel_out_ = msg;
         }
 
         void objectDetectionCallback(const field_obj::Detection &msg)
@@ -76,7 +85,10 @@ class SnapToConeCube2023
                     geometry_msgs::Quaternion q1m = tf2::toMsg(q1);
                     p1s.pose.orientation = q1m;
                     p1s = tf_buffer_.transform(p1s, "base_link", ros::Duration(0.05));
-                    msg1.data = atan2(p1s.pose.position.y, p1s.pose.position.x);
+                    double dAngle_dt = cmd_vel_out_.twist.angular.z;
+					double dt = (ros::Time::now() - msg.header.stamp).toSec();
+					double radiansMoved = dAngle_dt * dt;
+                    msg1.data = atan2(p1s.pose.position.y, p1s.pose.position.x);// + radiansMoved;
                 }
                 catch (...)
                 {
@@ -98,7 +110,10 @@ class SnapToConeCube2023
                     geometry_msgs::Quaternion q2m = tf2::toMsg(q2);
                     p2s.pose.orientation = q2m;
                     p2s = tf_buffer_.transform(p2s, "base_link", ros::Duration(0.05));
-                    msg2.data = atan2(p2s.pose.position.y, p2s.pose.position.x);
+                    double dAngle_dt = cmd_vel_out_.twist.angular.z;
+					double dt = (ros::Time::now() - msg.header.stamp).toSec();
+					double radiansMoved = dAngle_dt * dt;
+                    msg2.data = atan2(p2s.pose.position.y, p2s.pose.position.x);// + radiansMoved;
                 }
                 catch (...)
                 {
