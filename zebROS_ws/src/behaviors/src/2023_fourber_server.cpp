@@ -365,8 +365,8 @@ class FourberAction2023
             double req_position;
             bool req_bool;
             if (lookup.isValid()) {
-                double req_position = game_piece_lookup_[lookup].distance;
-                bool req_bool = game_piece_lookup_[lookup].below;
+                req_position = game_piece_lookup_[lookup].distance;
+                req_bool = game_piece_lookup_[lookup].below;
             }
             else {
                 FourberERR("Failed game piece lookup, ignoring message");
