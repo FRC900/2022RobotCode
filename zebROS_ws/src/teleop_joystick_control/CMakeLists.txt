@@ -12,6 +12,7 @@ find_package(catkin REQUIRED COMPONENTS
 	controllers_2022_msgs
 	dynamic_reconfigure
 	dynamic_reconfigure_wrapper
+	ddynamic_reconfigure
 	frc_msgs
 	field_obj
 	tf2_ros

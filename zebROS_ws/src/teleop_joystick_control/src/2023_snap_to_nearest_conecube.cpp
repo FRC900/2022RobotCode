@@ -13,6 +13,7 @@
 #include <tf2/LinearMath/Matrix3x3.h>
 #include <sensor_msgs/Imu.h>
 #include <boost/circular_buffer.hpp>
+#include <ddynamic_reconfigure/ddynamic_reconfigure.h>
 
 class SnapToConeCube2023
 {
@@ -31,11 +32,13 @@ class SnapToConeCube2023
         ros::Subscriber imu_sub_;
         boost::circular_buffer<std::pair<ros::Time, double>> imu_cb_;
         std::mutex buffer_mutex_;
+        ddynamic_reconfigure::DDynamicReconfigure ddr_;
+        double zed_time_offset_;
 
 
     public:
 
-        SnapToConeCube2023() : tf_listener_(tf_buffer_), imu_cb_(200)
+        SnapToConeCube2023() : tf_listener_(tf_buffer_), imu_cb_(200), zed_time_offset_(0.01)
         {
 
         }
@@ -48,6 +51,8 @@ class SnapToConeCube2023
             cmd_vel_sub_ = nh_.subscribe("/frcrobot_jetson/swerve_drive_controller/cmd_vel_out", 1, &SnapToConeCube2023::cmdVelSub, this);
             imu_sub_ = nh_.subscribe("/imu/zeroed_imu", 1, &SnapToConeCube2023::imuCallback, this);
             ROS_INFO_STREAM("snap_to_nearest_conecube_2023 : initialized");
+            ddr_.registerVariable<double>("zed_time_offset", &zed_time_offset_, "", 0, 1);
+            ddr_.publishServicesTopics();
         }
 
         void imuCallback(const sensor_msgs::Imu &imuState)
@@ -76,7 +81,7 @@ class SnapToConeCube2023
                 std::unique_lock<std::mutex> lock_that_is_unique(buffer_mutex_);
                 for (boost::circular_buffer<std::pair<ros::Time, double>>::reverse_iterator it = imu_cb_.rbegin(); it != imu_cb_.rend(); it++) {
                     auto angle = *it;
-                    if (angle.first <= msg.header.stamp) {
+                    if (angle.first <= msg.header.stamp - ros::Duration(zed_time_offset_)) {
                         imu_angle = angle.second;
                         break;
                     }

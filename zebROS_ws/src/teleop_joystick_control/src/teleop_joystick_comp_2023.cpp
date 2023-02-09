@@ -579,16 +579,16 @@ void evaluateCommands(const ros::MessageEvent<frc_msgs::JoystickState const>& ev
 			}
 			if(joystick_states_array[0].buttonAButton)
 			{
-				if (ros::Time::now() - last_cone > ros::Duration(config.cone_cube_timeout)) {
-					ROS_ERROR_STREAM("Data too old! Can't snap to cone!");
-				} else {
-					ROS_INFO_STREAM_THROTTLE(0.1, "Updating cone");
-					// Align for cargo
-					ros::spinOnce();
-					std_msgs::Float64 orient_strafing_angle_msg;
-					orient_strafing_angle_msg.data = cone_angle - imu_angle;
-					orient_strafing_setpoint_pub.publish(orient_strafing_angle_msg);
-				}
+				// if (ros::Time::now() - last_cone > ros::Duration(config.cone_cube_timeout)) {
+				// 	ROS_ERROR_STREAM("Data too old! Can't snap to cone!");
+				// } else {
+				// 	ROS_INFO_STREAM_THROTTLE(0.1, "Updating cone");
+				// 	// Align for cargo
+				// 	ros::spinOnce();
+				// 	std_msgs::Float64 orient_strafing_angle_msg;
+				// 	orient_strafing_angle_msg.data = cone_angle - imu_angle;
+				// 	orient_strafing_setpoint_pub.publish(orient_strafing_angle_msg);
+				// }
 			}
 			if(joystick_states_array[0].buttonARelease)
 			{
@@ -625,16 +625,16 @@ void evaluateCommands(const ros::MessageEvent<frc_msgs::JoystickState const>& ev
 			}
 			if(joystick_states_array[0].buttonBButton)
 			{
-				if (ros::Time::now() - last_cube > ros::Duration(config.cone_cube_timeout)) {
-					ROS_ERROR_STREAM("Data too old! Can't snap to cube!");
-				} else {
-					ROS_INFO_STREAM_THROTTLE(0.1, "Updating cube");
-					// Align for cargo
-					ros::spinOnce();
-					std_msgs::Float64 orient_strafing_angle_msg;
-					orient_strafing_angle_msg.data = cube_angle - imu_angle;
-					orient_strafing_setpoint_pub.publish(orient_strafing_angle_msg);
-				}
+				// if (ros::Time::now() - last_cube > ros::Duration(config.cone_cube_timeout)) {
+				// 	ROS_ERROR_STREAM("Data too old! Can't snap to cube!");
+				// } else {
+				// 	ROS_INFO_STREAM_THROTTLE(0.1, "Updating cube");
+				// 	// Align for cargo
+				// 	ros::spinOnce();
+				// 	std_msgs::Float64 orient_strafing_angle_msg;
+				// 	orient_strafing_angle_msg.data = cube_angle - imu_angle;
+				// 	orient_strafing_setpoint_pub.publish(orient_strafing_angle_msg);
+				// }
 			}
 			if(joystick_states_array[0].buttonBRelease)
 			{
