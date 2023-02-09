@@ -43,6 +43,7 @@ hardware_interface:
 
        - {name: four_bar_leader, type: can_talon_fx, can_bus: CANivore, can_id: 31, local: true}
        - {name: intake_leader, type: can_talon_fx, can_bus: CANivore, can_id: 41, local: true}
+       - {name: elevator_master, type: can_talon_fx, can_bus: CANivore, can_id: 51, local: true}
          #- {name: bl_angle_encoder, type: can_talon_srx, can_id: 3, local: true}
        # - {name: pcm, type: pcm, pcm_id: 0}
 
@@ -68,7 +69,7 @@ intake_leader_controller:
     joint: intake_leader
     invert_output: False # tbd find this out
     feedback_type: IntegratedSensor
-    dynamic_reconfigure: True
+    dynamic_reconfigure: False
     voltage_compensation_Enable: True
     voltage_compensation_saturation: 12
     neutral_mode: Brake
