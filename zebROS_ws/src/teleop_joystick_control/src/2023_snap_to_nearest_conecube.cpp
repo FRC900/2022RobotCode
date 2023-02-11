@@ -14,6 +14,7 @@
 #include <sensor_msgs/Imu.h>
 #include <boost/circular_buffer.hpp>
 #include <ddynamic_reconfigure/ddynamic_reconfigure.h>
+#include <angles/angles.h>
 
 class SnapToConeCube2023
 {
@@ -77,6 +78,7 @@ class SnapToConeCube2023
         void objectDetectionCallback(const field_obj::Detection &msg)
         {
             double imu_angle = 0;
+            double radiansMoved;
             if (imu_cb_.size() != 0) {
                 std::unique_lock<std::mutex> lock_that_is_unique(buffer_mutex_);
                 for (boost::circular_buffer<std::pair<ros::Time, double>>::reverse_iterator it = imu_cb_.rbegin(); it != imu_cb_.rend(); it++) {
@@ -86,7 +88,9 @@ class SnapToConeCube2023
                         break;
                     }
                 }
+                radiansMoved = angles::shortest_angular_distance(imu_cb_.back().second, imu_angle);
             }
+            ROS_INFO_STREAM_THROTTLE(0.1, "radians moved = " << radiansMoved);
             field_obj::Object closest_cone;
             field_obj::Object closest_cube;
             double shortest_cone_distance = std::numeric_limits<double>::max();
@@ -112,9 +116,6 @@ class SnapToConeCube2023
                     }
                 }
             }
-            buffer_mutex_.lock();
-            double radiansMoved = imu_cb_.back().second - imu_angle;
-            buffer_mutex_.unlock();
             if (shortest_cone_distance != std::numeric_limits<double>::max()) {
                 std_msgs::Float64 msg1;
                 try
@@ -123,16 +124,16 @@ class SnapToConeCube2023
                     p1s.header = msg.header;
                     p1s.pose.position = closest_cone.location;
                     tf2::Quaternion q1;
-                    q1.setRPY(0, 0, closest_cone.angle * (M_PI / 180.0));
+                    q1.setRPY(0, 0, angles::from_degrees(closest_cone.angle));
                     geometry_msgs::Quaternion q1m = tf2::toMsg(q1);
                     p1s.pose.orientation = q1m;
                     p1s = tf_buffer_.transform(p1s, "base_link", ros::Duration(0.05));
-                    msg1.data = atan2(p1s.pose.position.y, p1s.pose.position.x) - radiansMoved;
+                    msg1.data = angles::shortest_angular_distance(radiansMoved, atan2(p1s.pose.position.y, p1s.pose.position.x));
                 }
                 catch (...)
                 {
                     ROS_WARN_STREAM_THROTTLE(0.1, "snap_to_nearest_conecube_2023 : transform to base_link failed, using untransformed angle");
-                    msg1.data = closest_cone.angle * (M_PI / 180.0);
+                    msg1.data = angles::from_degrees(closest_cone.angle);
                 }
                 nearest_cone_pub_.publish(msg1);
             }
@@ -145,16 +146,16 @@ class SnapToConeCube2023
                     p2s.header = msg.header;
                     p2s.pose.position = closest_cube.location;
                     tf2::Quaternion q2;
-                    q2.setRPY(0, 0, closest_cube.angle * (M_PI / 180.0));
+                    q2.setRPY(0, 0, angles::from_degrees(closest_cube.angle));
                     geometry_msgs::Quaternion q2m = tf2::toMsg(q2);
                     p2s.pose.orientation = q2m;
                     p2s = tf_buffer_.transform(p2s, "base_link", ros::Duration(0.05));
-                    msg2.data = atan2(p2s.pose.position.y, p2s.pose.position.x) - radiansMoved;
+                    msg2.data = angles::shortest_angular_distance(radiansMoved, atan2(p2s.pose.position.y, p2s.pose.position.x));
                 }
                 catch (...)
                 {
                     ROS_WARN_STREAM_THROTTLE(0.1, "snap_to_nearest_conecube_2023 : transform to base_link failed, using untransformed angle");
-                    msg2.data = closest_cube.angle * (M_PI / 180.0);
+                    msg2.data = angles::from_degrees(closest_cube.angle);
                 }
                 nearest_cube_pub_.publish(msg2);
             }

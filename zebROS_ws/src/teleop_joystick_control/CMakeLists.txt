@@ -22,6 +22,7 @@ find_package(catkin REQUIRED COMPONENTS
 	talon_state_msgs
 	path_follower_msgs
 	imu_zero
+	angles
 	)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${PROJECT_SOURCE_DIR}/cmake)

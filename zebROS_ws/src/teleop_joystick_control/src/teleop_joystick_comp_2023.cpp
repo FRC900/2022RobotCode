@@ -38,6 +38,7 @@
 #include <imu_zero/ImuZeroAngle.h>
 
 #include <math.h>
+#include <angles/angles.h>
 
 std::unique_ptr<TeleopCmdVel<teleop_joystick_control::TeleopJoystickComp2023Config>> teleop_cmd_vel;
 
@@ -565,7 +566,7 @@ void evaluateCommands(const ros::MessageEvent<frc_msgs::JoystickState const>& ev
 					// Align for cargo
 					ros::spinOnce();
 					std_msgs::Float64 orient_strafing_angle_msg;
-					orient_strafing_angle_msg.data = cone_angle - imu_angle;
+					orient_strafing_angle_msg.data = angles::shortest_angular_distance(imu_angle, cone_angle);
 					orient_strafing_setpoint_pub.publish(orient_strafing_angle_msg);
 					std_msgs::Bool enable_align_msg;
 					enable_align_msg.data = true;
@@ -586,7 +587,7 @@ void evaluateCommands(const ros::MessageEvent<frc_msgs::JoystickState const>& ev
 				// 	// Align for cargo
 				// 	ros::spinOnce();
 				// 	std_msgs::Float64 orient_strafing_angle_msg;
-				// 	orient_strafing_angle_msg.data = cone_angle - imu_angle;
+				// 	orient_strafing_angle_msg.data = angles::shortest_angular_distance(cone_angle, imu_angle);
 				// 	orient_strafing_setpoint_pub.publish(orient_strafing_angle_msg);
 				// }
 			}
@@ -611,7 +612,7 @@ void evaluateCommands(const ros::MessageEvent<frc_msgs::JoystickState const>& ev
 					// Align for cargo
 					ros::spinOnce();
 					std_msgs::Float64 orient_strafing_angle_msg;
-					orient_strafing_angle_msg.data = cube_angle - imu_angle;
+					orient_strafing_angle_msg.data = angles::shortest_angular_distance(imu_angle, cube_angle);
 					orient_strafing_setpoint_pub.publish(orient_strafing_angle_msg);
 					std_msgs::Bool enable_align_msg;
 					enable_align_msg.data = true;
@@ -632,7 +633,7 @@ void evaluateCommands(const ros::MessageEvent<frc_msgs::JoystickState const>& ev
 				// 	// Align for cargo
 				// 	ros::spinOnce();
 				// 	std_msgs::Float64 orient_strafing_angle_msg;
-				// 	orient_strafing_angle_msg.data = cube_angle - imu_angle;
+				// 	orient_strafing_angle_msg.data = angles::shortest_angular_distance(cube_angle, imu_angle);
 				// 	orient_strafing_setpoint_pub.publish(orient_strafing_angle_msg);
 				// }
 			}
