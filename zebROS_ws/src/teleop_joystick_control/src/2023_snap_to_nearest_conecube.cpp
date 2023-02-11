@@ -77,8 +77,8 @@ class SnapToConeCube2023
 
         void objectDetectionCallback(const field_obj::Detection &msg)
         {
-            double imu_angle = 0;
-            double radiansMoved;
+            double imu_angle = -1;
+            ros::spinOnce();
             if (imu_cb_.size() != 0) {
                 std::unique_lock<std::mutex> lock_that_is_unique(buffer_mutex_);
                 for (boost::circular_buffer<std::pair<ros::Time, double>>::reverse_iterator it = imu_cb_.rbegin(); it != imu_cb_.rend(); it++) {
@@ -88,9 +88,11 @@ class SnapToConeCube2023
                         break;
                     }
                 }
-                radiansMoved = angles::shortest_angular_distance(imu_cb_.back().second, imu_angle);
             }
-            ROS_INFO_STREAM_THROTTLE(0.1, "radians moved = " << radiansMoved);
+            if (imu_angle == -1) {
+                ROS_ERROR_STREAM("IMU data too new");
+                return;
+            }
             field_obj::Object closest_cone;
             field_obj::Object closest_cube;
             double shortest_cone_distance = std::numeric_limits<double>::max();
@@ -128,7 +130,7 @@ class SnapToConeCube2023
                     geometry_msgs::Quaternion q1m = tf2::toMsg(q1);
                     p1s.pose.orientation = q1m;
                     p1s = tf_buffer_.transform(p1s, "base_link", ros::Duration(0.05));
-                    msg1.data = angles::shortest_angular_distance(radiansMoved, atan2(p1s.pose.position.y, p1s.pose.position.x));
+                    msg1.data = angles::shortest_angular_distance(imu_angle, atan2(p1s.pose.position.y, p1s.pose.position.x));
                 }
                 catch (...)
                 {
@@ -150,7 +152,7 @@ class SnapToConeCube2023
                     geometry_msgs::Quaternion q2m = tf2::toMsg(q2);
                     p2s.pose.orientation = q2m;
                     p2s = tf_buffer_.transform(p2s, "base_link", ros::Duration(0.05));
-                    msg2.data = angles::shortest_angular_distance(radiansMoved, atan2(p2s.pose.position.y, p2s.pose.position.x));
+                    msg2.data = angles::shortest_angular_distance(imu_angle, atan2(p2s.pose.position.y, p2s.pose.position.x));
                 }
                 catch (...)
                 {
