@@ -88,7 +88,7 @@
 	</group>
 
 	<group ns="placing">
-		<node name="placing_server_2023" pkg="behaviors" type="2023_placing_server"/>
+		<node name="placing_server_2023" pkg="behaviors" type="2023_placing_server" output="screen"/>
 	</group>
 
 	<include file="$(find behaviors)/launch/2023_fourbar.launch">
