@@ -8,6 +8,7 @@
 #include <talon_interface/talon_state_interface.h>
 #include <talon_state_msgs/TalonState.h>
 #include <periodic_interval_counter/periodic_interval_counter.h>
+#include <sensor_msgs/JointState.h>
 
 namespace talon_state_controller
 {
@@ -33,6 +34,7 @@ private:
 	double publish_rate_;
 	size_t num_hw_joints_; ///< Number of joints present in the TalonStateInterface
 	std::atomic<hardware_interface::NeutralMode> neutral_mode_;
+    std::unique_ptr<realtime_tools::RealtimePublisher<sensor_msgs::JointState> > realtime_state_pub_; //added
 
 public:
 	bool init(hardware_interface::TalonStateInterface *hw,
@@ -76,7 +78,7 @@ public:
 			m.output_current.push_back(0.0);
 			m.bus_voltage.push_back(0.0);
 			m.motor_output_percent.push_back(0.0);
-			m.temperature.push_back(0.0);
+			m.temperature.push_back(0.0);											
 
 			m.set_point.push_back(0.0);
 			m.closed_loop_error.push_back(0);
@@ -115,8 +117,20 @@ public:
 
 			talon_state_.push_back(hw->getHandle(joint_names[i]));
 		}
+        realtime_state_pub_ = std::make_unique<realtime_tools::RealtimePublisher<sensor_msgs::JointState>>(root_nh, "talon_joint_states", 4); //added "state" to name
+		
+        auto &p = realtime_state_pub_->msg_;
+		// get joints and allocate message
+		for (size_t i = 0; i < num_hw_joints_; i++) 
+		{
+			p.name.push_back(joint_names[i]);
+			p.position.push_back(0.0);
+			p.velocity.push_back(0.0);
+			p.effort.push_back(0.0);
+			
+		}
 
-		return true;
+        return true;
 	}
 
 	void starting(const ros::Time &time)
@@ -326,7 +340,33 @@ public:
 						m.sticky_faults[i] = str;
 					}
 				}
+
+
+				
+				m.header.stamp = time;
+
 				realtime_pub_->unlockAndPublish();
+				
+			}
+			else
+			{
+				interval_counter_->force_publish();
+			}
+
+			if (realtime_state_pub_->trylock())
+			{
+		
+				auto &p = realtime_state_pub_->msg_;
+				p.header.stamp=time;
+				// get joints and allocate message
+				for (size_t i = 0; i < num_hw_joints_; i++) 
+				{
+					auto &ts = talon_state_[i];
+					p.position[i] = ts->getPosition();
+					p.velocity[i] = ts->getSpeed();
+	
+				}
+				realtime_state_pub_->unlockAndPublish();
 			}
 			else
 			{
